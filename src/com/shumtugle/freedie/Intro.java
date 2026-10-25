@@ -4,8 +4,8 @@ import java.util.Random;
 
 /**
  * The opening, seven steps in about six and a half seconds, no words but the name:
- * the eye flies in an arc over the seaside town down onto the street and stops before
- * Freedie, who looks up; the town goes dark, light left on her alone; she swings her golden
+ * the eye flies in an arc over the seaside town down onto a square, cars going by, people
+ * walking, and stops before Freedie, who looks up; the town goes dark, light left on her alone; she swings her golden
  * hammer straight at the eye, the glass cracks, and she herself breaks and falls apart;
  * on the black the name burns in gold; a flash, and the game. A touch at any moment goes
  * straight to the flash.
@@ -16,14 +16,18 @@ final class Intro {
     static final String TITLE = "FREEDIE";
 
     // where she stands, and the eye before her at the end of its flight
-    static final float FX = 0f, FZ = 8.6f;
-    private static final float[] P0 = {-55f, 38f, -45f}, P1 = {-10f, 22f, -20f}, P2 = {0f, 2.1f, 0.4f};
-    private static final float[] T0 = {25f, 0f, 70f}, T1 = {5f, 4f, 30f}, T2 = {FX, 3.0f, FZ};
+    static final float FX = 0f, FZ = Square.Z;
+    // down from high over the town in an arc that swings out over the promenade
+    private static final float[] P0 = {-30f, 38f, FZ - 30f}, P1 = {-24f, 15f, FZ - 24f}, P2 = {0f, 2.1f, FZ - 8.2f};
+    private static final float[] T0 = {FX, 0.4f, FZ}, T1 = {FX, 1.6f, FZ}, T2 = {FX, 2.6f, FZ};
     // the name, a block for every dot of it, far enough off to fit the frame
-    private static final float NAME_Z = 18f, NAME_Y = 5.0f, DOT = 0.18f;
+    private static final float NAME_Z = FZ + 9.4f, NAME_Y = 5.0f, DOT = 0.22f;
 
     private final World.Host host;
     private final Frida frida = new Frida();
+    private final Square square = new Square();
+    private final DrawList scene = new DrawList();      // the square, built once
+    private boolean built;
     private final Random rnd = new Random(23);
     float t;
     boolean peaked;                           // the flash is at its whitest: the game takes over
@@ -145,7 +149,7 @@ final class Intro {
 
     /** The eye, the light and the dark for this moment; the world has set the rest. */
     void frame(DrawList d, int w) {
-        float u = 1f - (float) Math.pow(1f - span(t, 0f, FLY_END), 2.5f);
+        float u = ease(span(t, 0f, FLY_END));
         bezier(P0, P1, P2, u, eye);
         bezier(T0, T1, T2, u, aim);
         // a step in toward her as she swings
@@ -158,13 +162,14 @@ final class Intro {
         }
         float dx = aim[0] - eye[0], dy = aim[1] - eye[1], dz = aim[2] - eye[2];
         float yaw = (float) Math.atan2(dx, dz), pitch = (float) Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
-        d.camera(eye[0], eye[1], eye[2], yaw, pitch, w * 1.9f, 0.1f, 500f);
+        // a little wider than the game's eye, to take in the square round her
+        d.camera(eye[0], eye[1], eye[2], yaw, pitch, w * 1.5f, 0.1f, 500f);
 
         // the dark comes in; the light left turns to face her, then the name
         float dark = span(t, LOOK_END, DARK_END);
         d.dark = dark;
         float sx = mix(-0.80f, -0.35f, dark), sy = mix(0.30f, 0.55f, dark), sz = mix(-0.10f, -0.76f, dark);
-        d.sun(sx, sy, sz, -1f, 4f, 42f, 100f, 36f, 140f);
+        d.sun(sx, sy, sz, 0f, 4f, FZ + 6f, 100f, 36f, 140f);
         float toName = ease(span(t, NAME - 0.3f, NAME + 0.2f));
         d.spot[0] = FX;
         d.spot[1] = mix(2.6f, NAME_Y, toName);
@@ -178,6 +183,12 @@ final class Intro {
 
     /** Everything of hers: herself, or what is left of her; the name. */
     void draw(DrawList d) {
+        if (!built) {
+            Square.build(scene);
+            built = true;
+        }
+        d.append(scene);
+        square.life(d, t, eye[0], eye[1], eye[2]);
         if (frida.broken) frida.drawBroken(d);
         else {
             frida.pose();

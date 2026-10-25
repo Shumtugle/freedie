@@ -13,7 +13,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.3.2";     // shown on screen; keep in step with versionName
+    static final String VERSION = "0.4";     // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2;
 
     /** What the world may ask of the phone. */
@@ -127,8 +127,6 @@ final class World {
         Px f = flat(d);
         if (intro != null) {
             intro.frame(d, W);
-            d.append(still);
-            traffic.draw(d);
             intro.draw(d);
             intro.flat(f, d);
             return;

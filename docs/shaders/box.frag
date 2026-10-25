@@ -34,7 +34,7 @@ out vec4 outColor;
 
 const float PLAIN = 0.0, GRAIN = 1.0, STONE = 2.0, ASPHALT = 3.0, WOOD = 4.0, PAVING = 5.0, PAINT = 6.0, GOLD = 7.0;
 const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, GLOW = 13.0, SEA = 14.0, RAIL = 15.0;
-const float PROMENADE = 16.0, AWNING = 17.0;
+const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -206,6 +206,18 @@ void main() {
         vec2 t = vec2(vWorld.x + vWorld.z, vWorld.z - vWorld.x) * 0.7;
         vec2 f = fract(t);
         k = (f.x < 0.04 || f.y < 0.04) ? 0.82 : 0.96 + 0.06 * hash(vec3(floor(t), 6.0));
+    } else if (mat == SQUARE) {
+        // warm stone laid in rings round the middle, a darker band toward the rim
+        float rr = length(vec2(vLocal.x, vLocal.z * 1.18));
+        k = mod(rr, 1.2) < 0.06 ? 0.83 : 0.96 + 0.06 * hash(vec3(floor(vWorld.xz * 1.3), 7.0));
+        if (rr > 9.5 && rr < 10.3) base = lin(vec3(0.72, 0.56, 0.42));
+    } else if (mat == LANE) {
+        // asphalt in patches, a dashed line down the middle of the longer way
+        bool alongX = vHalf.x > vHalf.z;
+        float across = alongX ? vLocal.z : vLocal.x, along = alongX ? vWorld.x : vWorld.z;
+        float p = hash(vec3(floor(vWorld.x * 0.6 + 31.0), floor(vWorld.z * 0.5), 8.0));
+        k = (p < 0.16 ? 0.86 : 1.0) * (0.9 + 0.16 * hash(vec3(floor(vWorld.xz / 0.14), 3.0)));
+        if (abs(across) < 0.08 && mod(along, 6.0) < 2.6) { base = lin(vec3(0.886, 0.871, 0.831)); k = 1.0; }
     } else if (mat == PAINT) {
         k = 0.95 + 0.06 * hash(vec3(floor(uv / 0.25), face));
     } else if (mat == FACADE) {

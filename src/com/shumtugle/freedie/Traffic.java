@@ -129,7 +129,7 @@ final class Traffic {
     private float px, pz, cy, sy;
 
     /** A small sedan, its nose along yaw (0 faces away from the eye). */
-    private void car(DrawList d, float x, float z, float yaw, int paint) {
+    void car(DrawList d, float x, float z, float yaw, int paint) {
         px = x;
         pz = z;
         cy = (float) Math.cos(yaw);

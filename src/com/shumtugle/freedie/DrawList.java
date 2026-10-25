@@ -12,7 +12,7 @@ final class DrawList {
     // what a box's faces are made of; the shaders turn these into patterns
     static final int PLAIN = 0, GRAIN = 1, STONE = 2, ASPHALT = 3, WOOD = 4, PAVING = 5, PAINT = 6, GOLD = 7;
     static final int FACADE = 8, FROND = 9, TRUNK = 10, ROAD = 11, GLASS = 12, GLOW = 13, SEA = 14, RAIL = 15,
-            PROMENADE = 16, AWNING = 17;
+            PROMENADE = 16, AWNING = 17, SQUARE = 18, LANE = 19;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 

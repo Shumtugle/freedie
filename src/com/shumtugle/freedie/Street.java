@@ -107,7 +107,7 @@ final class Street {
     }
 
     /** A roof of red tiles in two steps, a chimney or two. */
-    private static void roof(DrawList d, float x, float top, float z, float hx, float hz, int seed) {
+    static void roof(DrawList d, float x, float top, float z, float hx, float hz, int seed) {
         d.box(x, top + 0.25f, z, hx - 0.3f, 0.25f, hz - 0.3f, null, 0xC4673E, DrawList.GRAIN);
         d.box(x, top + 0.6f, z, hx - 1.3f, 0.15f, Math.max(0.4f, hz - 1.3f), null, 0xA8553A, DrawList.GRAIN);
         int h = nz(seed, 5, 21);
@@ -120,51 +120,72 @@ final class Street {
 
     /** What stands out of a house front: balconies with railings and pots, awnings over the shops. */
     private static void fronts(DrawList d, float z0, int bays, int storeys, int seed) {
-        float wall = HOUSES_X;
+        fronts(d, false, HOUSES_X, -1, z0, bays, storeys, seed);
+    }
+
+    /**
+     * The same on any wall standing square to x or z: the wall runs along x (alongX) or z,
+     * stands at the coordinate wall, faces out to the plus or minus side; its bays begin at
+     * start, the lower end along it, as the shader counts them.
+     */
+    static void fronts(DrawList d, boolean alongX, float wall, int out, float start, int bays, int storeys, int seed) {
         for (int b = 0; b < bays; b++) {
-            float zc = z0 + b * 2.9f + 1.45f;
+            float c = start + b * 2.9f + 1.45f;
             int h0 = nz(b, 0, seed);
             if ((h0 & 3) != 0) {
                 boolean stripes = (h0 & 4) != 0;
                 int cloth = (h0 & 8) != 0 ? 0xB5523E : 0x4F7A5E;
-                awning(d, wall, 2.75f, zc, 1.15f, cloth, stripes);
+                awning(d, alongX, wall, out, 2.75f, c, 1.15f, cloth, stripes);
             }
             for (int s = 1; s <= storeys; s++) {
                 int h = nz(b, s, seed);
                 if ((h & 32) == 0 && s != 1) continue;
                 float y = s * 3.3f;
                 // the slab, and the railing round it
-                d.box(wall - 0.25f, y + 0.28f, zc, 0.25f, 0.06f, 0.75f, null, 0x5C5450, DrawList.PLAIN);
-                d.box(wall - 0.49f, y + 0.8f, zc, 0.015f, 0.46f, 0.75f, null, 0x2B2A2C, DrawList.RAIL);
+                put(d, alongX, c, y + 0.28f, wall + out * 0.25f, 0.75f, 0.06f, 0.25f, 0x5C5450, DrawList.PLAIN);
+                put(d, alongX, c, y + 0.8f, wall + out * 0.49f, 0.75f, 0.46f, 0.015f, 0x2B2A2C, DrawList.RAIL);
                 for (int e = -1; e <= 1; e += 2)
-                    d.box(wall - 0.25f, y + 0.8f, zc + e * 0.735f, 0.24f, 0.46f, 0.015f, null, 0x2B2A2C, DrawList.RAIL);
+                    put(d, alongX, c + e * 0.735f, y + 0.8f, wall + out * 0.25f, 0.015f, 0.46f, 0.24f, 0x2B2A2C, DrawList.RAIL);
                 if ((h & 64) != 0) {
                     // flower pots behind the bars
                     for (int p = -1; p <= 1; p++) {
                         int f = nz(p + 7, s, seed + 11);
-                        int c = f < 90 ? 0x4D7A3A : f < 150 ? 0xD9505A : 0x6E9440;
-                        d.box(wall - 0.25f, y + 0.46f, zc + p * 0.45f, 0.1f, 0.12f, 0.1f, null, c, DrawList.GRAIN);
+                        int col = f < 90 ? 0x4D7A3A : f < 150 ? 0xD9505A : 0x6E9440;
+                        put(d, alongX, c + p * 0.45f, y + 0.46f, wall + out * 0.25f, 0.1f, 0.12f, 0.1f, col, DrawList.GRAIN);
                     }
                 }
             }
         }
     }
 
+    /** A box square to a wall: so far along it, so high, so far out; its half sizes the same way. */
+    private static void put(DrawList d, boolean alongX, float along, float y, float out, float hAlong, float hy, float hOut,
+                            int rgb, int material) {
+        if (alongX) d.box(along, y, out, hAlong, hy, hOut, null, rgb, material);
+        else d.box(out, y, along, hOut, hy, hAlong, null, rgb, material);
+    }
+
     /** An awning out from the wall over a shop window, sloping down, with a flap along its edge. */
-    private static void awning(DrawList d, float wall, float top, float zc, float half, int cloth, boolean stripes) {
+    private static void awning(DrawList d, boolean alongX, float wall, int out, float top, float c, float half,
+                               int cloth, boolean stripes) {
         float a = (float) Math.atan2(0.4, 1.1), ca = (float) Math.cos(a), sa = (float) Math.sin(a);
-        float out = 0.6f;
-        set(X, 0f, 0f, 1f);
-        set(Z, -ca, -sa, 0f);
+        float len = 0.6f;
+        // the way out from the wall, and the way along it that makes the turn right-handed
+        float ox = alongX ? 0f : out, oz = alongX ? out : 0f;
+        if (alongX) set(X, out, 0f, 0f);
+        else set(X, 0f, 0f, -out);
+        set(Z, ox * ca, -sa, oz * ca);
         cross(Z, X, Y);
         axes();
         float mat = DrawList.material(DrawList.AWNING, stripes ? 1 : 0);
-        d.box(wall - out * ca, top - out * sa, zc, half, 0.02f, out, T, cloth, mat);
-        set(X, 0f, 0f, 1f);
+        float wx = alongX ? c : wall, wz = alongX ? wall : c;
+        d.box(wx + ox * len * ca, top - len * sa, wz + oz * len * ca, half, 0.02f, len, T, cloth, mat);
+        if (alongX) set(X, out, 0f, 0f);
+        else set(X, 0f, 0f, -out);
         set(Y, 0f, 1f, 0f);
-        set(Z, -1f, 0f, 0f);
+        set(Z, ox, 0f, oz);
         axes();
-        d.box(wall - 2f * out * ca, top - 2f * out * sa - 0.12f, zc, half, 0.12f, 0.01f, T, cloth, mat);
+        d.box(wx + ox * 2f * len * ca, top - 2f * len * sa - 0.12f, wz + oz * 2f * len * ca, half, 0.12f, 0.01f, T, cloth, mat);
     }
 
     // ---- lamps, bollards, parasols ----

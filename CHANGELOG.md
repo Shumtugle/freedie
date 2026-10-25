@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4
+- The opening comes down onto a square now, another corner of the same town: paving laid in
+  rings round Freedie, a darker band at the rim; a road across behind it and another along
+  its right, cars going both ways; houses all round with balconies, flower pots and
+  awnings; the promenade with its palms, the parapet and the sea; people walking the far
+  pavements and the promenade, never close. The eye takes in a little more of it than the
+  game's eye does. Then, as before: the dark, the blow, her fall, the name, the flash.
+- Balconies and awnings stand on any house front, whichever way it faces.
+- The desktop stand plays every sound of the game, one after another (`stand/sounds.txt`).
+
 ## 0.3.2
 - The icon stands on nothing now: Freedie's head alone, the desk showing round it.
 

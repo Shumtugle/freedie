@@ -15,7 +15,8 @@ import javax.imageio.ImageIO;
  * page in stand/web draws them with the game's own shaders.
  *
  * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
- * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays).
+ * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays) ·
+ * sounds (every sound of the synthesizer in turn, each after the last has died away).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -127,6 +128,14 @@ public final class Stand implements World.Host {
             }
             world.touch(World.UP, x1, y1);
             step();
+        } else if (c.equals("sounds")) {
+            Synth syn = new Synth();
+            for (int id = 0; id < syn.bank.length; id++) {
+                if (syn.bank[id] == null) continue;
+                sound(id, 0.9f, 1f);
+                System.out.println(String.format("%7.2fs  sound %d", time, id));
+                run(syn.bank[id].length / (float) Synth.RATE + 0.45f);
+            }
         } else if (c.equals("skip")) {
             if (world.opening()) {
                 world.touch(World.DOWN, World.W * 0.5f, 300f);
