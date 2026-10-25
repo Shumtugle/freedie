@@ -36,8 +36,8 @@ final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6;
     static final int STARS = 5;
-    /** The last level there is yet: into the second episode as far as its new things go. */
-    static final int LAST = 10;
+    /** The last level there is yet: the end of the second episode. */
+    static final int LAST = 19;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
@@ -199,6 +199,9 @@ final class Game implements Physics.Listener {
         toBurst.clear();
         pN = 0;
         dropN = 0;
+        lN = 0;
+        toPop.clear();
+        rollAt = 0f;
         lastLanded = -1;
         lastBuildTime = 0f;
         setState(BUILD);
@@ -541,11 +544,15 @@ final class Game implements Physics.Listener {
             steps++;
             if (state != BUILD && state != VANISH) phys.step(1f / 60f);
             bursts();
+            pops();
             blast();
+            if (state == PLAY || state == CLEARED) flyingCases();
         }
         if (acc > 1f / 30f) acc = 0f;
         particles(dt);
+        lights(dt);
         drops(dt);
+        rolling();
         windUp(dt);
         hammerMoves(dt);
         thunderStep(dt);
@@ -853,27 +860,53 @@ final class Game implements Physics.Listener {
             blastZ = z;
             blastNow = true;
         }
-        // water bottles burst at a hard blow, or a hard landing
+        // water bottles burst at a hard blow, or a hard landing; balloons at any touch of the hammer
         if (a.material == Body.WATER && (speed > 4.2f || hammerHit && speed > 2.4f)) burst(a);
         if (b != null && b.material == Body.WATER && (speed > 4.2f || hammerHit && speed > 2.4f)) burst(b);
-        boolean plastic = a.material == Body.WATER || a.material == Body.CONE
-                || (b != null && (b.material == Body.WATER || b.material == Body.CONE));
+        if (a.material == Body.BALLOON && (hammerHit || speed > 3f)) pop(a);
+        if (b != null && b.material == Body.BALLOON && (hammerHit || speed > 3f)) pop(b);
+        // a suitcase that lands hard bursts its latches (one sent flying opens in the air, see
+        // flyingCases); a mattress tears under the hammer or a heavy fall
+        if (a.material == Body.SUITCASE && !hammerHit && speed > 4.5f) openCase(a);
+        if (b != null && b.material == Body.SUITCASE && !hammerHit && speed > 4.5f) openCase(b);
+        if (a.material == Body.MATTRESS && (hammerHit && speed > 4.5f || speed > 7f)) tearMattress(a, x, y, z);
+        if (b != null && b.material == Body.MATTRESS && (hammerHit && speed > 4.5f || speed > 7f)) tearMattress(b, x, y, z);
+        boolean plastic = a.material == Body.WATER || (b != null && b.material == Body.WATER);
         float gain = Math.min(1f, (speed - 1f) / 5f);
         if (hammerHit) gain = Math.min(1.3f, gain * 1.4f + 0.2f);
-        if (b == null || other == null) {
+        int voice = voiceOf(a);
+        if (voice < 0 && b != null) voice = voiceOf(b);
+        if (voice >= 0) {
+            if (speed > 1.2f || hammerHit) {
+                float rate = voice == Synth.PLASTIC ? 1.35f : voice == Synth.CLANG ? 0.9f : 1f;
+                // a light knock on a mattress is only the whump: the creak needs a real blow
+                if (voice == Synth.MATTRESS && speed < 3f && !hammerHit) voice = Synth.SAND;
+                host.sound(voice, gain * (voice == Synth.CLANG ? 0.85f : 1f), rate * (0.92f + fx.nextFloat() * 0.16f));
+            }
+        } else if (b == null || other == null) {
             if (speed > 1.6f) host.sound(Synth.GROUND, gain * 0.9f, 0.9f + fx.nextFloat() * 0.2f);
         } else if (speed > 1.2f || hammerHit) {
-            boolean stone = a.material == Body.STONE || b.material == Body.STONE || other.material == Body.PLINTH;
+            boolean stone = a.material == Body.STONE || b.material == Body.STONE || other.material == Body.PLINTH
+                    || a.material == Body.BALL || b.material == Body.BALL;
             float size = Math.max(other.hx, Math.max(other.hy, other.hz));
             float rate = Math.max(0.6f, Math.min(1.5f, 0.32f / size)) * (0.92f + fx.nextFloat() * 0.16f);
             host.sound(plastic ? Synth.PLASTIC : stone ? Synth.STONE : Synth.WOOD, gain, plastic ? 0.9f + fx.nextFloat() * 0.2f : rate);
         }
         if (hammerHit) host.buzz((int) Math.min(60f, 10f + speed * 3f));
-        if (speed > 2.2f && other != null && other.material != Body.WATER) {
+        boolean soft = other != null && (other.material == Body.SUITCASE || other.material == Body.MATTRESS
+                || other.material == Body.TYRE || other.material == Body.BALLOON);
+        if (soft && speed > 2.2f) {
+            // no chips off cloth, leather or rubber: a little grey fluff from a mattress
+            if (other.material == Body.MATTRESS)
+                for (int i = 0; i < 3; i++) spawn(x, y, z, true, 0xC9C5BC, 0.8f);
+        } else if (speed > 2.2f && other != null && other.material != Body.WATER) {
             int n = (int) Math.min(14f, speed * 1.2f);
-            boolean dusty = other.material == Body.STONE || other.material == Body.PLINTH;
+            boolean bag = other.material == Body.SANDBAG;
+            boolean dusty = other.material == Body.STONE || other.material == Body.PLINTH || bag;
+            int dust = bag ? 0xDCC79C : 0xE6DCC8;
+            // a sandbag puffs more dust than it sheds chips: sand out of its weave
             for (int i = 0; i < n; i++)
-                spawn(x, y, z, dusty && (i & 1) == 0, dusty ? 0xE6DCC8 : Street.scale(other.tint, 0.8f), speed * 0.35f);
+                spawn(x, y, z, dusty && (bag || (i & 1) == 0), dusty ? dust : Street.scale(other.tint, 0.8f), speed * 0.35f);
         } else if (speed > 3f && b == null) {
             for (int i = 0; i < 4; i++) spawn(x, 0.02f, z, true, 0xD8CFC0, 1f);
         }
@@ -905,6 +938,112 @@ final class Game implements Physics.Listener {
         for (int k = 0; k < 12; k++) spawn(x, y, z, false, (k & 1) == 0 ? 0xCFE2EC : 0x9FB6C4, speed * 0.4f);
     }
 
+    /** The sound of a street thing knocked about, or -1 for a plain block. */
+    private static int voiceOf(Body b) {
+        switch (b.material) {
+            case Body.BARREL: return Synth.CLANG;
+            case Body.TYRE: return Synth.RUBBER;
+            case Body.SANDBAG: return Synth.SAND;
+            case Body.CONE: return Synth.PLASTIC;
+            case Body.SUITCASE: return Synth.LEATHER;
+            case Body.MATTRESS: return Synth.MATTRESS;
+            default: return -1;
+        }
+    }
+
+    /** A suitcase thrown through the air faster than a brisk walk gapes open in flight. */
+    private void flyingCases() {
+        for (Body b : pieces)
+            if (b.material == Body.SUITCASE && b.broke < 0f && !b.gone && !b.asleep && b.speed2() > 3.2f * 3.2f) openCase(b);
+    }
+
+    /** A suitcase bursts open: the latches snap, the lid gapes, shirts and postcards fly. */
+    private void openCase(Body b) {
+        if (b.broke >= 0f) return;
+        b.broke = clock;
+        int shirts = 4 + fx.nextInt(3), cards = 4 + fx.nextInt(4);
+        for (int i = 0; i < shirts; i++) spawnLight(b.px, b.py + b.hy, b.pz, b.vx, b.vy, b.vz, SHIRT);
+        for (int i = 0; i < cards; i++) spawnLight(b.px, b.py + b.hy, b.pz, b.vx, b.vy, b.vz, CARD);
+        host.sound(Synth.LATCH, 0.9f, 0.94f + fx.nextFloat() * 0.12f);
+    }
+
+    /** A mattress torn where it was struck: springs jump out of the ticking, grey wadding puffs. */
+    private void tearMattress(Body b, float x, float y, float z) {
+        if (b.broke >= 0f) return;
+        b.broke = clock;
+        float dx = x - b.px, dy = y - b.py, dz = z - b.pz;
+        float lx = b.r00 * dx + b.r10 * dy + b.r20 * dz;
+        float ly = b.r01 * dx + b.r11 * dy + b.r21 * dz;
+        float lz = b.r02 * dx + b.r12 * dy + b.r22 * dz;
+        // onto the face it is nearest to; the thin sides read best, so the front wins ties
+        float ax = Math.abs(lx) / b.hx, ay = Math.abs(ly) / b.hy * 0.7f, az = Math.abs(lz) / b.hz;
+        int axis = az >= ax && az >= ay ? 2 : ax >= ay ? 0 : 1;
+        float[] l = {lx, ly, lz}, hh = {b.hx, b.hy, b.hz};
+        boolean neg = l[axis] < 0f;
+        l[axis] = neg ? -hh[axis] : hh[axis];
+        for (int k = 0; k < 3; k++) if (k != axis) l[k] = Math.max(-hh[k] * 0.6f, Math.min(hh[k] * 0.6f, l[k]));
+        b.markX = l[0];
+        b.markY = l[1];
+        b.markZ = l[2];
+        b.markAxis = axis + (neg ? 3 : 0);
+        for (int i = 0; i < 4; i++) spawnLight(x, y, z, b.vx, b.vy, b.vz, SPRING);
+        for (int i = 0; i < 10; i++) spawn(x, y, z, true, (i & 1) == 0 ? 0xB9B5AD : 0xD6D2C8, 1.4f);
+        host.sound(Synth.TEAR, 1f, 0.95f + fx.nextFloat() * 0.1f);
+    }
+
+    /** For the desktop stand: every mattress torn at the middle of its front, every suitcase burst. */
+    void standTear() {
+        for (Body b : pieces) {
+            if (b.material == Body.MATTRESS) tearMattress(b, b.px + b.hx * 0.3f, b.py, b.pz - b.hz);
+            if (b.material == Body.SUITCASE) openCase(b);
+        }
+    }
+
+    private final ArrayList<Body> toPop = new ArrayList<Body>();
+
+    private void pop(Body b) {
+        if (!b.gone && !toPop.contains(b)) toPop.add(b);
+    }
+
+    /** Balloons burst this step: gone with a crack and a spray of rubber shreds; a freed one drifts off. */
+    private void pops() {
+        for (Body b : pieces)
+            if (b.material == Body.BALLOON && !b.gone && b.py > Builder.TOP + 25f) {
+                b.gone = true;
+                b.ghost = true;
+            }
+        if (toPop.isEmpty()) return;
+        for (Body b : toPop) {
+            b.gone = true;
+            b.ghost = true;
+            float e = 0.08f;
+            for (Body o : pieces)
+                if (o.asleep && !(o.maxX + e < b.minX || b.maxX + e < o.minX || o.maxY + e < b.minY
+                        || b.maxY + e < o.minY || o.maxZ + e < b.minZ || b.maxZ + e < o.minZ)) phys.wake(o);
+            for (int i = 0; i < 14; i++) spawn(b.px, b.py, b.pz, false, Street.scale(b.tint, 0.8f + fx.nextFloat() * 0.4f), 3.5f);
+            host.sound(Synth.POP, 1f, 0.9f + fx.nextFloat() * 0.25f);
+            host.buzz(20);
+        }
+        toPop.clear();
+    }
+
+    private float rollAt;
+
+    /** A heavy ball rolling along the plinth or the street rumbles as it goes. */
+    private void rolling() {
+        if (clock - rollAt < 0.45f) return;
+        for (Body b : pieces) {
+            if (b.material != Body.BALL || b.gone || b.asleep) continue;
+            float onTop = Math.abs(b.px - Builder.CX) < Builder.PHX && Math.abs(b.pz - Builder.CZ) < Builder.PHZ ? Builder.TOP : 0f;
+            if (b.py - b.radius > onTop + 0.04f || Math.abs(b.vy) > 0.6f) continue;
+            float v = (float) Math.sqrt(b.vx * b.vx + b.vz * b.vz);
+            if (v < 1f) continue;
+            host.sound(Synth.ROLL, Math.min(0.7f, v * 0.12f), 0.8f + Math.min(0.5f, v * 0.06f));
+            rollAt = clock;
+            return;
+        }
+    }
+
     /** Throws every piece of the building away from the blow, after the step, never inside it. */
     private void blast() {
         if (!blastNow) return;
@@ -923,6 +1062,7 @@ final class Game implements Physics.Listener {
             b.asleep = false;
             b.savePrev();
             if (b.material == Body.WATER) burst(b);
+            if (b.material == Body.BALLOON) pop(b);
         }
         for (int i = 0; i < 40; i++)
             spawn(blastX, blastY, blastZ, (i & 1) == 0, (i & 1) == 0 ? 0xE6DCC8 : 0xD39E62, 5f);
@@ -1035,6 +1175,134 @@ final class Game implements Physics.Listener {
         }
     }
 
+    // ---- light things out of suitcases and mattresses ----
+    // shirts and postcards thrown up, swinging down slowly and lying where they fell; springs
+
+    static final int SHIRT = 0, CARD = 1, SPRING = 2;
+    private static final int MAXL = 90;
+    // the shirts packed in old suitcases: loud prints on bright grounds
+    static final int[] SHIRTS = {0xE8483C, 0x2FB0A6, 0xF2C230, 0xF27A3A, 0xE87AB0, 0x3F8FD8, 0x5DBE6A};
+    private final float[] lX = new float[MAXL], lY = new float[MAXL], lZ = new float[MAXL];
+    private final float[] lVx = new float[MAXL], lVy = new float[MAXL], lVz = new float[MAXL];
+    private final float[] lAge = new float[MAXL], lLife = new float[MAXL], lYaw = new float[MAXL], lSpin = new float[MAXL];
+    private final float[] lPitch = new float[MAXL], lRoll = new float[MAXL];
+    private final int[] lKind = new int[MAXL], lCol = new int[MAXL];
+    private final boolean[] lDown = new boolean[MAXL];
+    private int lN;
+
+    /** Something light thrown up into the air: a shirt, a postcard, or a spring. */
+    private void spawnLight(float x, float y, float z, float vx, float vy, float vz, int kind) {
+        if (lN >= MAXL) return;
+        int i = lN++;
+        lX[i] = x;
+        lY[i] = y;
+        lZ[i] = z;
+        float a = fx.nextFloat() * 6.283f;
+        float sp = kind == SPRING ? 1.5f + fx.nextFloat() * 2.5f : 0.8f + fx.nextFloat() * 2.2f;
+        lVx[i] = (float) Math.cos(a) * sp + vx * 0.4f;
+        lVz[i] = (float) Math.sin(a) * sp + vz * 0.4f;
+        lVy[i] = (kind == SPRING ? 2.5f : 4f) + fx.nextFloat() * 4f + Math.max(0f, vy) * 0.3f;
+        lLife[i] = kind == SPRING ? 2.5f + fx.nextFloat() : 40f;
+        lAge[i] = 0f;
+        lYaw[i] = fx.nextFloat() * 6.283f;
+        lSpin[i] = (fx.nextFloat() - 0.5f) * 3f;
+        lPitch[i] = lRoll[i] = 0f;
+        lKind[i] = kind;
+        lCol[i] = kind == SHIRT ? SHIRTS[fx.nextInt(SHIRTS.length)] : fx.nextInt(1 << 16);
+        lDown[i] = false;
+    }
+
+    private static float floorAt(float x, float z) {
+        return Math.abs(x - Builder.CX) < Builder.PHX && Math.abs(z - Builder.CZ) < Builder.PHZ ? Builder.TOP : 0f;
+    }
+
+    private void lights(float dt) {
+        for (int i = 0; i < lN; i++) {
+            lAge[i] += dt;
+            if (lAge[i] >= lLife[i]) {
+                lN--;
+                lX[i] = lX[lN]; lY[i] = lY[lN]; lZ[i] = lZ[lN];
+                lVx[i] = lVx[lN]; lVy[i] = lVy[lN]; lVz[i] = lVz[lN];
+                lAge[i] = lAge[lN]; lLife[i] = lLife[lN]; lYaw[i] = lYaw[lN]; lSpin[i] = lSpin[lN];
+                lPitch[i] = lPitch[lN]; lRoll[i] = lRoll[lN];
+                lKind[i] = lKind[lN]; lCol[i] = lCol[lN]; lDown[i] = lDown[lN];
+                i--;
+                continue;
+            }
+            if (lDown[i]) continue;
+            float floor = floorAt(lX[i], lZ[i]);
+            if (lKind[i] == SPRING) {
+                // wire: falls like a stone, bounces once or twice, tumbling
+                lVy[i] += Physics.G * dt;
+                lX[i] += lVx[i] * dt;
+                lY[i] += lVy[i] * dt;
+                lZ[i] += lVz[i] * dt;
+                lPitch[i] += 9f * dt;
+                lYaw[i] += lSpin[i] * 2f * dt;
+                if (lY[i] < floor + 0.04f) {
+                    lY[i] = floor + 0.04f;
+                    lVy[i] = -lVy[i] * 0.4f;
+                    lVx[i] *= 0.6f;
+                    lVz[i] *= 0.6f;
+                }
+                continue;
+            }
+            // cloth and paper: caught by the air at once, then sinking slowly, swinging and
+            // turning over; once down they lie flat where they fell
+            float thin = lKind[i] == SHIRT ? 0.016f : 0.008f;
+            if (lY[i] <= floor + thin && lVy[i] <= 0f) {
+                lY[i] = floor + thin;
+                lDown[i] = true;
+                lPitch[i] = 0f;
+                lRoll[i] = 0f;
+                continue;
+            }
+            boolean shirt = lKind[i] == SHIRT;
+            float drag = shirt ? 2.8f : 2.2f;
+            lVy[i] += Physics.G * (shirt ? 0.32f : 0.4f) * dt;
+            float k = Math.max(0f, 1f - drag * dt);
+            lVx[i] *= k;
+            lVy[i] *= k;
+            lVz[i] *= k;
+            // the swing: a card side-slips like a leaf, a shirt billows more lazily
+            float ph = lAge[i] * (shirt ? 1.9f : 4.2f) + i * 1.7f;
+            float sw = shirt ? 0.6f : 1.1f;
+            lX[i] += (lVx[i] + (float) Math.cos(ph) * sw) * dt;
+            lY[i] += lVy[i] * dt;
+            lZ[i] += (lVz[i] + (float) Math.sin(ph * 0.7f) * sw * 0.5f) * dt;
+            // tipping with the swing, slowly turning over
+            lPitch[i] = (float) Math.sin(ph) * (shirt ? 0.9f : 1.2f) + lAge[i] * lSpin[i] * 0.4f;
+            lRoll[i] = (float) Math.cos(ph * 0.7f) * 0.5f;
+            lYaw[i] += lSpin[i] * dt;
+            if (lY[i] < floor + thin) lY[i] = floor + thin;
+        }
+    }
+
+    private final float[] lTurn = new float[9];
+
+    /** A turn from a heading, a tip forward and a tip sideways, row by row. */
+    private static void euler(float yaw, float pitch, float roll, float[] m) {
+        float cy = (float) Math.cos(yaw), sy = (float) Math.sin(yaw);
+        float cp = (float) Math.cos(pitch), sp = (float) Math.sin(pitch);
+        float cr = (float) Math.cos(roll), sr = (float) Math.sin(roll);
+        // Ry * Rx * Rz
+        m[0] = cy * cr + sy * sp * sr;  m[1] = -cy * sr + sy * sp * cr;  m[2] = sy * cp;
+        m[3] = cp * sr;                 m[4] = cp * cr;                  m[5] = -sp;
+        m[6] = -sy * cr + cy * sp * sr; m[7] = sy * sr + cy * sp * cr;   m[8] = cy * cp;
+    }
+
+    private void drawLights(DrawList d) {
+        for (int i = 0; i < lN; i++) {
+            euler(lYaw[i], lPitch[i], lRoll[i], lTurn);
+            if (lKind[i] == SHIRT) Things.shirt(d, lX[i], lY[i], lZ[i], lTurn, lCol[i], i);
+            else if (lKind[i] == CARD) Things.card(d, lX[i], lY[i], lZ[i], lTurn, lCol[i]);
+            else {
+                float fade = Math.min(1f, (lLife[i] - lAge[i]) / 0.4f);
+                if (fade > 0.3f) Things.looseSpring(d, lX[i], lY[i], lZ[i], lTurn);
+            }
+        }
+    }
+
     // puddles where water came down: they spread, lie a while, and dry up
     private static final int DROPS = 12;
     private final float[] dX = new float[DROPS], dY = new float[DROPS], dZ = new float[DROPS], dR = new float[DROPS], dAge = new float[DROPS];
@@ -1107,7 +1375,23 @@ final class Game implements Physics.Listener {
             if (pDust[i] && pAge[i] > pLife[i] * 0.6f) s *= 1f - (pAge[i] / pLife[i] - 0.6f) / 0.4f;
             d.box(pX[i], pY[i], pZ[i], s, s, s, null, pCol[i], pWet[i] ? DrawList.GLASS : DrawList.PLAIN);
         }
+        drawLights(d);
         hammer(d);
+    }
+
+    /**
+     * How far a mattress gives under what lies on it, from nothing to one: the weight of
+     * whatever rests on its top face, against what it takes to press it flat.
+     */
+    private float sag(Body m) {
+        if (m.r11 < 0.9f) return 0f;
+        float load = 0f, top = m.maxY;
+        for (Body o : pieces) {
+            if (o == m || o.gone || o.minY < top - 0.08f || o.minY > top + 0.06f) continue;
+            if (o.maxX < m.minX || o.minX > m.maxX || o.maxZ < m.minZ || o.minZ > m.maxZ) continue;
+            load += o.mass;
+        }
+        return Math.min(1f, load / 120f);
     }
 
     /** One piece of the building, so big and so far above its place. */
@@ -1119,9 +1403,41 @@ final class Game implements Physics.Listener {
             Round.bottle(d, b.px, b.py + drop, b.pz, turn, b.hx * scale, b.hy * scale);
             return;
         }
-        if (b.material == Body.CONE) {
-            Round.cone(d, b.px, b.py + drop, b.pz, turn, b.hx * scale, b.hy * scale);
-            return;
+        float x = b.px, y = b.py + drop, z = b.pz, hx = b.hx * scale, hy = b.hy * scale, hz = b.hz * scale;
+        switch (b.material) {
+            case Body.CONE:
+                Round.cone(d, x, y, z, turn, hx, hy);
+                return;
+            case Body.BARREL:
+                Things.drum(d, x, y, z, turn, hx, hy, b.tint);
+                return;
+            case Body.TYRE:
+                Things.tyre(d, x, y, z, turn, hx, hy, b.tint);
+                return;
+            case Body.SANDBAG:
+                Things.bag(d, x, y, z, turn, hx, hy, hz, b.tint);
+                return;
+            case Body.SUITCASE:
+                Things.suitcase(d, x, y, z, turn, hx, hy, hz, b.tint, b.broke >= 0f ? clock - b.broke : -1f,
+                        SHIRTS[(b.id * 3 + 1) % SHIRTS.length]);
+                return;
+            case Body.MATTRESS:
+                Things.mattress(d, x, y, z, turn, hx, hy, hz, sag(b), b.broke >= 0f && scale >= 1f, b.markAxis,
+                        b.markX, b.markY, b.markZ, clock - b.broke);
+                return;
+            case Body.BALL:
+                Round.ball(d, x, y, z, turn, b.radius * scale, b.tint, Street.mix(b.tint, 0xFFFFFF, 0.28f), DrawList.PAINT);
+                return;
+            case Body.BALLOON: {
+                float r = b.radius * scale;
+                Round.ball(d, x, y, z, turn, r, b.tint, Street.mix(b.tint, 0xFFFFFF, 0.25f), DrawList.GLASS);
+                // the knot under it, a darker twist of the same rubber
+                d.box(x - turn[1] * r * 1.02f, y - turn[4] * r * 1.02f, z - turn[7] * r * 1.02f, r * 0.09f, r * 0.08f,
+                        r * 0.09f, turn, Street.scale(b.tint, 0.6f), DrawList.PAINT);
+                return;
+            }
+            default:
+                break;
         }
         int mat = b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;
         d.box(b.px, b.py + drop, b.pz, b.hx * scale, b.hy * scale, b.hz * scale, turn, b.tint, mat);

@@ -1,0 +1,48 @@
+# The second episode's things: a tower on a tyre stack (10th plate), a mattress between
+# concrete slabs (13th), a pile of old suitcases (16th), heavy balls (17th), drums, tyres and a
+# mattress (19th). Each built; then every mattress torn and every suitcase burst open, and
+# the shirts and postcards out of them come down; then a throw.
+screen 1096 2560
+keep level 12
+keep gifts 1
+restart
+skip
+wait 2.6
+shot t12
+tear
+wait 0.4
+shot t12_torn
+keep level 15
+restart
+skip
+wait 2.6
+shot t15
+tear
+wait 0.6
+shot t15_burst
+wait 1.4
+shot t15_fall
+wait 5
+shot t15_down
+keep level 16
+restart
+skip
+wait 2.6
+shot t16
+down 300 300
+wait 1.0
+up 300 300
+wait 0.6
+shot t16_hit
+keep level 18
+restart
+skip
+wait 2.6
+shot t18
+down 300 300
+wait 1.0
+up 300 300
+wait 0.5
+shot t18_hit
+wait 2.5
+shot t18_after

@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.14
+- The second episode, whole: the game goes to the twentieth building. Its things come in
+  one after another, each out of boxes: steel drums with their chimes and hoops and a bung
+  in the lid; car tyres, tread and sidewalls round a hole; sandbags rounded off and tied at
+  one end; old suitcases with straps, brass corners, latches and a handle; spring mattresses
+  between concrete slabs; heavy polished balls; balloons that drift off when freed.
+- A suitcase that lands hard, or is sent flying, bursts: the lid swings up on its hinge, the
+  lining shows, and shirts and postcards fly out. The shirts are as big as real ones, with
+  sleeves, a white collar and a big flower print; they swing down slowly, turning over, and
+  lie flat where they fall. The postcards side-slip like leaves.
+- The mattresses are thick, in broad blue and cream ticking, with dark piping round the
+  edges and buttons in rows; under a load the middle sinks. Struck hard, one tears: a dark
+  hole with grey wadding round it, springs jumping out of it and flying off.
+- Every thing has its voice: drums clang, tyres thud, sandbags thump and puff dust, leather
+  slaps, a mattress whumps and creaks, latches snap, cloth tears, balloons pop, a ball
+  rumbles as it rolls.
+- Nobody walks on the road any more: the people who crossed the street far off are gone,
+  and on the square of the opening everybody keeps short of the curbs.
+
 ## 0.13
 - The parked cars take what falls on them: the hammer, blocks, boards, stones, balls. A
   light knock only clatters; a real blow crumples metal, sprays glass and sets the alarm

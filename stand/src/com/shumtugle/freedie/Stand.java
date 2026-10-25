@@ -194,6 +194,9 @@ public final class Stand implements World.Host {
                 world.touch(World.UP, World.W * 0.5f, 300f);
                 step();
             }
+        } else if (c.equals("tear")) {
+            // every mattress torn, every suitcase burst open
+            world.standTear();
         } else if (c.equals("shot")) {
             shot(p[1]);
         } else {

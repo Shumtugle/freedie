@@ -60,14 +60,23 @@ final class Square {
         }
         for (int i = 0; i < 12; i++) {
             // across the square behind her, never through where she stands
-            float z = Z + 3.5f + p.nextFloat() * 6.5f, x = -12f + p.nextFloat() * 6f;
-            people.walk(x, z, x + 10f + p.nextFloat() * 12f, z + (p.nextFloat() - 0.5f) * 3f, 0f);
+            float z = Z + 3.5f + p.nextFloat() * 6f, x = -12f + p.nextFloat() * 6f;
+            people.walk(x, z, onSquareX(x + 10f + p.nextFloat() * 12f), onSquareZ(z + (p.nextFloat() - 0.5f) * 3f), 0f);
         }
         for (int i = 0; i < 8; i++) {
             // along its sides, to and from the far corners
             float side = i % 2 == 0 ? -1f : 1f, x = side * (7.5f + p.nextFloat() * 5f), z = Z - 10f + p.nextFloat() * 6f;
-            people.walk(x, z, x + (p.nextFloat() - 0.5f) * 3f, z + 9f + p.nextFloat() * 8f, 0f);
+            people.walk(x, z, onSquareX(x + (p.nextFloat() - 0.5f) * 3f), onSquareZ(z + 9f + p.nextFloat() * 8f), 0f);
         }
+    }
+
+    // where a walk across the square ends: on it, short of the curbs of the roads round it
+    private static float onSquareX(float x) {
+        return Math.max(PROM_X + 1f, Math.min(SQ_X - 1.2f, x));
+    }
+
+    private static float onSquareZ(float z) {
+        return Math.max(SQ_Z0 + 1f, Math.min(SQ_Z1 - 1.2f, z));
     }
 
     private static DrawList scene;

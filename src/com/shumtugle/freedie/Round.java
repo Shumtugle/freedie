@@ -46,6 +46,45 @@ final class Round {
         }
     }
 
+    private static final float[] M2 = new float[9];
+
+    /**
+     * A ring about the y axis of a frame, from radius rIn to rOut, from y0 to y1: twelve
+     * blocks round it, each turned to face out, a little overlapping its neighbours.
+     */
+    static void ring(DrawList d, float x, float y, float z, float[] rot, float y0, float y1, float rIn, float rOut,
+                     int rgb, int material) {
+        float[] R = rot == null ? UPRIGHT : rot;
+        float ym = (y0 + y1) * 0.5f, hh = (y1 - y0) * 0.5f, rm = (rIn + rOut) * 0.5f;
+        float along = rOut * THIN * 1.08f;
+        for (int k = 0; k < SIDES; k++) {
+            double a = k * Math.PI * 2 / SIDES;
+            float c = (float) Math.cos(a), s = (float) Math.sin(a);
+            // in the frame: out (c, 0, s), up, along the ring (-s, 0, c)
+            for (int i = 0; i < 3; i++) {
+                float p = R[i * 3], q = R[i * 3 + 1], e = R[i * 3 + 2];
+                M2[i * 3] = p * c + e * s;
+                M2[i * 3 + 1] = q;
+                M2[i * 3 + 2] = -p * s + e * c;
+            }
+            float lx = c * rm, lz = s * rm;
+            d.box(x + R[0] * lx + R[1] * ym + R[2] * lz, y + R[3] * lx + R[4] * ym + R[5] * lz,
+                    z + R[6] * lx + R[7] * ym + R[8] * lz, (rOut - rIn) * 0.5f, hh, along, M2, rgb, material);
+        }
+    }
+
+    /**
+     * A ball: five slices about the frame's y axis, each as wide as the ball is there. The
+     * two between the middle and the poles a shade lighter, so a turning ball shows it turns.
+     */
+    static void ball(DrawList d, float x, float y, float z, float[] rot, float r, int rgb, int swirl, int material) {
+        for (int k = 0; k < 5; k++) {
+            float y0 = r * (-1f + k * 0.4f), y1 = y0 + r * 0.4f, ym = (y0 + y1) * 0.5f / r;
+            float rr = r * (float) Math.sqrt(Math.max(0.04f, 1f - ym * ym)) * (k == 2 ? 0.98f : 1.04f);
+            cylinder(d, x, y, z, rot, y0, y1, rr, k == 1 || k == 3 ? swirl : rgb, material);
+        }
+    }
+
     /** A flat round lying on the ground or a top: a puddle. */
     static void disc(DrawList d, float x, float y, float z, float r, float half, int rgb, int material) {
         cylinder(d, x, y, z, null, -half, half, r, rgb, material);

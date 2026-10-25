@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.13";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.14";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -73,7 +73,7 @@ final class World {
         game = new Game(host, host.loadInt("level"));
         game.traffic = traffic;
         level = game.level;
-        // along the pavement under the houses, along the promenade, and across the road far off
+        // along the pavement under the houses and along the promenade; nobody on the road
         java.util.Random r = people.random();
         for (int i = 0; i < 11; i++) {
             float x = 6.3f + r.nextFloat() * 5.4f, z = 13f + r.nextFloat() * 50f;
@@ -82,10 +82,6 @@ final class World {
         for (int i = 0; i < 11; i++) {
             float x = -13.5f + r.nextFloat() * 7f, z = 12f + r.nextFloat() * 50f;
             people.walk(x, z, x + (r.nextFloat() - 0.5f) * 1.2f, z + (r.nextBoolean() ? 1f : -1f) * (8f + r.nextFloat() * 14f), Street.WALK_TOP);
-        }
-        for (int i = 0; i < 4; i++) {
-            float z = 46f + r.nextFloat() * 22f;
-            people.walk(-4.6f, z, 4.6f, z + (r.nextFloat() - 0.5f) * 1.5f, 0f);
         }
     }
 
@@ -163,6 +159,11 @@ final class World {
     /** Whether the back key means something here, rather than leaving the game. */
     boolean wantsBack() {
         return bridge != null;
+    }
+
+    /** For the desktop stand: every mattress torn, every suitcase burst open. */
+    void standTear() {
+        game.standTear();
     }
 
     /** Whether the opening is still playing. */

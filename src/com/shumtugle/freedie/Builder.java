@@ -250,7 +250,7 @@ final class Builder {
     static final int TYRE_COLOR = 0xFF2E2D2F;
     // old suitcases: browns, mustard, burgundy
     static final int[] CASE_COLORS = {0xFF7A4A2A, 0xFF8E5A34, 0xFF6A3E24, 0xFFC79A2E, 0xFFB08424, 0xFF7A2430, 0xFF8C2F3A};
-    static final float CASE_H = 0.14f, MAT_H = 0.17f, SLAB_H = 0.08f;
+    static final float CASE_H = 0.14f, MAT_H = 0.24f, SLAB_H = 0.08f;
     static final int[] CONCRETE = {0xFFB8B4AA, 0xFFAEAAA2, 0xFFC2BEB4};
     static final int MAT_COLOR = 0xFFE9E6DC;
 
