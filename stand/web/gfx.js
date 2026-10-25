@@ -146,6 +146,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform3fv(u(skyP, 'uGlow'), frame.skyGlow);
   gl.uniform3fv(u(skyP, 'uSun'), frame.sun);
   gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
+  gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.enable(gl.DEPTH_TEST);
@@ -164,6 +165,10 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform3fv(u(boxP, 'uFog'), frame.fog);
   gl.uniform1f(u(boxP, 'uFogStart'), frame.fogStart);
   gl.uniform1f(u(boxP, 'uFogScale'), frame.fogScale);
+  gl.uniform1f(u(boxP, 'uDark'), frame.dark || 0);
+  gl.uniform3fv(u(boxP, 'uSpot'), frame.spot);
+  gl.uniform1f(u(boxP, 'uSpotRadius'), frame.spotRadius);
+  gl.uniform1f(u(boxP, 'uGoldGlow'), frame.goldGlow);
   gl.bindVertexArray(vao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
 
@@ -178,6 +183,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.activeTexture(gl.TEXTURE1);
   gl.bindTexture(gl.TEXTURE_2D, flatTex);
   gl.uniform1i(u(blitP, 'uFlat'), 1);
+  gl.uniform1f(u(blitP, 'uFlash'), frame.flash || 0);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

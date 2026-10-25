@@ -15,11 +15,14 @@ import javax.imageio.ImageIO;
  * page in stand/web draws them with the game's own shaders.
  *
  * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
- * drag X0 Y0 X1 Y1 SECONDS · shot NAME. Coordinates are frame pixels. # starts a comment.
+ * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays).
+ * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
+ * mixed, as the phone would mix it, into sound.wav.
  */
-public final class Stand {
+public final class Stand implements World.Host {
     private static final float DT = 1f / 60f;
-    private final World world = new World();
+    private final java.util.ArrayList<float[]> sounds = new java.util.ArrayList<float[]>();
+    private final World world = new World(this);
     private final DrawList list = new DrawList();
     private final File out;
     private float time;
@@ -40,7 +43,48 @@ public final class Stand {
             if (line.isEmpty() || line.startsWith("#")) continue;
             s.exec(line.split("\\s+"));
         }
-        System.out.println("done: " + String.format("%.1f", s.time) + "s of game time");
+        s.writeSound();
+        System.out.println("done: " + String.format("%.1f", s.time) + "s of game time, " + s.sounds.size() + " sounds");
+    }
+
+    @Override
+    public void sound(int id, float gain, float rate) {
+        sounds.add(new float[]{time, id, gain, rate});
+    }
+
+    /** All the sounds of the scene, mixed as the phone would, into sound.wav. */
+    private void writeSound() throws IOException {
+        Synth syn = new Synth();
+        int total = (int) ((time + 2.5f) * Synth.RATE);
+        short[] pcm = new short[total];
+        short[] chunk = new short[256];
+        int si = 0;
+        for (int pos = 0; pos < total; pos += chunk.length) {
+            float t = pos / (float) Synth.RATE;
+            while (si < sounds.size() && sounds.get(si)[0] <= t) {
+                float[] e = sounds.get(si++);
+                syn.play((int) e[1], e[2], e[3]);
+            }
+            int n = Math.min(chunk.length, total - pos);
+            syn.mix(chunk, n);
+            System.arraycopy(chunk, 0, pcm, pos, n);
+        }
+        java.io.DataOutputStream o = new java.io.DataOutputStream(new java.io.FileOutputStream(new File(out, "sound.wav")));
+        int bytes = total * 2;
+        o.writeBytes("RIFF");
+        o.writeInt(Integer.reverseBytes(36 + bytes));
+        o.writeBytes("WAVEfmt ");
+        o.writeInt(Integer.reverseBytes(16));
+        o.writeShort(Short.reverseBytes((short) 1));
+        o.writeShort(Short.reverseBytes((short) 1));
+        o.writeInt(Integer.reverseBytes(Synth.RATE));
+        o.writeInt(Integer.reverseBytes(Synth.RATE * 2));
+        o.writeShort(Short.reverseBytes((short) 2));
+        o.writeShort(Short.reverseBytes((short) 16));
+        o.writeBytes("data");
+        o.writeInt(Integer.reverseBytes(bytes));
+        for (short v : pcm) o.writeShort(Short.reverseBytes(v));
+        o.close();
     }
 
     private void step() {
@@ -83,6 +127,13 @@ public final class Stand {
             }
             world.touch(World.UP, x1, y1);
             step();
+        } else if (c.equals("skip")) {
+            if (world.opening()) {
+                world.touch(World.DOWN, World.W * 0.5f, 300f);
+                step();
+                world.touch(World.UP, World.W * 0.5f, 300f);
+                step();
+            }
         } else if (c.equals("shot")) {
             shot(p[1]);
         } else {

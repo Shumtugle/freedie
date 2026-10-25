@@ -30,6 +30,7 @@ final class Street {
     static void build(DrawList d) {
         ground(d);
         houses(d, new Random(5));
+        town(d, new Random(13));
         props(d, new Random(11));
         palms(d, new Random(7));
     }
@@ -75,10 +76,46 @@ final class Street {
             d.box(HOUSES_X - 0.15f, height - 0.2f, z + len * 0.5f, 0.25f, 0.2f, len * 0.5f, null, scale(tint, 1.05f),
                     DrawList.PLAIN);
             if (z < 150f) fronts(d, z, bays, storeys, seed);
+            roof(d, HOUSES_X + 7f, height, z + len * 0.5f, 7f, len * 0.5f, seed);
             z += len;
         }
         // the far end of the street
         d.box(-2f, 10f, 250f, 30f, 10f, 6f, null, 0xEBD2AC, DrawList.material(DrawList.FACADE, 77));
+    }
+
+    /** The town behind the street, seen from above as the eye comes down: blocks of houses, their roofs. */
+    private static void town(DrawList d, Random rnd) {
+        d.box(70f, -0.25f, 100f, 44f, 0.25f, 160f, null, 0x8A847C, DrawList.ASPHALT);
+        int k = 0;
+        for (int row = 0; row < 4; row++) {
+            float x0 = 33f + row * 21f;
+            float z = -40f + rnd.nextFloat() * 6f;
+            while (z < 240f) {
+                int bays = 3 + rnd.nextInt(3);
+                float len = bays * 2.9f;
+                int storeys = 3 + rnd.nextInt(4);
+                float height = 3.3f * (storeys + 1) + 0.5f;
+                int tint = WALLS[rnd.nextInt(WALLS.length)];
+                int seed = 100 + k++;
+                d.box(x0 + 7f, height * 0.5f, z + len * 0.5f, 7f, height * 0.5f, len * 0.5f, null, tint,
+                        DrawList.material(DrawList.FACADE, seed));
+                roof(d, x0 + 7f, height, z + len * 0.5f, 7f, len * 0.5f, seed);
+                // now and then a lane between the houses
+                z += len + (rnd.nextInt(6) == 0 ? 7f : 0f);
+            }
+        }
+    }
+
+    /** A roof of red tiles in two steps, a chimney or two. */
+    private static void roof(DrawList d, float x, float top, float z, float hx, float hz, int seed) {
+        d.box(x, top + 0.25f, z, hx - 0.3f, 0.25f, hz - 0.3f, null, 0xC4673E, DrawList.GRAIN);
+        d.box(x, top + 0.6f, z, hx - 1.3f, 0.15f, Math.max(0.4f, hz - 1.3f), null, 0xA8553A, DrawList.GRAIN);
+        int h = nz(seed, 5, 21);
+        for (int c = 0; c <= (h & 1); c++) {
+            float cx = x + ((nz(seed, c, 22) / 255f) - 0.5f) * hx;
+            float cz = z + ((nz(seed, c, 23) / 255f) - 0.5f) * hz;
+            d.box(cx, top + 1.1f, cz, 0.3f, 0.6f, 0.3f, null, 0xBE9C84, DrawList.STONE);
+        }
     }
 
     /** What stands out of a house front: balconies with railings and pots, awnings over the shops. */

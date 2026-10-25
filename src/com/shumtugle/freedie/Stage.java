@@ -13,7 +13,7 @@ import javax.microedition.khronos.opengles.GL10;
  * frame. The world never sees a GL call.
  */
 final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
-    private final World world = new World();
+    private final World world;
     private final DrawList list = new DrawList();
     private final Gfx gfx = new Gfx();
     private int screenW = 1, screenH = 1;
@@ -23,8 +23,9 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
     private final float[] pending = new float[3 * 64];
     private int pendingCount;
 
-    Stage(Context context) {
+    Stage(Context context, World.Host host) {
         super(context);
+        world = new World(host);
         setEGLContextClientVersion(3);
         setEGLConfigChooser(8, 8, 8, 8, 16, 0);
         setPreserveEGLContextOnPause(true);

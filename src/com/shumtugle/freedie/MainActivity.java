@@ -7,9 +7,10 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-/** The window: full screen, no bars, the screen kept on; the stage fills it. */
+/** The window: full screen, no bars, the screen kept on; the stage fills it; the sound plays while it is shown. */
 public final class MainActivity extends Activity {
     private Stage stage;
+    private final Sound sound = new Sound();
 
     @Override
     protected void onCreate(Bundle state) {
@@ -22,7 +23,12 @@ public final class MainActivity extends Activity {
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             getWindow().setAttributes(lp);
         }
-        stage = new Stage(this);
+        stage = new Stage(this, new World.Host() {
+            @Override
+            public void sound(int id, float gain, float rate) {
+                sound.synth.play(id, gain, rate);
+            }
+        });
         setContentView(stage);
     }
 
@@ -31,10 +37,12 @@ public final class MainActivity extends Activity {
         super.onResume();
         hideBars();
         stage.onResume();
+        sound.start();
     }
 
     @Override
     protected void onPause() {
+        sound.stop();
         stage.onPause();
         super.onPause();
     }

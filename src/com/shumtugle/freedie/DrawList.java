@@ -28,6 +28,12 @@ final class DrawList {
     final float[] fog = new float[3];
     float fogStart = 8f, fogScale = 150f;      // the haze begins so far off, and thickens over so many meters
     float time;                                // seconds of game time, for what drifts in the sky
+    // the dark: how far the world has gone into it, and the one pool of light left in it
+    float dark;
+    final float[] spot = new float[3];
+    float spotRadius = 4f;
+    float goldGlow = 1f;                       // gold keeps this much of its own light in the dark
+    float flash;                               // the frame drawn in to its middle and gone white, 0 to 1
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -184,6 +190,8 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
+        s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow);
+        arr(s, "spot", spot);
         s.append(",\"count\":").append(count).append(",\"boxes\":[");
         for (int i = 0; i < count * STRIDE; i++) {
             if (i > 0) s.append(',');

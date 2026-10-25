@@ -164,6 +164,7 @@ final class Gfx {
         GLES30.glUniform3fv(u(skyP, "uGlow"), 1, d.skyGlow, 0);
         GLES30.glUniform3fv(u(skyP, "uSun"), 1, d.sun, 0);
         GLES30.glUniform1f(u(skyP, "uTime"), d.time);
+        GLES30.glUniform1f(u(skyP, "uDark"), d.dark);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
@@ -182,6 +183,10 @@ final class Gfx {
         GLES30.glUniform3fv(u(boxP, "uFog"), 1, d.fog, 0);
         GLES30.glUniform1f(u(boxP, "uFogStart"), d.fogStart);
         GLES30.glUniform1f(u(boxP, "uFogScale"), d.fogScale);
+        GLES30.glUniform1f(u(boxP, "uDark"), d.dark);
+        GLES30.glUniform3fv(u(boxP, "uSpot"), 1, d.spot, 0);
+        GLES30.glUniform1f(u(boxP, "uSpotRadius"), d.spotRadius);
+        GLES30.glUniform1f(u(boxP, "uGoldGlow"), d.goldGlow);
         GLES30.glBindVertexArray(vao);
         GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, n);
 
@@ -196,6 +201,7 @@ final class Gfx {
         GLES30.glActiveTexture(GLES30.GL_TEXTURE1);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, flatTex);
         GLES30.glUniform1i(u(blitP, "uFlat"), 1);
+        GLES30.glUniform1f(u(blitP, "uFlash"), d.flash);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);

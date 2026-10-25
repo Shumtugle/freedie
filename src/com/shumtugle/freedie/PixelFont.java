@@ -75,6 +75,11 @@ final class PixelFont {
 
     private PixelFont() {}
 
+    /** Whether a glyph has a dot at (column, row), 5 by 7. */
+    static boolean dot(char c, int col, int row) {
+        return (MASK[norm(c)] & (1L << (row * 5 + col))) != 0;
+    }
+
     private static char norm(char c) {
         if (c >= 'a' && c <= 'z') return (char) (c - 32);
         if (c == '\u2019') return '\'';

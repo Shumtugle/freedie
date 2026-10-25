@@ -15,6 +15,7 @@ uniform vec3 uHorizon;
 uniform vec3 uGlow;
 uniform vec3 uSun;
 uniform float uTime;
+uniform float uDark;     // how far the world has gone into the dark
 
 out vec4 outColor;
 
@@ -51,5 +52,5 @@ void main() {
     c = mix(c, cloud, cl * 0.8);
     float s = max(dot(d, uSun), 0.0);
     c += vec3(1.0, 0.85, 0.6) * (pow(s, 64.0) * 0.6 + pow(s, 8.0) * 0.08);
-    outColor = vec4(c, 1.0);
+    outColor = vec4(c * (1.0 - uDark), 1.0);
 }

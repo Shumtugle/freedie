@@ -25,6 +25,10 @@ uniform vec3 uEye;
 uniform vec3 uFog;
 uniform float uFogStart;
 uniform float uFogScale;
+uniform float uDark;          // how far the world has gone into the dark
+uniform vec3 uSpot;           // the one pool of light left in it
+uniform float uSpotRadius;
+uniform float uGoldGlow;      // how much gold keeps its own light in the dark
 
 out vec4 outColor;
 
@@ -170,7 +174,7 @@ void main() {
 
     if (mat == GLOW) {
         // lit from inside: no sun, no shade, only the haze
-        vec3 c = mix(base * 1.7, lin(uFog), haze);
+        vec3 c = mix(base * 1.7, lin(uFog) * (1.0 - uDark), haze);
         outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
         return;
     }
@@ -263,5 +267,11 @@ void main() {
         c += uSunColor * pow(max(dot(r, uSun), 0.0), 40.0) * sh * 0.6;
     }
     c = mix(c, lin(uFog), haze);
+    // in the dark only the pool of light is left
+    // (a wide pool: what stands to either side of it is lit further out than what is below)
+    float pool = 1.0 - smoothstep(uSpotRadius * 0.55, uSpotRadius, length((vWorld - uSpot) * vec3(0.55, 1.0, 1.0)));
+    // gold keeps its own light in the dark
+    if (mat == GOLD) pool = max(pool, 0.9 * uGoldGlow);
+    c *= mix(1.0, pool, uDark);
     outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
 }

@@ -4,7 +4,7 @@ A game for Android about knocking down buildings with a hammer, on a summer stre
 seaside town. Freedie, a giant heaped together from stone, brick and planks and dressed
 as a maid, is its mascot.
 
-Early days: the engine and the street stand, the game is still to come.
+Early days: the engine, the street and the opening stand, the game is still to come.
 
 ## How it is made
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3
+- The opening: the eye flies in an arc high over the seaside town and comes down onto the
+  street before Freedie, who raises her eyes; the town goes dark, light left on her alone;
+  she swings her golden hammer straight at the eye, the glass cracks, and she breaks apart
+  and falls, every piece of her a body of the game's own physics; on the black the name
+  burns in gold; a flash, and the street. A touch at any moment goes straight to the flash.
+- Freedie herself, in blocks: stone shoulders and fists, brick forearms, shins and jaw,
+  planks for sinews, rusty rods out of her back, eyes like coals and glowing knees; a black
+  dress in tiers with lace, a white apron and bib with buttons, a sash, a black bow.
+- Sound, synthesized: wind over the town, the swing, the blow, her pieces knocking down,
+  a golden chime for the name; a click for the red button.
+- The town behind the street: blocks of houses with red tiled roofs and chimneys.
+
 ## 0.2
 - The street as the game has always had it: a road 7.5 m wide with a zebra, its yellow
   bars and a dashed middle line; curbs and pavements; to the left a promenade with two
