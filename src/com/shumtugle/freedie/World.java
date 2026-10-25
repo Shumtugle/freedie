@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.15";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.16";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -49,6 +49,7 @@ final class World {
     private final Traffic traffic = new Traffic(PLINTH_Z);
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
+    private final float[] jolt = new float[2];
 
     // the game's progress: the level being played (from 0), the golden cubes in hand, where
     int level;
@@ -161,6 +162,31 @@ final class World {
         return bridge != null;
     }
 
+    /** For the desktop stand: the fight at once, as from the console. */
+    void standFight() {
+        game.fightNow();
+    }
+
+    /** For the desktop stand: the point a player would throw at in the fight now, or null. */
+    float[] standFightPick() {
+        return game.fight == null ? null : game.fight.standPick();
+    }
+
+    /** For the desktop stand: a throw in the fight at a frame point. */
+    void standFightThrow(float x, float y) {
+        game.standFightThrow(x, y);
+    }
+
+    /** For the desktop stand: whether a fight has come to its end, won or lost. */
+    boolean standFightOver() {
+        return game.fight != null && !game.fight.live();
+    }
+
+    /** For the desktop stand: how the fight stands, in words. */
+    String standFightState() {
+        return game.fight == null ? "no fight, level " + (level + 1) : game.fight.standState();
+    }
+
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
     void standTear() {
         game.standTear();
@@ -191,8 +217,14 @@ final class World {
         float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
         // up into the gods' sky: the street slides down as far as the frame is tall
         float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
+        // in the fight the street jolts as she comes down
+        game.jolt(jolt);
+        yaw += jolt[0] / (W * 1.9f);
+        pitch += jolt[1] / (W * 1.9f);
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f, 0.1f, 500f);
         game.frame(d);
+        d.red = game.red();
+        d.gold = game.gold();
         // the flash off the opening, or the light between two episodes
         d.flash = Math.max(flashOut / FLASH_OUT, game.light());
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
@@ -245,6 +277,8 @@ final class World {
         d.flash = 0f;
         d.goldGlow = 1f;
         d.tube = -1f;
+        d.red = 0f;
+        d.gold = 0f;
     }
 
     // ---- the call box and the bridge ----
@@ -272,15 +306,19 @@ final class World {
         return Math.max(level + 1, host.loadInt("best"));
     }
 
-    /** Whether a console monitor has a game behind it yet: the alley, the golem and the stones are still to come. */
+    /** Whether a console monitor has a game behind it yet: the fight has; the alley and the stones are still to come. */
     boolean offers(int which) {
-        return which == Bridge.HOME;
+        return which == Bridge.HOME || which == Bridge.GOLEM;
     }
 
-    /** The lever, answered, once the room has gone out: the game comes on like a set. */
+    /**
+     * A console monitor, answered, once the room has gone out: the game comes on like a set,
+     * and for the fight's monitor, straight into the fight.
+     */
     void bridgeAct(int which) {
         bridge = null;
         tvOn = 0f;
+        if (which == Bridge.GOLEM) game.fightNow();
     }
 
     /** A screen with its cube, thrown at: into its episode, through the light; the crossroads not yet. */

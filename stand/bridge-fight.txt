@@ -1,0 +1,25 @@
+# The fight from the bridge: three presses of the red button open the room; a poke at the
+# console's middle monitor, the fight's; the room goes out, and the street comes on red,
+# with her far up the road.
+screen 1096 2560
+skip
+wait 1.0
+down 240 325
+up 240 325
+wait 0.3
+down 240 325
+up 240 325
+wait 0.3
+down 240 325
+up 240 325
+wait 0.8
+shot g0_room
+down 137 496
+up 137 496
+wait 0.3
+shot g1_poke
+wait 1.4
+shot g2_set
+wait 1.0
+shot g3_fight
+fightstate

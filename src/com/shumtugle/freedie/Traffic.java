@@ -11,6 +11,9 @@ import java.util.Random;
  * dent in the hood, then the roof pressed lower, a door dented, a window gone and a headlamp
  * out, then a wreck; and every blow sets its alarm off, the indicators blinking. On the
  * right a stretch of the curb is kept clear: the way into a yard is to be there.
+ *
+ * In the fight a parked car can be torn from its place and thrown: while it is in the air
+ * the giant's side draws it; where it comes down it lies on as a wreck.
  */
 final class Traffic {
     static final int[] PAINT = {0xE9B63A, 0xB5352C, 0xE9E1CB, 0x2D3A57, 0x6E9DB0, 0x9DBB8E, 0x3A3B40, 0xF4F2EC};
@@ -26,6 +29,11 @@ final class Traffic {
     /** How badly each parked car is damaged, 0 to 3, and how long its alarm has still to blink. */
     final int[] damage = new int[PARK_X.length];
     private final float[] alarm = new float[PARK_X.length];
+    /** Where each parked car is now, which way it faces, and whether it is up in the air. */
+    final float[] atX = PARK_X.clone(), atZ = PARK_Z.clone(), atYaw = new float[PARK_X.length];
+    final boolean[] away = new boolean[PARK_X.length];
+    /** No cars come down the road: the street is held for the fight. */
+    boolean calm;
 
     // cars on the move
     private static final int CARS = 3;
@@ -39,7 +47,41 @@ final class Traffic {
 
     Traffic(float plinthZ) {
         stopAt = plinthZ;
-        for (int i = 0; i < PARK_X.length; i++) parkColor[i] = PAINT[rnd.nextInt(PAINT.length)];
+        for (int i = 0; i < PARK_X.length; i++) {
+            parkColor[i] = PAINT[rnd.nextInt(PAINT.length)];
+            atYaw[i] = PARK_X[i] < 0f ? 0f : (float) Math.PI;
+        }
+    }
+
+    int paint(int i) {
+        return parkColor[i];
+    }
+
+    /** A parked car torn from its place: gone from the curb until it comes down. */
+    void lift(int i) {
+        away[i] = true;
+    }
+
+    /** A thrown car down on the street: a wreck where it fell, facing as it came to rest. */
+    void putDown(int i, float x, float z, float yaw) {
+        away[i] = false;
+        atX[i] = x;
+        atZ[i] = z;
+        atYaw[i] = yaw;
+        damage[i] = 3;
+        alarm[i] = 2.4f;
+    }
+
+    /** Every parked car back where it was parked, whole: a new street after the fight. */
+    void repark() {
+        for (int i = 0; i < PARK_X.length; i++) {
+            away[i] = false;
+            atX[i] = PARK_X[i];
+            atZ[i] = PARK_Z[i];
+            atYaw[i] = PARK_X[i] < 0f ? 0f : (float) Math.PI;
+            damage[i] = 0;
+            alarm[i] = 0f;
+        }
     }
 
     /** A blow to a parked car: one step worse, and its alarm goes off. */
@@ -50,6 +92,11 @@ final class Traffic {
 
     void update(float dt) {
         for (int i = 0; i < alarm.length; i++) alarm[i] = Math.max(0f, alarm[i] - dt);
+        if (calm) {
+            // the cars on the move are gone round the corner, and no more come
+            for (int c = 0; c < CARS; c++) cState[c] = OFF;
+            nextCar = 4f;
+        }
         nextCar -= dt;
         if (nextCar <= 0f) {
             nextCar = 7f + rnd.nextFloat() * 8f;
@@ -137,14 +184,14 @@ final class Traffic {
 
     void draw(DrawList d) {
         for (int i = 0; i < PARK_X.length; i++)
-            car(d, PARK_X[i], PARK_Z[i], PARK_X[i] < 0f ? 0f : (float) Math.PI, parkColor[i], damage[i],
-                    alarm[i] > 0f && ((int) (alarm[i] * 6f) & 1) == 0);
+            if (!away[i])
+                car(d, atX[i], atZ[i], atYaw[i], parkColor[i], damage[i], alarm[i] > 0f && ((int) (alarm[i] * 6f) & 1) == 0);
         for (int c = 0; c < CARS; c++) if (cState[c] != OFF) car(d, cx[c], cz[c], cYaw[c], cColor[c]);
         for (int i = 0; i < CONE_X.length; i++) cone(d, CONE_X[i], CONE_Z[i]);
     }
 
-    private final float[] t = new float[9];
-    private float px, pz, cy, sy;
+    private final float[] t = new float[9], frame = new float[9];
+    private float px, py, pz;
 
     /** A small sedan, its nose along yaw (0 faces away from the eye). */
     void car(DrawList d, float x, float z, float yaw, int paint) {
@@ -153,10 +200,34 @@ final class Traffic {
 
     /** A sedan; a damaged one has crazed glass, dents and a roof pressed lower, step by step. */
     void car(DrawList d, float x, float z, float yaw, int paint, int dmg, boolean blink) {
+        upright(x, 0f, z, yaw);
+        drawCar(d, paint, dmg, blink);
+    }
+
+    /**
+     * A car turned any way at all, tumbling through the air: its middle (the body's, 0.65 m
+     * over the ground when it stands) and its turn, row by row.
+     */
+    void car(DrawList d, float x, float y, float z, float[] rot, int paint, int dmg) {
+        System.arraycopy(rot, 0, frame, 0, 9);
+        px = x - rot[1] * 0.65f;
+        py = y - rot[4] * 0.65f;
+        pz = z - rot[7] * 0.65f;
+        drawCar(d, paint, dmg, false);
+    }
+
+    /** The frame of something standing on the ground, turned about the upright. */
+    private void upright(float x, float y, float z, float yaw) {
+        float cy = (float) Math.cos(yaw), sy = (float) Math.sin(yaw);
         px = x;
+        py = y;
         pz = z;
-        cy = (float) Math.cos(yaw);
-        sy = (float) Math.sin(yaw);
+        frame[0] = cy; frame[1] = 0f; frame[2] = sy;
+        frame[3] = 0f; frame[4] = 1f; frame[5] = 0f;
+        frame[6] = -sy; frame[7] = 0f; frame[8] = cy;
+    }
+
+    private void drawCar(DrawList d, int paint, int dmg, boolean blink) {
         float plain = DrawList.PLAIN, glass = DrawList.GLASS;
         int clear = 0x33414E, crazed = 0xA3B0B9, gone = 0x15181C;
         int dent = Street.scale(paint, 0.62f);
@@ -200,10 +271,7 @@ final class Traffic {
 
     /** A road cone: a dark foot and three bands, orange, white, orange. */
     private void cone(DrawList d, float x, float z) {
-        px = x;
-        pz = z;
-        cy = 1f;
-        sy = 0f;
+        upright(x, 0f, z, 0f);
         float plain = DrawList.PLAIN;
         part(d, 0f, 0.025f, 0f, 0.2f, 0.025f, 0.2f, 0f, 0x2E2B2A, plain);
         part(d, 0f, 0.16f, 0f, 0.13f, 0.11f, 0.13f, 0f, 0xE8682E, plain);
@@ -213,15 +281,19 @@ final class Traffic {
 
     /**
      * A box of the thing being drawn, given in its own frame: tilted about its own x first
-     * (for sloping glass), then turned round the vertical with the whole thing.
+     * (for sloping glass), then turned with the whole thing.
      */
     private void part(DrawList d, float lx, float ly, float lz, float hx, float hy, float hz, float tilt,
                       int color, float material) {
         float ct = (float) Math.cos(tilt), st = (float) Math.sin(tilt);
-        // the columns, tilted: (1,0,0), (0,ct,st), (0,-st,ct); then turned by the yaw
-        t[0] = cy; t[1] = st * sy; t[2] = ct * sy;
-        t[3] = 0f; t[4] = ct; t[5] = -st;
-        t[6] = -sy; t[7] = st * cy; t[8] = ct * cy;
-        d.box(px + lx * cy + lz * sy, ly, pz - lx * sy + lz * cy, hx, hy, hz, t, color, material);
+        float[] f = frame;
+        // the frame times the tilt, whose columns are (1,0,0), (0,ct,st), (0,-st,ct)
+        for (int r = 0; r < 3; r++) {
+            t[r * 3] = f[r * 3];
+            t[r * 3 + 1] = f[r * 3 + 1] * ct + f[r * 3 + 2] * st;
+            t[r * 3 + 2] = -f[r * 3 + 1] * st + f[r * 3 + 2] * ct;
+        }
+        d.box(px + f[0] * lx + f[1] * ly + f[2] * lz, py + f[3] * lx + f[4] * ly + f[5] * lz,
+                pz + f[6] * lx + f[7] * ly + f[8] * lz, hx, hy, hz, t, color, material);
     }
 }

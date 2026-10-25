@@ -18,7 +18,8 @@ import javax.imageio.ImageIO;
  * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays) ·
  * sounds (every sound of the synthesizer in turn, each after the last has died away) ·
  * keep KEY VALUE (as kept by an earlier game) · back (the phone's back key) · restart (the
- * game started again, with what it kept).
+ * game started again, with what it kept) · fight (the fight at once, as from the console) ·
+ * bot SECONDS [SKILL] (a player in the fight for so long) · fightstate (how it stands).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -197,6 +198,31 @@ public final class Stand implements World.Host {
         } else if (c.equals("tear")) {
             // every mattress torn, every suitcase burst open
             world.standTear();
+        } else if (c.equals("fight")) {
+            // the fight at once, as from the bridge's console
+            world.standFight();
+            step();
+        } else if (c.equals("bot")) {
+            // bot SECONDS [SKILL]: a player in the fight, throwing at what matters most whenever
+            // the hammer is in hand, until the fight is over; skill is the share of throws aimed
+            // true, the rest go wide
+            int n = Math.round(f(p[1]) / DT);
+            float skill = p.length > 2 ? f(p[2]) : 1f;
+            java.util.Random r = new java.util.Random(5);
+            float wait = 0.6f;
+            for (int i = 0; i < n && !world.standFightOver(); i++) {
+                step();
+                wait -= DT;
+                if (wait > 0f) continue;
+                float[] at = world.standFightPick();
+                if (at == null) continue;
+                float off = r.nextFloat() < skill ? 0f : 18f;
+                world.standFightThrow(at[0] + (r.nextFloat() - 0.5f) * 2f * off, at[1] + (r.nextFloat() - 0.5f) * 2f * off);
+                wait = 0.5f + r.nextFloat() * 0.4f;
+            }
+            System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
+        } else if (c.equals("fightstate")) {
+            System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
         } else if (c.equals("shot")) {
             shot(p[1]);
         } else {

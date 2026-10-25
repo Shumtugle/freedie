@@ -24,7 +24,8 @@ import java.util.Random;
  * hammer in hand, or the one waiting low on the left, swaps one for the other.
  *
  * Lose the same building ten times running and the gods give the golden hammer: one throw
- * that scatters the building whatever it hits, as the very first one did.
+ * that scatters the building whatever it hits, as the very first one did. Once that has been
+ * given, the next ten lost in a row bring Freedie herself, and the fight (see Fight).
  *
  * For now the levels go as far as the end of the first run of them, and the last comes round
  * again.
@@ -34,7 +35,7 @@ import java.util.Random;
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6;
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7;
     static final int STARS = 5;
     /** The last level there is yet: the end of the second episode. */
     static final int LAST = 19;
@@ -43,7 +44,7 @@ final class Game implements Physics.Listener {
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
     static final int DOWN = World.DOWN, MOVE = World.MOVE, UP = World.UP;
 
-    private final World.Host host;
+    final World.Host host;
     final Physics phys = new Physics();
     int stars = STARS;
     /** The golden cubes in the rack, shown by the stars; the world keeps them. */
@@ -69,6 +70,11 @@ final class Game implements Physics.Listener {
     boolean goldOn, goldSeen;
     private boolean goldThrow, goldGift;
     final Crest crest = new Crest();
+    // the fight with Freedie: on now, or due after the sky; the diamond hammer the gods give
+    // for it; the world going gold after a fight won, the eyes opening after one lost
+    Fight fight;
+    private boolean fightNext, diamondGift, afterFight;
+    private float winSky = -1f, wake = -1f;
     // between episodes: a light that rises over the sky and clears onto the next one
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
     private float chapterT = -1f;
@@ -118,9 +124,10 @@ final class Game implements Physics.Listener {
     private final float[] tmp = new float[3], dir = new float[3], scr = new float[2];
 
     // the eye, as the world set it on the last frame
-    private final float[] eye = new float[3], right = new float[3], up = new float[3], ahead = new float[3];
+    final float[] eye = new float[3];
+    private final float[] right = new float[3], up = new float[3], ahead = new float[3];
     private float focal = 1f;
-    private int fw = World.W, fh = 640;
+    int fw = World.W, fh = 640;
     private boolean seen;
 
     Game(World.Host host, int level) {
@@ -153,6 +160,14 @@ final class Game implements Physics.Listener {
             host.saveInt("fails", 0);
         }
         goldOn = fails >= GOLD_AFTER;
+        if (fight != null || traffic != null && traffic.calm) {
+            // out of the fight: a new street, every car back at the curb, whole
+            fight = null;
+            if (traffic != null) {
+                traffic.calm = false;
+                traffic.repark();
+            }
+        }
         crest.fresh();
         episodeRun(lv);
         level = lv;
@@ -171,7 +186,7 @@ final class Game implements Physics.Listener {
         // the parked cars and the cones, as solid as the plinth: what falls on them stays off the road
         for (int i = 0; i < Traffic.PARK_X.length; i++) {
             cars[i] = new Body(0.95f, 0.65f, 2.3f, Body.CAR, 0);
-            cars[i].setPose(Traffic.PARK_X[i], 0.65f, Traffic.PARK_Z[i], 1, 0, 0, 0);
+            carGone(i, false);
             phys.add(cars[i]);
         }
         ArrayList<Body> made = buildingFor(lv);
@@ -247,6 +262,112 @@ final class Game implements Physics.Listener {
         return ok;
     }
 
+    /** A parked car's body torn from its place, or set down again where the street says it lies. */
+    void carGone(int i, boolean gone) {
+        Body c = cars[i];
+        if (c == null) return;
+        c.ghost = gone;
+        float x = traffic == null ? Traffic.PARK_X[i] : traffic.atX[i], z = traffic == null ? Traffic.PARK_Z[i] : traffic.atZ[i];
+        float yaw = traffic == null ? 0f : traffic.atYaw[i];
+        c.setPose(x, 0.65f, z, (float) Math.cos(yaw / 2), 0f, (float) Math.sin(yaw / 2), 0f);
+    }
+
+    // ---- the fight ----
+
+    /**
+     * Freedie comes for the player: the plinth and the building gone, the street held for
+     * her, the diamond hammer in hand. From the sky the view comes down into it; else it
+     * reddens where it stands.
+     */
+    void startFight(boolean fromAbove) {
+        fightNext = false;
+        phys.clear();
+        pieces.clear();
+        hammer.ghost = true;
+        hammer.asleep = false;
+        phys.add(hammer);
+        for (Body c : cars) if (c != null) c.ghost = true;
+        hs = HAND;
+        aiming = false;
+        aimedBefore = false;
+        heavyThrow = false;
+        goldThrow = false;
+        goldOn = false;
+        power = 0f;
+        pN = 0;
+        lN = 0;
+        dropN = 0;
+        toPop.clear();
+        toBurst.clear();
+        traffic.calm = true;
+        fight = new Fight(this);
+        fromSky = fromAbove;
+        backT = 0f;
+        wake = -1f;
+        setState(FIGHT);
+    }
+
+    /** The fight at once, from the bridge's console. */
+    void fightNow() {
+        cancel();
+        chapterT = -1f;
+        startFight(false);
+    }
+
+    /** The fight is won: the world goes gold and up into the sky, where the gods cheer. */
+    private void fightWon() {
+        afterFight = true;
+        winSky = 0f;
+        lookUp(Sky.OVATION, level + 1);
+    }
+
+    /** The fight is lost: the player wakes on the street, before the same building, as from a dream. */
+    private void fightLost() {
+        fails = 0;
+        host.saveInt("fails", 0);
+        start(level, false);
+        wake = 0f;
+        host.sound(Synth.BEAT, 0.8f, 0.9f);
+    }
+
+    /** How far the world is seen red now, 0 to 1. */
+    float red() {
+        if (winSky >= 0f) return Math.max(0f, 1f - winSky / 0.9f);
+        if (fight == null || state != FIGHT) return 0f;
+        return fromSky ? Math.min(1f, backT / TILT) : Math.min(1f, stateTime / 0.8f);
+    }
+
+    /** How far the world is seen gold, as a fight won turns to day. */
+    float gold() {
+        if (winSky < 0f) return 0f;
+        return winSky < 0.9f ? winSky / 0.9f : Math.max(0f, 1f - (winSky - 0.9f) / 1.3f);
+    }
+
+    /** The street's jolt this frame, frame pixels across and up. */
+    void jolt(float[] out) {
+        if (fight != null && state == FIGHT) fight.jolt(out);
+        else out[0] = out[1] = 0f;
+    }
+
+    /** The hammer away, as the fight throws it: from here, so fast, so long in the air; spun by the side aimed at. */
+    void launch(float sx, float sy, float sz, float vx, float vy, float vz, float t, float aimedX) {
+        hammer.ghost = false;
+        hammer.asleep = false;
+        float yaw = (float) Math.atan2(ahead[0], ahead[2]);
+        hammer.setPose(sx, sy, sz, (float) Math.cos(yaw / 2), 0f, (float) Math.sin(yaw / 2), 0f);
+        hammer.vx = vx;
+        hammer.vy = vy;
+        hammer.vz = vz;
+        spinSign = aimedX < fw * 0.5f ? 1f : -1f;
+        hammer.wy = spinSign * 18f;
+        hammer.wx = 0f;
+        hammer.savePrev();
+        flightTime = t;
+        hs = FLY;
+        hsTime = 0f;
+        power = 0f;
+    }
+
     private void setState(int s) {
         state = s;
         stateTime = 0f;
@@ -266,7 +387,9 @@ final class Game implements Physics.Listener {
 
     /** Whether the hammer is in hand and a finger may aim. */
     boolean ready() {
-        return state == PLAY && hs == HAND && stars > 0;
+        if (hs != HAND) return false;
+        if (state == FIGHT) return fight != null && fight.live();
+        return state == PLAY && stars > 0;
     }
 
     /** Whether the hand is free for something else: the hammer in it, no aim begun. */
@@ -284,7 +407,7 @@ final class Game implements Physics.Listener {
             if (!ready() || !seen) return;
             aiming = true;
             downAt = clock;
-            tapOnHammer = heavyLeft > 0 && onHammer(x, y);
+            tapOnHammer = fight == null && heavyLeft > 0 && onHammer(x, y);
             lastX = x;
             lastY = y;
             if (!aimedBefore) buildingCenter();
@@ -319,7 +442,8 @@ final class Game implements Physics.Listener {
                 return;
             }
             aimedBefore = true;
-            throwHammer();
+            if (fight != null) fight.throwAt(aimX + tremX, aimY + tremY);
+            else throwHammer();
         }
     }
 
@@ -336,6 +460,12 @@ final class Game implements Physics.Listener {
 
     /** Where the ring starts on a level's first throw: the middle of what stands on the plinth. */
     private void buildingCenter() {
+        if (fight != null) {
+            fight.middle(scr);
+            aimX = scr[0];
+            aimY = scr[1];
+            return;
+        }
         float sx = 0f, sy = 0f, m = 0f;
         for (Body b : pieces) {
             if (b.gone || !project(b.px, b.py, b.pz, scr)) continue;
@@ -453,7 +583,7 @@ final class Game implements Physics.Listener {
         return k * k * (3f - 2f * k);
     }
 
-    private boolean project(float x, float y, float z, float[] out) {
+    boolean project(float x, float y, float z, float[] out) {
         float px = x - eye[0], py = y - eye[1], pz = z - eye[2];
         float vz = px * ahead[0] + py * ahead[1] + pz * ahead[2];
         if (vz < 0.05f) return false;
@@ -465,7 +595,7 @@ final class Game implements Physics.Listener {
     }
 
     /** The ray through a frame point, one meter ahead for every meter it goes. */
-    private void ray(float sx, float sy, float[] out) {
+    void ray(float sx, float sy, float[] out) {
         float u = (sx - fw * 0.5f) / focal, v = (fh * 0.5f - sy) / focal;
         for (int k = 0; k < 3; k++) out[k] = ahead[k] + right[k] * u + up[k] * v;
     }
@@ -527,7 +657,7 @@ final class Game implements Physics.Listener {
     }
 
     /** Where the hand holds the hammer, in the world. */
-    private void handPoint(float[] out) {
+    void handPoint(float[] out) {
         float vx = 0.3f, vy = -0.7f + (float) Math.sin(clock * 1.7f) * 0.008f, vz = 1.35f;
         for (int k = 0; k < 3; k++) out[k] = eye[k] + right[k] * vx + up[k] * vy + ahead[k] * vz;
     }
@@ -535,6 +665,10 @@ final class Game implements Physics.Listener {
     // ---- the clock ----
 
     void update(float dt) {
+        // a car about to arrive: time runs slow, so the player can still answer it
+        if (fight != null && state == FIGHT && fight.closeCall()) dt *= 0.4f;
+        if (winSky >= 0f && (winSky += dt) > 2.4f) winSky = -1f;
+        if (wake >= 0f && (wake += dt) > 1.8f) wake = -1f;
         clock += dt;
         stateTime += dt;
         acc += dt;
@@ -604,6 +738,11 @@ final class Game implements Physics.Listener {
             case VANISH:
                 if (stateTime > 0.5f) start(level, false);
                 break;
+            case FIGHT:
+                fight.step(dt);
+                if (fight.end > 2.8f && fight.won) fightWon();
+                else if (fight.end > 1.3f && !fight.won) fightLost();
+                break;
             case SKY_UP:
                 if (stateTime >= TILT) setState(SKY_HOLD);
                 break;
@@ -614,8 +753,13 @@ final class Game implements Physics.Listener {
                     host.sound(Synth.WHOOSH, 0.7f, 0.7f);
                 }
                 if (stateTime >= holdFor && (chapterT < 0f || chapterT >= CHAPTER_RISE)) {
-                    // the gods have thrown the blocks: the next building falls into place as the eye comes down
                     chapterDue = false;
+                    if (fightNext) {
+                        // down out of the sky, into the red street, where she is coming
+                        startFight(true);
+                        break;
+                    }
+                    // the gods have thrown the blocks: the next building falls into place as the eye comes down
                     start(Math.min(LAST, nextLevel), true);
                     fromSky = true;
                     backT = 0f;
@@ -627,11 +771,14 @@ final class Game implements Physics.Listener {
 
     private void hammerMoves(float dt) {
         hsTime += dt;
-        if (hs == FLY) {
+        if (hs == FLY && fight != null) {
+            // the diamond hammer comes back at once from whatever it met, or missed
+            if (hsTime > flightTime + 0.35f || hammer.py < 0.25f || hammer.pz > fight.giant.z + 4f) beginReturn();
+        } else if (hs == FLY) {
             if (hsTime > flightTime + 0.6f && (hammer.speed2() < 4f || hammer.py < 0.4f || hammer.pz > Builder.CZ + 4f)
                     || hsTime > flightTime + 2.2f || hammer.pz > Builder.CZ + 16f) beginReturn();
         } else if (hs == BACK) {
-            float k = Math.min(1f, hsTime / 0.6f);
+            float k = Math.min(1f, hsTime / (fight != null ? 0.4f : 0.6f));
             handPoint(tmp);
             float e = k * k * (3f - 2f * k);
             hammer.px = retX + (tmp[0] - retX) * e;
@@ -656,7 +803,7 @@ final class Game implements Physics.Listener {
         }
     }
 
-    private void beginReturn() {
+    void beginReturn() {
         hammer.ghost = true;
         hammer.vx = hammer.vy = hammer.vz = hammer.wx = hammer.wy = hammer.wz = 0f;
         retX = hammer.px;
@@ -675,19 +822,33 @@ final class Game implements Physics.Listener {
      */
     private void lookUp(int verdict, int next) {
         nextLevel = next;
-        sky.begin(verdict, level == 0 && verdict == Sky.OVATION);
+        boolean fought = afterFight;
+        afterFight = false;
+        // after a fight won they all laugh aloud, as at the first building
+        sky.begin(verdict, (level == 0 || fought) && verdict == Sky.OVATION);
         boltsHeard = sky.bolts;
         holdFor = verdict == Sky.GLOOM ? 2.2f : verdict == Sky.OVATION ? 3.2f : 2.4f;
         giftShown = false;
         goldGift = false;
-        if (verdict == Sky.GLOOM) {
+        diamondGift = false;
+        if (fought) {
+            // the fight is over: nothing counted, and no fight again at once
+        } else if (verdict == Sky.GLOOM) {
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
-                // the tenth time the same building would not fall: the gods give the golden hammer
-                goldGift = true;
-                goldSeen = true;
-                host.saveInt("goldSeen", 1);
+                if (!goldSeen) {
+                    // the tenth time the same building would not fall: the gods give the golden hammer
+                    goldGift = true;
+                    goldSeen = true;
+                    host.saveInt("goldSeen", 1);
+                } else {
+                    // ever after, she comes instead, and the gods give the diamond hammer for her
+                    fightNext = true;
+                    diamondGift = true;
+                    fails = 0;
+                    host.saveInt("fails", 0);
+                }
                 giftShown = true;
                 giftT0 = -1f;
             }
@@ -1107,7 +1268,7 @@ final class Game implements Physics.Listener {
     private int pN;
 
     /** A chip off a block, or a puff of dust that drifts and grows thin. */
-    private void spawn(float x, float y, float z, boolean dust, int col, float speed) {
+    void spawn(float x, float y, float z, boolean dust, int col, float speed) {
         if (pN >= MAXP) return;
         int i = pN++;
         pX[i] = x;
@@ -1334,7 +1495,8 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
-        d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
+        if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
+        else fight.draw(d);
         float st = stagger();
         for (int i = 0; i < pieces.size(); i++) {
             Body b = pieces.get(i);
@@ -1466,6 +1628,10 @@ final class Game implements Physics.Listener {
         }
         boolean heavy = hs == HAND ? heavyOn && !goldOn : heavyThrow;
         boolean gold = hs == HAND ? goldOn : goldThrow;
+        if (fight != null) {
+            Hammer.draw(d, pose, Hammer.DIAMOND, 1f);
+            return;
+        }
         Hammer.draw(d, pose, gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN, 1f);
         // the other hammer waits at the lower left, in sight and in reach of a tap
         if (heavyLeft > 0 || heavy) {
@@ -1487,7 +1653,16 @@ final class Game implements Physics.Listener {
             if (giftShown && state == SKY_HOLD && stateTime > 0.9f) drawGift(f, stateTime - 0.9f);
         }
         // the corner, while the street is in sight
+        if (fight != null && state == FIGHT) {
+            // the corner once the street is in sight, as the view comes down into it
+            if (k * fh < fh / 8f) fight.hud(f);
+            fight.veil(f);
+            if (!fight.won && fight.end >= 0f) shade(f, Math.min(1f, fight.end / 0.9f));
+            if (aiming) ringAt(f);
+            return;
+        }
         if (k * fh < fh / 8f) hud(f);
+        if (wake >= 0f) lids(f);
         if (!aiming) return;
         float speed = throwSpeed();
         target(aimX + tremX, aimY + tremY, tmp);
@@ -1507,6 +1682,11 @@ final class Game implements Physics.Listener {
             f.set(x - 1, y, c);
             f.set(x, y, c);
         }
+        ringAt(f);
+    }
+
+    /** The ring, and round it the wind-up: a band filling clockwise from the top, flickering when full. */
+    private void ringAt(Px f) {
         int cx = Math.round(aimX + tremX), cy = Math.round(aimY + tremY);
         ring(f, cx, cy, 6, 0xFFFFF6D8);
         ring(f, cx, cy, 5, 0xFFF2B33A);
@@ -1518,6 +1698,32 @@ final class Game implements Physics.Listener {
             double ang = -Math.PI / 2 + a * Math.PI * 2 / 64;
             for (int r = 8; r <= 9; r++)
                 f.set(cx + (int) Math.round(Math.cos(ang) * r), cy + (int) Math.round(Math.sin(ang) * r), band);
+        }
+    }
+
+    /** The whole frame gone so far into the dark. */
+    private static void shade(Px f, float k) {
+        int c = ((int) (Math.min(1f, k) * 255f) << 24);
+        for (int i = 0; i < f.a.length; i++) f.a[i] = c;
+    }
+
+    /**
+     * Waking on the street after a fight lost: dark at first, then the lids part, from above
+     * and below, soft at their edges.
+     */
+    private void lids(Px f) {
+        float k = Math.min(1f, wake / 1.6f);
+        float open = k * k * (3f - 2f * k);
+        float dark = Math.max(0f, 1f - wake / 0.5f) * 0.8f;
+        int lid = Math.round(fh * 0.5f * (1f - open));
+        for (int y = 0; y < fh; y++) {
+            float e = y < lid || y >= fh - lid ? 1f : 0f;
+            int edge = Math.min(Math.abs(y - lid), Math.abs(fh - lid - y));
+            if (e == 0f && edge < 30) e = (30 - edge) / 30f * (1f - open);
+            e = Math.max(e, dark);
+            if (e <= 0f) continue;
+            int c = (int) (Math.min(1f, e) * 255f) << 24;
+            for (int x = 0; x < fw; x++) f.a[y * fw + x] = c;
         }
     }
 
@@ -1615,7 +1821,8 @@ final class Game implements Physics.Listener {
                 int c = 0;
                 if (u > 0.2f && u < 0.62f && Math.abs(v) < 0.34f) {
                     c = (u > 0.27f && u < 0.32f) || (u > 0.5f && u < 0.55f)
-                            ? (goldGift ? 0xFFFFF0B0 : 0xFFC08A3C) : goldGift ? 0xFFE8B83A : 0xFF4A484E;
+                            ? (diamondGift ? 0xFFFFFFFF : goldGift ? 0xFFFFF0B0 : 0xFFC08A3C)
+                            : diamondGift ? 0xFFBFEFFF : goldGift ? 0xFFE8B83A : 0xFF4A484E;
                     if (v < -0.2f) c = Px.scale(c, 1.35f);
                 } else if (u > -0.75f && u <= 0.2f && Math.abs(v) < 0.08f) {
                     c = v < 0f ? 0xFF8A5A32 : 0xFF6A4226;
@@ -1633,6 +1840,12 @@ final class Game implements Physics.Listener {
     }
 
     // ---- for the desktop stand ----
+
+    /** For the stand: a throw by the fight's rules at a frame point, if the hand is free. */
+    void standFightThrow(float x, float y) {
+        if (fight == null || !ready()) return;
+        fight.throwAt(x, y);
+    }
 
     /** Where on the frame the middle of the building is now, or null. */
     float[] standMiddle() {

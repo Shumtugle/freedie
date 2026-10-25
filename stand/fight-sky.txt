@@ -1,0 +1,44 @@
+# The way into the fight from the sky: the golden hammer given once already, nine buildings
+# lost in a row; five throws into the sky lose the tenth, the gods frown and drop the diamond
+# hammer, and the view comes down into the red street where she waits. There nobody throws:
+# her cars get through, the shields break, and the fight is lost; the player wakes on the
+# street before the same building.
+screen 1096 2560
+keep level 4
+keep goldSeen 1
+keep fails 9
+restart
+skip
+wait 2.6
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 4.0
+shot s0
+wait 1.6
+shot s1
+wait 1.4
+shot s2
+wait 1.0
+shot s3
+wait 2.0
+shot s4
+fightstate
+wait 14
+fightstate
+shot s5
+wait 6
+fightstate
+shot s6
+wait 0.8
+shot s7
+wait 0.8
+shot s8
+wait 1.2
+shot s9

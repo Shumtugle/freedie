@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.16
+- The fight with Freedie. Once the golden hammer has been given, the next ten buildings lost
+  in a row bring her instead: the gods frown and drop a diamond hammer from the thunderer's
+  cloud, and the view comes down into the street seen red and black, the plinth gone, and
+  Freedie far up the road, half again as tall as in the opening, burning in a golden fire.
+  The fight can also be had at once from the bridge: the middle monitor of the console.
+- She comes in leaps: crouches, springs, comes down so the street jolts and the dust flies,
+  and between leaps tears a parked car from the curb, lifts it over her head and throws it.
+  A car knocked out of the air goes up and over to the curb; one that gets through breaks
+  a shield, and when the three are gone the heart is heard, and the next one ends it. Time
+  runs slow while a car is about to arrive.
+- The diamond hammer flies hard and flat and comes straight back. Her weak points glow: a
+  knee struck goes dark and her leaps grow short; both, and she drags herself on her knees;
+  her eyes go from yellow through orange to red, and the third blow to the head breaks her
+  apart. A blow to her bulk knocks a brick out and stops her for a moment.
+- Won: the heap trembles a while, the world goes gold and up into the sky, where all the
+  gods laugh aloud and give the heavy hammer; then the next building. Lost (a car through
+  with no shield left, or she reaches the player): it goes dark, and the player wakes on the
+  street before the same building, the eyelids parting.
+- Parked cars thrown in the fight lie where they fell as wrecks until the fight is over.
+
 ## 0.15
 - The polished balls are true spheres now, worked out pixel by pixel on the graphics chip:
   each in one of six deep colours, with a paler marbled swirl and three finger holes that

@@ -13,6 +13,9 @@ final class DrawList {
     static final int PLAIN = 0, GRAIN = 1, STONE = 2, ASPHALT = 3, WOOD = 4, PAVING = 5, PAINT = 6, GOLD = 7;
     static final int FACADE = 8, FROND = 9, TRUNK = 10, ROAD = 11, GLASS = 12, GLOW = 13, SEA = 14, RAIL = 15,
             PROMENADE = 16, AWNING = 17, SQUARE = 18, LANE = 19;
+    // a number a material that reads none of its own may carry: it burns in the golden fire
+    // when the world is seen red (see the frame's grade)
+    static final int FIRE = 255;
     // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one
     static final int POLISHED = 20, RUBBER = 21;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
@@ -37,6 +40,9 @@ final class DrawList {
     float goldGlow = 1f;                       // gold keeps this much of its own light in the dark
     float flash;                               // the frame drawn in to its middle and gone white, 0 to 1
     float tube = -1f;                          // the picture coming on like a set, 0 to 1; below 0 it is on
+    // the fight's world: how far it is seen red and black (what burns, in golden fire), and
+    // how far gold as it ends
+    float red, gold;
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -214,6 +220,7 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
+        s.append(",\"red\":").append(red).append(",\"gold\":").append(gold);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
         s.append(",\"count\":").append(count).append(",\"boxes\":[");

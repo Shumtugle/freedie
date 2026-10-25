@@ -356,5 +356,7 @@ void main() {
     // gold keeps its own light in the dark
     if (mat == GOLD) pool = max(pool, 0.9 * uGoldGlow);
     c *= mix(1.0, pool, uDark);
-    outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
+    // what burns in the golden fire, when the world is seen red, is marked in the alpha
+    bool fire = seed == 255 && (mat == PLAIN || mat == GRAIN || mat == STONE || mat == WOOD || mat == GOLD || mat == RAIL);
+    outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), fire ? 0.5 : 1.0);
 }

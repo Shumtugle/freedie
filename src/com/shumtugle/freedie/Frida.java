@@ -9,8 +9,10 @@ import java.util.Random;
  * with lace at the hem, a white apron and bib with buttons, a sash, a black bow. Her knees
  * glow, as her eyes do. She holds a golden hammer.
  *
- * She is a set of boxes hung on a dozen joints, posed by angles; she faces -z. When she
- * breaks, every box becomes a body of the game's own physics and falls where it will.
+ * She is a set of boxes hung on a dozen joints, posed by angles; she faces -z, turned about
+ * the upright by the root's own angle. Her model is in units of her own, drawn size times
+ * bigger. When she breaks, every box becomes a body of the game's own physics and falls
+ * where it will.
  */
 final class Frida {
     // the joints, each turning about its own pivot, after its parent
@@ -46,7 +48,14 @@ final class Frida {
     // the pose per joint: angles about x (forward and back), z (out to the side), y (across)
     final float[] ax = new float[JOINTS], az = new float[JOINTS], ay = new float[JOINTS];
     float x, z;                              // where she stands; she faces -z
+    float lift;                              // how far her hips are raised (or, below 0, sunk), her units
+    float size = 1f;                         // meters to her unit
     float eyes = 0.4f;                       // how bright her eyes burn, 0 to 1
+    // in the fight: a flash when hit; knees put out, one by one; blows the head has left in it;
+    // and whether she burns in the golden fire the red world shows her in
+    float hurt;
+    boolean kneeOutA, kneeOutB, fire;
+    int head = 3;
 
     // each joint's place in the world: a turn (row by row) and an offset
     private final float[] jr = new float[JOINTS * 9], jt = new float[JOINTS * 3];
@@ -157,7 +166,7 @@ final class Frida {
             r[0] = cyr * a0 + syr * c0; r[1] = cyr * a1 + syr * c1; r[2] = cyr * a2 + syr * c2;
             r[3] = szr; r[4] = czr * cxr; r[5] = -czr * sxr;
             r[6] = -syr * a0 + cyr * c0; r[7] = -syr * a1 + cyr * c1; r[8] = -syr * a2 + cyr * c2;
-            float px = PIVOT[j * 3], py = PIVOT[j * 3 + 1], pz = PIVOT[j * 3 + 2];
+            float px = PIVOT[j * 3] * size, py = PIVOT[j * 3 + 1] * size, pz = PIVOT[j * 3 + 2] * size;
             // local: p -> R (p - pivot) + pivot
             float tx = px - (r[0] * px + r[1] * py + r[2] * pz);
             float ty = py - (r[3] * px + r[4] * py + r[5] * pz);
@@ -166,7 +175,7 @@ final class Frida {
             if (p < 0) {
                 System.arraycopy(r, 0, jr, 0, 9);
                 jt[0] = tx + x;
-                jt[1] = ty;
+                jt[1] = ty + lift * size;
                 jt[2] = tz + z;
             } else {
                 // world = parent (local)
@@ -182,6 +191,9 @@ final class Frida {
 
     /** Where a point of her model, moved with a joint, is in the world. */
     void place(int j, float lx, float ly, float lz, float[] out) {
+        lx *= size;
+        ly *= size;
+        lz *= size;
         for (int a = 0; a < 3; a++)
             out[a] = jr[j * 9 + a * 3] * lx + jr[j * 9 + a * 3 + 1] * ly + jr[j * 9 + a * 3 + 2] * lz + jt[j * 3 + a];
     }
@@ -193,15 +205,55 @@ final class Frida {
             int j = joint[i];
             place(j, mid[i * 3], mid[i * 3 + 1], mid[i * 3 + 2], at);
             System.arraycopy(jr, j * 9, turn, 0, 9);
-            d.box(at[0], at[1], at[2], half[i * 3], half[i * 3 + 1], half[i * 3 + 2], turn, shade(i), look[i]);
+            float s = size;
+            d.box(at[0], at[1], at[2], half[i * 3] * s, half[i * 3 + 1] * s, half[i * 3 + 2] * s, turn, shade(i), drawn(i));
         }
     }
 
-    /** The eyes and knees burn as bright as they are let to; everything else is as it is. */
+    /** How a part is drawn: a knee put out goes dark; in the fight all of her burns. */
+    private float drawn(int i) {
+        float m = look[i];
+        if (m == DrawList.GLOW && out(i)) m = DrawList.PLAIN;
+        return fire && m != DrawList.GLOW ? DrawList.material((int) m, DrawList.FIRE) : m;
+    }
+
+    /** Whether a part is a knee's glow that has been put out. */
+    private boolean out(int i) {
+        if (i < kneeFrom || i >= kneeTo || look[i] != DrawList.GLOW) return false;
+        return joint[i] == SHIN_A ? kneeOutA : kneeOutB;
+    }
+
+    /**
+     * The eyes and knees burn as bright as they are let to, the eyes going from yellow through
+     * orange to red with the blows to the head; a blow flashes all of her pale.
+     */
     private int shade(int i) {
-        if (i >= eyeFrom && i < eyeTo) return Street.mix(0x3A1A08, color[i], eyes);
-        if (i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW) return Street.mix(0x3A1A08, color[i], 0.5f + 0.5f * eyes);
-        return color[i];
+        int c = color[i];
+        if (i >= eyeFrom && i < eyeTo)
+            c = Street.mix(0x3A1A08, head >= 3 ? c : head == 2 ? 0xFFA02A : 0xE0502A, eyes);
+        else if (out(i)) c = 0x2E2628;
+        else if (i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW) c = Street.mix(0x3A1A08, c, 0.5f + 0.5f * eyes);
+        return hurt > 0f ? Street.mix(c, 0xFFE0B0, Math.min(1f, hurt) * 0.6f) : c;
+    }
+
+    // ---- what the fight needs to know: where the weak points are ----
+
+    /** The glow on a knee: a on the hammer side, else the other. */
+    void knee(boolean a, float[] out) {
+        place(a ? SHIN_A : SHIN_B, a ? 0.56f : -0.56f, 1.16f, -0.32f, out);
+    }
+
+    void headCenter(float[] out) {
+        place(HEAD, 0f, 3.9f, -0.1f, out);
+    }
+
+    void chest(float[] out) {
+        place(CHEST, 0f, 2.7f, 0f, out);
+    }
+
+    /** The empty fist, the one that throws: the bottom of it. */
+    void fist(float[] out) {
+        place(FORE_B, -1.34f, 0.8f, -0.04f, out);
     }
 
     // ---- breaking ----
@@ -227,11 +279,11 @@ final class Frida {
         for (int i = 0; i < n; i++) {
             int j = joint[i];
             place(j, mid[i * 3], mid[i * 3 + 1], mid[i * 3 + 2], at);
-            Body b = new Body(half[i * 3], half[i * 3 + 1], half[i * 3 + 2], body[i], color[i]);
+            Body b = new Body(half[i * 3] * size, half[i * 3 + 1] * size, half[i * 3 + 2] * size, body[i], color[i]);
             quat(jr, j * 9, q);
             b.setPose(at[0], at[1], at[2], q[0], q[1], q[2], q[3]);
             // out from the middle of her, up, and away from the blow
-            float ox = at[0] - x, oy = at[1] - 2.4f, oz = at[2] - z;
+            float ox = at[0] - x, oy = at[1] - 2.4f * size, oz = at[2] - z;
             float ol = (float) Math.sqrt(ox * ox + oy * oy + oz * oz) + 1e-3f;
             float kick = 2.2f + rnd.nextFloat() * 2.6f;
             b.vx = ox / ol * kick + (rnd.nextFloat() - 0.5f) * 1.5f;
@@ -261,6 +313,18 @@ final class Frida {
         physics.step(Math.min(dt, 1f / 30f));
     }
 
+    /** The ground trembles under the heap: some of the pieces jump. */
+    void jolt(Random rnd) {
+        if (bodies == null) return;
+        for (Body b : bodies) {
+            if (b.py > 3f || rnd.nextFloat() < 0.4f) continue;
+            b.vy += 2.5f + rnd.nextFloat() * 3f;
+            b.vx += (rnd.nextFloat() - 0.5f) * 1.5f;
+            b.wx += (rnd.nextFloat() - 0.5f) * 6f;
+            b.asleep = false;
+        }
+    }
+
     void drawBroken(DrawList d) {
         for (int k = 0; k < bodies.length; k++) {
             Body b = bodies[k];
@@ -268,7 +332,7 @@ final class Frida {
             turn[0] = b.r00; turn[1] = b.r01; turn[2] = b.r02;
             turn[3] = b.r10; turn[4] = b.r11; turn[5] = b.r12;
             turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
-            d.box(b.px, b.py, b.pz, b.hx, b.hy, b.hz, turn, shade(i), look[i]);
+            d.box(b.px, b.py, b.pz, b.hx, b.hy, b.hz, turn, shade(i), drawn(i));
         }
     }
 
