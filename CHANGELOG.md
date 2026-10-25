@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.18
+- The third episode, whole: the game goes on to the thirty-ninth building, as the street
+  game it grows from has it, by the same seeds. Its buildings put everything of the second
+  episode together and higher: sandbag walls, water bottles under slabs, polished balls on
+  pads and in a heap, balloons under slabs, stacks of suitcases and mattresses, drums and
+  tyres, and towers with a cone on top. At the thirty-ninth the light rises over the sky,
+  as at the end of every episode; after it the last building comes round again until the
+  next one is open.
+
 ## 0.17
 - The fight has its own screen on the bridge, the last on the ring: a black and white
   monitor where Freedie comes up a grey street in leaps, the only colour her golden fire,

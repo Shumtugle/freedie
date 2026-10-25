@@ -27,7 +27,7 @@ import java.util.Random;
  * that scatters the building whatever it hits, as the very first one did. Once that has been
  * given, the next ten lost in a row bring Freedie herself, and the fight (see Fight).
  *
- * For now the levels go as far as the end of the first run of them, and the last comes round
+ * For now the levels go as far as the end of the third episode, and the last comes round
  * again.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
@@ -37,8 +37,8 @@ final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7;
     static final int STARS = 5;
-    /** The last level there is yet: the end of the second episode. */
-    static final int LAST = 19;
+    /** The last level there is yet: the end of the third episode. */
+    static final int LAST = 38;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength

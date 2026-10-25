@@ -1,0 +1,97 @@
+# The third episode, plates 21 to 39: each building as it stands, once it has come down into place.
+screen 1096 2560
+keep level 20
+restart
+skip
+wait 2.6
+shot e21
+keep level 21
+restart
+skip
+wait 2.6
+shot e22
+keep level 22
+restart
+skip
+wait 2.6
+shot e23
+keep level 23
+restart
+skip
+wait 2.6
+shot e24
+keep level 24
+restart
+skip
+wait 2.6
+shot e25
+keep level 25
+restart
+skip
+wait 2.6
+shot e26
+keep level 26
+restart
+skip
+wait 2.6
+shot e27
+keep level 27
+restart
+skip
+wait 2.6
+shot e28
+keep level 28
+restart
+skip
+wait 2.6
+shot e29
+keep level 29
+restart
+skip
+wait 2.6
+shot e30
+keep level 30
+restart
+skip
+wait 2.6
+shot e31
+keep level 31
+restart
+skip
+wait 2.6
+shot e32
+keep level 32
+restart
+skip
+wait 2.6
+shot e33
+keep level 33
+restart
+skip
+wait 2.6
+shot e34
+keep level 34
+restart
+skip
+wait 2.6
+shot e35
+keep level 35
+restart
+skip
+wait 2.6
+shot e36
+keep level 36
+restart
+skip
+wait 2.6
+shot e37
+keep level 37
+restart
+skip
+wait 2.6
+shot e38
+keep level 38
+restart
+skip
+wait 2.6
+shot e39
