@@ -13,6 +13,8 @@ final class DrawList {
     static final int PLAIN = 0, GRAIN = 1, STONE = 2, ASPHALT = 3, WOOD = 4, PAVING = 5, PAINT = 6, GOLD = 7;
     static final int FACADE = 8, FROND = 9, TRUNK = 10, ROAD = 11, GLASS = 12, GLOW = 13, SEA = 14, RAIL = 15,
             PROMENADE = 16, AWNING = 17, SQUARE = 18, LANE = 19;
+    // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one
+    static final int POLISHED = 20, RUBBER = 21;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 
@@ -38,6 +40,10 @@ final class DrawList {
 
     float[] boxes = new float[STRIDE * 256];
     int count;
+    // true spheres, laid out as boxes (the cube round each), drawn apart: their shader works
+    // out where the eye's ray meets the sphere and how deep that is, and the boxes' does not
+    float[] balls = new float[STRIDE * 16];
+    int ballCount;
 
     int[] flat;                                // the flat layer, ARGB, w * h; clear where the scene shows
 
@@ -46,6 +52,23 @@ final class DrawList {
         this.w = w;
         this.h = h;
         count = 0;
+        ballCount = 0;
+    }
+
+    /**
+     * A ball: its middle, its radius, its turn (a 3x3, row by row; the swirl and the holes
+     * turn with it), color as 0xRRGGBB, and what it is: POLISHED or RUBBER.
+     */
+    void ball(float x, float y, float z, float r, float[] rot, int rgb, int kind) {
+        float[] keep = boxes;
+        int kept = count;
+        boxes = balls;
+        count = ballCount;
+        box(x, y, z, r, r, r, rot, rgb, kind);
+        balls = boxes;
+        ballCount = count;
+        boxes = keep;
+        count = kept;
     }
 
     /** A material with a number of its own, 0 to 255, that the shader reads as a seed or a flag. */
@@ -197,6 +220,11 @@ final class DrawList {
         for (int i = 0; i < count * STRIDE; i++) {
             if (i > 0) s.append(',');
             s.append(boxes[i]);
+        }
+        s.append("],\"ballCount\":").append(ballCount).append(",\"balls\":[");
+        for (int i = 0; i < ballCount * STRIDE; i++) {
+            if (i > 0) s.append(',');
+            s.append(balls[i]);
         }
         s.append("]}");
         return s.toString();

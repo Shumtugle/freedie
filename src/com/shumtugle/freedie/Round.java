@@ -73,18 +73,6 @@ final class Round {
         }
     }
 
-    /**
-     * A ball: five slices about the frame's y axis, each as wide as the ball is there. The
-     * two between the middle and the poles a shade lighter, so a turning ball shows it turns.
-     */
-    static void ball(DrawList d, float x, float y, float z, float[] rot, float r, int rgb, int swirl, int material) {
-        for (int k = 0; k < 5; k++) {
-            float y0 = r * (-1f + k * 0.4f), y1 = y0 + r * 0.4f, ym = (y0 + y1) * 0.5f / r;
-            float rr = r * (float) Math.sqrt(Math.max(0.04f, 1f - ym * ym)) * (k == 2 ? 0.98f : 1.04f);
-            cylinder(d, x, y, z, rot, y0, y1, rr, k == 1 || k == 3 ? swirl : rgb, material);
-        }
-    }
-
     /** A flat round lying on the ground or a top: a puddle. */
     static void disc(DrawList d, float x, float y, float z, float r, float half, int rgb, int material) {
         cylinder(d, x, y, z, null, -half, half, r, rgb, material);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.15
+- The polished balls are true spheres now, worked out pixel by pixel on the graphics chip:
+  each in one of six deep colours, with a paler marbled swirl and three finger holes that
+  turn with the ball as it rolls, and a small hard shine of the low sun with the sky in the
+  polish. Before, a ball was five round slices stacked up and read as a striped toy ball.
+- Balloons are spheres too: plain rubber, no holes, a broader and softer shine.
+- Balls hide and touch each other as round things do, and their shadows are round.
+
 ## 0.14
 - The second episode, whole: the game goes to the twentieth building. Its things come in
   one after another, each out of boxes: steel drums with their chimes and hoops and a bung

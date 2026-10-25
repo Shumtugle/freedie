@@ -1,0 +1,28 @@
+# The polished balls of the second episode, true spheres now: on their pads (17th plate),
+# on top and in the nest (18th), then knocked out and rolling.
+screen 1096 2560
+keep level 16
+keep gifts 1
+restart
+skip
+wait 2.6
+shot b17
+down 300 300
+wait 1.0
+up 300 300
+wait 0.6
+shot b17_hit
+wait 1.6
+shot b17_roll
+keep level 17
+restart
+skip
+wait 2.6
+shot b18
+down 300 300
+wait 1.0
+up 300 300
+wait 0.5
+shot b18_hit
+wait 2.0
+shot b18_roll

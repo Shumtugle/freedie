@@ -35,6 +35,7 @@ out vec4 outColor;
 const float PLAIN = 0.0, GRAIN = 1.0, STONE = 2.0, ASPHALT = 3.0, WOOD = 4.0, PAVING = 5.0, PAINT = 6.0, GOLD = 7.0;
 const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, GLOW = 13.0, SEA = 14.0, RAIL = 15.0;
 const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
+const float POLISHED = 20.0, RUBBER = 21.0;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -60,8 +61,9 @@ vec3 tone(vec3 x) {
     return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
 }
 
-float shadow() {
-    vec3 p = vLightPos.xyz * 0.5 + 0.5;
+// how much of the sun reaches a point, seen from the sun as lp
+float shadowAt(vec4 lp) {
+    vec3 p = lp.xyz * 0.5 + 0.5;
     if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0 || p.z > 1.0) return 1.0;
     p.z -= 0.0012;
     float s = 0.0;
@@ -152,8 +154,77 @@ vec3 road(vec2 p, vec3 base) {
     return c;
 }
 
+#ifdef SPHERE
+flat in vec3 vCenter;
+flat in vec3 vTurn0, vTurn1, vTurn2;          // the ball's turn, column after column
+uniform mat4 uViewProj;
+uniform mat4 uLight;
+
+// the three finger holes, as directions in the ball's own frame
+const vec3 HOLE0 = vec3(0.0, 0.96, 0.28), HOLE1 = vec3(-0.24, 0.95, -0.2), HOLE2 = vec3(0.24, 0.95, -0.2);
+
+/**
+ * A ball, drawn on the faces of the cube round it: the eye's ray through this pixel is
+ * followed in the ball's own frame to where it meets the sphere; outside it there is
+ * nothing. The depth is the sphere's, so balls touch and hide each other as round things do.
+ * A polished ball has a marbled swirl and three finger holes that turn with it and a small
+ * hard shine; a rubber one is plain with a broader, softer shine.
+ */
+void sphere(float mat) {
+    float r = vHalf.x;
+    mat3 vTurn = mat3(vTurn0, vTurn1, vTurn2);
+    mat3 back = transpose(vTurn);
+    vec3 ro = back * (uEye - vCenter);
+    vec3 rd = normalize(back * (vWorld - uEye));
+    float b = dot(ro, rd);
+    float h = b * b - dot(ro, ro) + r * r;
+    if (h < 0.0) discard;
+    vec3 l = (ro + rd * (-b - sqrt(h))) / r;              // on the unit sphere, in the ball's frame
+    vec3 world = vCenter + vTurn * (l * r);
+    vec4 clip = uViewProj * vec4(world, 1.0);
+    gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
+    vec3 n = vTurn * l;
+    vec3 v = normalize(uEye - world);
+    bool rubber = mat == RUBBER;
+    vec3 base = lin(vColor);
+    bool hole = false;
+    if (!rubber) {
+        hole = max(max(dot(l, HOLE0), dot(l, HOLE1)), dot(l, HOLE2)) > 0.988;
+        float swirl = sin(l.x * 7.0 + sin(l.y * 5.0 + l.z * 3.0) * 2.2);
+        if (hole) base = lin(rgb(0x14121A));
+        else if (swirl > 0.25) base = lin(mix(vColor, vec3(1.0), 0.28));
+    }
+    float sh = shadowAt(uLight * vec4(world + n * 0.04, 1.0));
+    float ndl = dot(n, uSun);
+    vec3 amb = mix(uAmbGround, uAmbSky, n.y * 0.5 + 0.5);
+    vec3 c = base * (amb + uSunColor * max(ndl, 0.0) * sh);
+    if (!hole) {
+        // the shine sits half way between the sun and the eye
+        float sp = max(dot(n, normalize(uSun + v)), 0.0);
+        sp = rubber ? pow(sp, 10.0) * 0.6 : pow(sp, 48.0) * 1.5;
+        c += uSunColor * sp * vec3(1.0, 0.92, 0.8) * sh;
+        if (!rubber) {
+            // polish: the sky in it, more at a slant
+            vec3 rf = reflect(-v, n);
+            float fres = 0.05 + 0.35 * pow(1.0 - max(dot(n, v), 0.0), 3.0);
+            c = mix(c, rf.y > 0.0 ? lin(vec3(0.62, 0.72, 0.86)) : uAmbGround * 0.6, fres);
+        }
+    }
+    float dist = length(world - uEye);
+    float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
+    c = mix(c, lin(uFog), haze);
+    float pool = 1.0 - smoothstep(uSpotRadius * 0.55, uSpotRadius, length((world - uSpot) * vec3(0.55, 1.0, 1.0)));
+    c *= mix(1.0, pool, uDark);
+    outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
+}
+#endif
+
 void main() {
     float mat = floor(vMaterial + 0.001);
+#ifdef SPHERE
+    sphere(mat);
+    return;
+#endif
     int seed = int(floor(fract(vMaterial + 0.001) * 256.0));
     if (mat == FROND && frondHole(vLocal, vHalf)) discard;
     if (mat == RAIL && railHole(vLocal, vHalf)) discard;
@@ -260,7 +331,7 @@ void main() {
     }
     vec3 albedo = base * k;
     vec3 n = normalize(vNormal);
-    float sh = shadow();
+    float sh = shadowAt(vLightPos);
     float ndl = dot(n, uSun);
     // leaves let the light through: lit from either side, never quite dark
     float lit = leaf > 0.0 ? (0.35 + 0.65 * abs(ndl)) * sh : max(ndl, 0.0) * sh;

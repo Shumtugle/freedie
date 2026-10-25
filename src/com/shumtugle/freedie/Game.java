@@ -1426,11 +1426,11 @@ final class Game implements Physics.Listener {
                         b.markX, b.markY, b.markZ, clock - b.broke);
                 return;
             case Body.BALL:
-                Round.ball(d, x, y, z, turn, b.radius * scale, b.tint, Street.mix(b.tint, 0xFFFFFF, 0.28f), DrawList.PAINT);
+                d.ball(x, y, z, b.radius * scale, turn, b.tint, DrawList.POLISHED);
                 return;
             case Body.BALLOON: {
                 float r = b.radius * scale;
-                Round.ball(d, x, y, z, turn, r, b.tint, Street.mix(b.tint, 0xFFFFFF, 0.25f), DrawList.GLASS);
+                d.ball(x, y, z, r, turn, b.tint, DrawList.RUBBER);
                 // the knot under it, a darker twist of the same rubber
                 d.box(x - turn[1] * r * 1.02f, y - turn[4] * r * 1.02f, z - turn[7] * r * 1.02f, r * 0.09f, r * 0.08f,
                         r * 0.09f, turn, Street.scale(b.tint, 0.6f), DrawList.PAINT);

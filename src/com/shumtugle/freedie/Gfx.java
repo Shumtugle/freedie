@@ -14,7 +14,8 @@ import java.nio.IntBuffer;
 /**
  * The phone's renderer: draws a DrawList with the shaders in assets, in three passes. The
  * sun's depth map; the sky and the boxes into the small frame; the small frame onto the
- * screen with hard pixels and the flat layer over it. The desktop stand's page does the
+ * screen with hard pixels and the flat layer over it. Balls go after the boxes in each pass,
+ * with the same shaders built for spheres. The desktop stand's page does the
  * same passes with the same shaders, so what the stand shows is what the phone shows.
  * GL thread only.
  */
@@ -22,11 +23,11 @@ final class Gfx {
     private static final int SHADOW_SIZE = 2048;
     private static final float[] CUBE = cube();
 
-    private int boxP, shadowP, skyP, blitP;
-    private int vao, empty, cubeBuf, instBuf;
+    private int boxP, shadowP, skyP, blitP, ballP, ballShadowP;
+    private int vao, empty, cubeBuf, instBuf, ballVao, ballBuf;
     private int shadowTex, shadowFb, sceneTex, sceneFb, depthRb, flatTex;
     private int frameW, frameH;
-    private FloatBuffer inst;
+    private FloatBuffer inst, ballInst;
     private IntBuffer flat;
     private int[] swizzled;
 
@@ -36,31 +37,23 @@ final class Gfx {
         shadowP = program(read(assets, "shadow.vert"), read(assets, "shadow.frag"));
         skyP = program(read(assets, "full.vert"), read(assets, "sky.frag"));
         blitP = program(read(assets, "full.vert"), read(assets, "blit.frag"));
-        int[] ids = new int[2];
-        GLES30.glGenVertexArrays(2, ids, 0);
+        ballP = program(sphere(read(assets, "box.vert")), sphere(read(assets, "box.frag")));
+        ballShadowP = program(sphere(read(assets, "shadow.vert")), sphere(read(assets, "shadow.frag")));
+        int[] ids = new int[3];
+        GLES30.glGenVertexArrays(3, ids, 0);
         vao = ids[0];
         empty = ids[1];
-        GLES30.glGenBuffers(2, ids, 0);
+        ballVao = ids[2];
+        GLES30.glGenBuffers(3, ids, 0);
         cubeBuf = ids[0];
         instBuf = ids[1];
-        GLES30.glBindVertexArray(vao);
+        ballBuf = ids[2];
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, cubeBuf);
         FloatBuffer cb = floats(CUBE.length);
         cb.put(CUBE).position(0);
         GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, CUBE.length * 4, cb, GLES30.GL_STATIC_DRAW);
-        GLES30.glEnableVertexAttribArray(0);
-        GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 24, 0);
-        GLES30.glEnableVertexAttribArray(1);
-        GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 24, 12);
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instBuf);
-        int stride = DrawList.STRIDE * 4;
-        int[][] attrs = {{2, 3, 0}, {3, 3, 3}, {4, 3, 6}, {5, 3, 9}, {6, 3, 12}, {7, 4, 15}};
-        for (int[] a : attrs) {
-            GLES30.glEnableVertexAttribArray(a[0]);
-            GLES30.glVertexAttribPointer(a[0], a[1], GLES30.GL_FLOAT, false, stride, a[2] * 4);
-            GLES30.glVertexAttribDivisor(a[0], 1);
-        }
-        GLES30.glBindVertexArray(0);
+        instances(vao, instBuf);
+        instances(ballVao, ballBuf);
 
         // the sun's depth map, compared on lookup, smoothed by the hardware
         GLES30.glGenTextures(1, ids, 0);
@@ -78,6 +71,25 @@ final class Gfx {
         GLES30.glReadBuffer(GLES30.GL_NONE);
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0);
         frameW = frameH = 0;
+    }
+
+    /** A vertex array: the cube's corners, and one box after another from the given buffer. */
+    private void instances(int array, int buf) {
+        GLES30.glBindVertexArray(array);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, cubeBuf);
+        GLES30.glEnableVertexAttribArray(0);
+        GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, 24, 0);
+        GLES30.glEnableVertexAttribArray(1);
+        GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, 24, 12);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, buf);
+        int stride = DrawList.STRIDE * 4;
+        int[][] attrs = {{2, 3, 0}, {3, 3, 3}, {4, 3, 6}, {5, 3, 9}, {6, 3, 12}, {7, 4, 15}};
+        for (int[] a : attrs) {
+            GLES30.glEnableVertexAttribArray(a[0]);
+            GLES30.glVertexAttribPointer(a[0], a[1], GLES30.GL_FLOAT, false, stride, a[2] * 4);
+            GLES30.glVertexAttribDivisor(a[0], 1);
+        }
+        GLES30.glBindVertexArray(0);
     }
 
     /** The small frame and the flat layer, sized to the frame the world asks for. */
@@ -123,6 +135,14 @@ final class Gfx {
         inst.put(d.boxes, 0, n * DrawList.STRIDE).position(0);
         GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instBuf);
         GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, n * DrawList.STRIDE * 4, inst, GLES30.GL_DYNAMIC_DRAW);
+        int nb = d.ballCount;
+        if (nb > 0) {
+            if (ballInst == null || ballInst.capacity() < nb * DrawList.STRIDE) ballInst = floats(Math.max(nb, 16) * DrawList.STRIDE * 2);
+            ballInst.clear();
+            ballInst.put(d.balls, 0, nb * DrawList.STRIDE).position(0);
+            GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, ballBuf);
+            GLES30.glBufferData(GLES30.GL_ARRAY_BUFFER, nb * DrawList.STRIDE * 4, ballInst, GLES30.GL_DYNAMIC_DRAW);
+        }
         // the flat layer: ARGB in, bytes in R, G, B, A order out
         int[] src = d.flat, dst = swizzled;
         for (int i = 0; i < src.length; i++) {
@@ -147,6 +167,13 @@ final class Gfx {
         GLES30.glUniformMatrix4fv(u(shadowP, "uLight"), 1, false, d.lightProj, 0);
         GLES30.glBindVertexArray(vao);
         GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, n);
+        if (nb > 0) {
+            GLES30.glUseProgram(ballShadowP);
+            GLES30.glUniformMatrix4fv(u(ballShadowP, "uLight"), 1, false, d.lightProj, 0);
+            GLES30.glUniform3fv(u(ballShadowP, "uSun"), 1, d.sun, 0);
+            GLES30.glBindVertexArray(ballVao);
+            GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, nb);
+        }
 
         // 2. the sky, then the boxes, into the small frame
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, sceneFb);
@@ -168,27 +195,14 @@ final class Gfx {
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
-        GLES30.glUseProgram(boxP);
-        GLES30.glUniformMatrix4fv(u(boxP, "uViewProj"), 1, false, d.viewProj, 0);
-        GLES30.glUniformMatrix4fv(u(boxP, "uLight"), 1, false, d.lightProj, 0);
-        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
-        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, shadowTex);
-        GLES30.glUniform1i(u(boxP, "uShadow"), 0);
-        GLES30.glUniform1f(u(boxP, "uShadowTexel"), 1f / SHADOW_SIZE);
-        GLES30.glUniform3fv(u(boxP, "uSun"), 1, d.sun, 0);
-        GLES30.glUniform3fv(u(boxP, "uSunColor"), 1, d.sunColor, 0);
-        GLES30.glUniform3fv(u(boxP, "uAmbSky"), 1, d.ambientSky, 0);
-        GLES30.glUniform3fv(u(boxP, "uAmbGround"), 1, d.ambientGround, 0);
-        GLES30.glUniform3fv(u(boxP, "uEye"), 1, d.eye, 0);
-        GLES30.glUniform3fv(u(boxP, "uFog"), 1, d.fog, 0);
-        GLES30.glUniform1f(u(boxP, "uFogStart"), d.fogStart);
-        GLES30.glUniform1f(u(boxP, "uFogScale"), d.fogScale);
-        GLES30.glUniform1f(u(boxP, "uDark"), d.dark);
-        GLES30.glUniform3fv(u(boxP, "uSpot"), 1, d.spot, 0);
-        GLES30.glUniform1f(u(boxP, "uSpotRadius"), d.spotRadius);
-        GLES30.glUniform1f(u(boxP, "uGoldGlow"), d.goldGlow);
+        lit(boxP, d);
         GLES30.glBindVertexArray(vao);
         GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, n);
+        if (nb > 0) {
+            lit(ballP, d);
+            GLES30.glBindVertexArray(ballVao);
+            GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, nb);
+        }
 
         // 3. onto the screen
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0);
@@ -208,7 +222,36 @@ final class Gfx {
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
     }
 
+    /** A program that draws lit boxes, made ready: the eye, the sun and its depth map, the haze, the dark. */
+    private void lit(int p, DrawList d) {
+        GLES30.glUseProgram(p);
+        GLES30.glUniformMatrix4fv(u(p, "uViewProj"), 1, false, d.viewProj, 0);
+        GLES30.glUniformMatrix4fv(u(p, "uLight"), 1, false, d.lightProj, 0);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, shadowTex);
+        GLES30.glUniform1i(u(p, "uShadow"), 0);
+        GLES30.glUniform1f(u(p, "uShadowTexel"), 1f / SHADOW_SIZE);
+        GLES30.glUniform3fv(u(p, "uSun"), 1, d.sun, 0);
+        GLES30.glUniform3fv(u(p, "uSunColor"), 1, d.sunColor, 0);
+        GLES30.glUniform3fv(u(p, "uAmbSky"), 1, d.ambientSky, 0);
+        GLES30.glUniform3fv(u(p, "uAmbGround"), 1, d.ambientGround, 0);
+        GLES30.glUniform3fv(u(p, "uEye"), 1, d.eye, 0);
+        GLES30.glUniform3fv(u(p, "uFog"), 1, d.fog, 0);
+        GLES30.glUniform1f(u(p, "uFogStart"), d.fogStart);
+        GLES30.glUniform1f(u(p, "uFogScale"), d.fogScale);
+        GLES30.glUniform1f(u(p, "uDark"), d.dark);
+        GLES30.glUniform3fv(u(p, "uSpot"), 1, d.spot, 0);
+        GLES30.glUniform1f(u(p, "uSpotRadius"), d.spotRadius);
+        GLES30.glUniform1f(u(p, "uGoldGlow"), d.goldGlow);
+    }
+
     // ---- helpers ----
+
+    /** The same shader, built for balls. */
+    private static String sphere(String src) {
+        int eol = src.indexOf('\n');
+        return src.substring(0, eol + 1) + "#define SPHERE\n" + src.substring(eol + 1);
+    }
 
     private static int u(int program, String name) {
         return GLES30.glGetUniformLocation(program, name);

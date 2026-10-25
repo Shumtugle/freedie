@@ -14,9 +14,19 @@ uniform mat4 uLight;
 out vec3 vLocal;
 flat out vec3 vHalf;
 flat out float vMaterial;
+#ifdef SPHERE
+flat out vec3 vCenter;
+flat out vec3 vTurn0, vTurn1, vTurn2;
+#endif
 
 void main() {
     mat3 turn = mat3(iCol0, iCol1, iCol2);
+#ifdef SPHERE
+    vCenter = iCenter;
+    vTurn0 = iCol0;
+    vTurn1 = iCol1;
+    vTurn2 = iCol2;
+#endif
     vec3 local = aPos * iHalf;
     vLocal = local;
     vHalf = iHalf;

@@ -1,7 +1,8 @@
 // The desktop stand's renderer: draws a frame the world wrote out (its draw list as JSON and
 // its flat layer as a picture) with the same shaders and in the same passes as the phone:
 // the sun's depth map, the sky and the boxes into the small frame, then the small frame onto
-// the screen with hard pixels and the flat layer over it.
+// the screen with hard pixels and the flat layer over it. Balls go after the boxes in each
+// pass, with the same shaders built for spheres.
 'use strict';
 
 const CUBE = (() => {
@@ -53,27 +54,37 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   const shadowP = program(gl, src['shadow.vert'], src['shadow.frag']);
   const skyP = program(gl, src['full.vert'], src['sky.frag']);
   const blitP = program(gl, src['full.vert'], src['blit.frag']);
+  // the same shader, built for balls
+  const sphere = t => t.replace('\n', '\n#define SPHERE\n');
+  const ballP = program(gl, sphere(src['box.vert']), sphere(src['box.frag']));
+  const ballShadowP = program(gl, sphere(src['shadow.vert']), sphere(src['shadow.frag']));
 
-  // the cube and the instances
-  const vao = gl.createVertexArray();
-  gl.bindVertexArray(vao);
+  // the cube and the instances: the boxes, and the balls apart
   const cube = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, cube);
   gl.bufferData(gl.ARRAY_BUFFER, CUBE, gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);
-  gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
-  gl.enableVertexAttribArray(1);
-  gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
-  const inst = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, inst);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(frame.boxes), gl.STATIC_DRAW);
-  const stride = 19 * 4;
-  const attrs = [[2, 3, 0], [3, 3, 3], [4, 3, 6], [5, 3, 9], [6, 3, 12], [7, 4, 15]];
-  for (const [loc, size, off] of attrs) {
-    gl.enableVertexAttribArray(loc);
-    gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, off * 4);
-    gl.vertexAttribDivisor(loc, 1);
-  }
+  const instances = data => {
+    const a = gl.createVertexArray();
+    gl.bindVertexArray(a);
+    gl.bindBuffer(gl.ARRAY_BUFFER, cube);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+    const inst = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data.length ? data : [0]), gl.STATIC_DRAW);
+    const stride = 19 * 4;
+    for (const [loc, size, off] of [[2, 3, 0], [3, 3, 3], [4, 3, 6], [5, 3, 9], [6, 3, 12], [7, 4, 15]]) {
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, stride, off * 4);
+      gl.vertexAttribDivisor(loc, 1);
+    }
+    return a;
+  };
+  const vao = instances(frame.boxes);
+  const ballVao = instances(frame.balls || []);
+  const nb = frame.ballCount || 0;
   const empty = gl.createVertexArray();
 
   // the sun's depth map
@@ -129,6 +140,13 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniformMatrix4fv(u(shadowP, 'uLight'), false, frame.lightProj);
   gl.bindVertexArray(vao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
+  if (nb > 0) {
+    gl.useProgram(ballShadowP);
+    gl.uniformMatrix4fv(u(ballShadowP, 'uLight'), false, frame.lightProj);
+    gl.uniform3fv(u(ballShadowP, 'uSun'), frame.sun);
+    gl.bindVertexArray(ballVao);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+  }
 
   // 2. the sky, then the boxes, into the small frame
   gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFb);
@@ -150,27 +168,35 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.enable(gl.DEPTH_TEST);
-  gl.useProgram(boxP);
-  gl.uniformMatrix4fv(u(boxP, 'uViewProj'), false, frame.viewProj);
-  gl.uniformMatrix4fv(u(boxP, 'uLight'), false, frame.lightProj);
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, shadowTex);
-  gl.uniform1i(u(boxP, 'uShadow'), 0);
-  gl.uniform1f(u(boxP, 'uShadowTexel'), 1 / SHADOW_SIZE);
-  gl.uniform3fv(u(boxP, 'uSun'), frame.sun);
-  gl.uniform3fv(u(boxP, 'uSunColor'), frame.sunColor);
-  gl.uniform3fv(u(boxP, 'uAmbSky'), frame.ambientSky);
-  gl.uniform3fv(u(boxP, 'uAmbGround'), frame.ambientGround);
-  gl.uniform3fv(u(boxP, 'uEye'), frame.eye);
-  gl.uniform3fv(u(boxP, 'uFog'), frame.fog);
-  gl.uniform1f(u(boxP, 'uFogStart'), frame.fogStart);
-  gl.uniform1f(u(boxP, 'uFogScale'), frame.fogScale);
-  gl.uniform1f(u(boxP, 'uDark'), frame.dark || 0);
-  gl.uniform3fv(u(boxP, 'uSpot'), frame.spot);
-  gl.uniform1f(u(boxP, 'uSpotRadius'), frame.spotRadius);
-  gl.uniform1f(u(boxP, 'uGoldGlow'), frame.goldGlow);
+  const lit = p => {
+    gl.useProgram(p);
+    gl.uniformMatrix4fv(u(p, 'uViewProj'), false, frame.viewProj);
+    gl.uniformMatrix4fv(u(p, 'uLight'), false, frame.lightProj);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, shadowTex);
+    gl.uniform1i(u(p, 'uShadow'), 0);
+    gl.uniform1f(u(p, 'uShadowTexel'), 1 / SHADOW_SIZE);
+    gl.uniform3fv(u(p, 'uSun'), frame.sun);
+    gl.uniform3fv(u(p, 'uSunColor'), frame.sunColor);
+    gl.uniform3fv(u(p, 'uAmbSky'), frame.ambientSky);
+    gl.uniform3fv(u(p, 'uAmbGround'), frame.ambientGround);
+    gl.uniform3fv(u(p, 'uEye'), frame.eye);
+    gl.uniform3fv(u(p, 'uFog'), frame.fog);
+    gl.uniform1f(u(p, 'uFogStart'), frame.fogStart);
+    gl.uniform1f(u(p, 'uFogScale'), frame.fogScale);
+    gl.uniform1f(u(p, 'uDark'), frame.dark || 0);
+    gl.uniform3fv(u(p, 'uSpot'), frame.spot);
+    gl.uniform1f(u(p, 'uSpotRadius'), frame.spotRadius);
+    gl.uniform1f(u(p, 'uGoldGlow'), frame.goldGlow);
+  };
+  lit(boxP);
   gl.bindVertexArray(vao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
+  if (nb > 0) {
+    lit(ballP);
+    gl.bindVertexArray(ballVao);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+  }
 
   // 3. onto the screen
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);

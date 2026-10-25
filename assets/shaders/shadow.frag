@@ -1,5 +1,6 @@
 #version 300 es
 // Depth only; leaves and railings keep their holes. The same holes as in box.frag.
+// A ball is the sphere inside its cube, as there.
 precision highp float;
 
 in vec3 vLocal;
@@ -25,7 +26,27 @@ bool railHole(vec3 l, vec3 hf) {
     return fract(a / 0.13) > 0.3;
 }
 
+#ifdef SPHERE
+flat in vec3 vCenter;
+flat in vec3 vTurn0, vTurn1, vTurn2;
+uniform mat4 uLight;
+uniform vec3 uSun;
+#endif
+
 void main() {
+#ifdef SPHERE
+    // a ball: the sun's ray through this point of the cube, followed to the sphere inside
+    mat3 turn = mat3(vTurn0, vTurn1, vTurn2);
+    float r = vHalf.x;
+    vec3 rd = transpose(turn) * -uSun;
+    float b = dot(vLocal, rd);
+    float h = b * b - dot(vLocal, vLocal) + r * r;
+    if (h < 0.0) discard;
+    vec3 world = vCenter + turn * (vLocal + rd * (-b - sqrt(h)));
+    vec4 p = uLight * vec4(world, 1.0);
+    gl_FragDepth = p.z / p.w * 0.5 + 0.5;
+    return;
+#endif
     float mat = floor(vMaterial + 0.001);
     if (mat == FROND && frondHole(vLocal, vHalf)) discard;
     if (mat == RAIL && railHole(vLocal, vHalf)) discard;
