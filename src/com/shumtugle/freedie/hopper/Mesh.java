@@ -10,6 +10,8 @@ package com.shumtugle.freedie.hopper;
  *   5         quicksilver; with a film of LILAC or more, a rival's lilac
  *   6         hot bismuth, glowing from inside
  *   7         glass
+ *   4         wood: the hammer in hand; the film slot holds the part and where the face
+ *             lies across the grain
  *   8         a cut face
  *   20 and up the same, on an island the cut passes through: clipped by the cut
  */
@@ -23,7 +25,7 @@ final class Mesh {
     static final float FACE = 8f;
     /** Added to a shade: this face belongs to an island the cut passes through, and is clipped by it. */
     static final float CLIPPED = 20f;
-    static final float GLOW = 3f, SILVER = 5f, HOT = 6f, GLASS = 7f;
+    static final float GLOW = 3f, WOOD = 4f, SILVER = 5f, HOT = 6f, GLASS = 7f;
     /** In a light's film slot: the warm gold of a golden cube. */
     static final float GOLDEN = 2.5f;
     /** In a quicksilver face's film slot: diamond, cold and clear, every facet catching the light. */
@@ -40,7 +42,7 @@ final class Mesh {
     }
 
     static int dynamicCapacity(World w) {
-        return w.type.length * (3 * BOX + SPHERE) + 16 * BOX + 3 * SPHERE;
+        return w.type.length * (3 * BOX + SPHERE) + 16 * BOX + 3 * SPHERE + HAMMER_PARTS.length * BOX;
     }
 
     /**
@@ -136,6 +138,12 @@ final class Mesh {
             v = hammer(out, v, w.x, w.y, w.z, w.yaw);
             if (w.cut) sawnDrop(w, out, first, v);
         }
+        if (w.throwAge >= 0f) {
+            // the wooden hammer in flight, end over end, or lying where it fell
+            float[] head = new float[3];
+            float turns = w.thrown(head);
+            v = flying(out, v, head, turns, w.throwFrom);
+        }
         if (w.boss != null && !w.boss.away) {
             // the black drop
             int first = v;
@@ -180,11 +188,13 @@ final class Mesh {
                         seen++;
                     }
                     if (i == w.callCell) {
-                        // the call box: a dark post, its red button glowing, a little off the middle
-                        float px = x + 0.22f, pz = z + 0.22f;
+                        // the call box: a dark post, its red button glowing, a little off the middle;
+                        // struck by the hammer, the button goes in and the box shakes
+                        float px = x + World.BOX_OFF, pz = z + World.BOX_OFF, by = base + World.BUTTON_UP;
+                        float hit = w.dent[i], shake = (float) Math.sin(w.time * 70f) * 0.012f * hit;
                         v = box(out, v, px, base + 0.17f, pz, 0.035f, 0.17f, 0.035f, 300f, 0.5f);
-                        v = box(out, v, px, base + 0.33f, pz, 0.07f, 0.06f, 0.07f, 330f, 0.6f);
-                        v = box(out, v, px, base + 0.40f, pz, 0.045f, 0.02f, 0.045f, 0f, GLOW);
+                        v = box(out, v, px + shake, by - 0.07f, pz, 0.07f, 0.06f, 0.07f, 330f, 0.6f);
+                        v = box(out, v, px + shake, by - 0.012f * hit, pz, 0.045f, 0.02f, 0.045f, 0f, GLOW);
                     }
                     if (w.bead[i]) {
                         float y = base + 0.13f + 0.02f * (float) Math.sin(time * 3f + i);
@@ -523,6 +533,131 @@ final class Mesh {
         v = boxIn(out, v, f, 0, h, -0.066f, 0.058f, 0.048f, 0.008f, DIAMOND + 40f, SILVER);
         return v;
     }
+
+    // ---- the wooden hammer, the same one as on the bridge ----
+
+    /** Its parts in its own frame, in meters: middle, half sizes. The handle runs along x, the head along z. */
+    private static final float[][] HAMMER_PARTS = {
+            {-0.1f, 0f, 0f, 0.31f, 0.03f, 0.03f},       // handle
+            {-0.36f, 0f, 0f, 0.07f, 0.036f, 0.036f},    // grip
+            {0.31f, 0f, 0f, 0.1f, 0.078f, 0.17f},       // head
+            {0.31f, 0f, 0.12f, 0.104f, 0.082f, 0.016f}, // hoops
+            {0.31f, 0f, -0.12f, 0.104f, 0.082f, 0.016f},
+    };
+    /** What each part is: 0 handle, 1 grip, 2 head, 3 iron. */
+    private static final int[] HAMMER_KIND = {0, 1, 2, 3, 3};
+    /** The axis each part's grain runs along. */
+    private static final int[] HAMMER_GRAIN = {0, 0, 2, 0, 0};
+    /** Meters of the hammer to units of the world: about the size of the drop. */
+    static final float HAMMER_SIZE = 0.3f;
+    /** The middle of the head, along the handle. */
+    static final float HEAD_AT = 0.31f;
+
+    /**
+     * The wooden hammer at a pose: pose[0..2] the origin, pose[3..11] the turn row by row,
+     * so that its own x axis is (pose[3], pose[6], pose[9]). Every face carries in its film slot
+     * its part and where across the grain each corner lies, so the grain sits on the wood.
+     */
+    static int woodHammer(float[] out, int v, float[] pose, float scale) {
+        for (int p = 0; p < HAMMER_PARTS.length; p++) {
+            float[] q = HAMMER_PARTS[p];
+            float cx = pose[0] + (pose[3] * q[0] + pose[4] * q[1] + pose[5] * q[2]) * scale;
+            float cy = pose[1] + (pose[6] * q[0] + pose[7] * q[1] + pose[8] * q[2]) * scale;
+            float cz = pose[2] + (pose[9] * q[0] + pose[10] * q[1] + pose[11] * q[2]) * scale;
+            int grain = HAMMER_GRAIN[p];
+            for (int axis = 0; axis < 3; axis++) {
+                int ua = (axis + 1) % 3, va = (axis + 2) % 3;
+                // across the grain: the face's own axis that the grain does not run along
+                int across = ua != grain ? ua : va;
+                for (int sgn = -1; sgn <= 1; sgn += 2) {
+                    float nx = pose[3 + axis] * sgn, ny = pose[6 + axis] * sgn, nz = pose[9 + axis] * sgn;
+                    float h = q[3 + axis] * scale;
+                    float px = cx + nx * h, py = cy + ny * h, pz = cz + nz * h;
+                    float hu = q[3 + ua] * scale, hv = q[3 + va] * scale;
+                    float ux = pose[3 + ua] * hu, uy = pose[6 + ua] * hu, uz = pose[9 + ua] * hu;
+                    float wx = pose[3 + va] * hv, wy = pose[6 + va] * hv, wz = pose[9 + va] * hv;
+                    float base = HAMMER_KIND[p] * 100f + 50f, reach = q[3 + across] * 100f;
+                    float[] su = {-1, 1, 1, -1, 1, -1}, sv = {-1, -1, 1, -1, 1, 1};
+                    for (int k = 0; k < 6; k++) {
+                        float g = base + reach * (across == ua ? su[k] : sv[k]);
+                        v = vert(out, v, px + ux * su[k] + wx * sv[k], py + uy * su[k] + wy * sv[k],
+                                pz + uz * su[k] + wz * sv[k], nx, ny, nz, g, WOOD);
+                    }
+                }
+            }
+        }
+        return v;
+    }
+
+    /**
+     * The hammer in the hand, low on the right, its head across the view and the handle
+     * coming up to it out of the corner. right, up, ahead are the eye's own axes; bob, -1 to 1,
+     * sways it with the hops. Fills pose with the hammer's pose in the world.
+     */
+    static void heldPose(float[] eye, float[] right, float[] up, float[] ahead, float aspect, float bob, float[] pose) {
+        float spread = (float) Math.tan(Math.toRadians(World.FOV_ACROSS) * 0.5);
+        float d = 0.64f * HAMMER_SIZE;
+        // where the head sits on the screen, x across and y up, -1 to 1
+        float sx = 0.4f, sy = -0.66f + 0.02f * bob;
+        float hx = sx * spread * d, hy = sy * spread * aspect * d, hz = d;
+        // the handle from the grip up to the head, and the head's long side, in the eye's space
+        float[] u = {-0.5f, 0.6f, 0.62f}, w = {0.9f, 0.38f + 0.04f * bob, 0.08f};
+        float[] a = toWorld(right, up, ahead, u), z = toWorld(right, up, ahead, w);
+        normalize(a);
+        float dd = z[0] * a[0] + z[1] * a[1] + z[2] * a[2];
+        for (int k = 0; k < 3; k++) z[k] -= dd * a[k];
+        normalize(z);
+        float[] y = {z[1] * a[2] - z[2] * a[1], z[2] * a[0] - z[0] * a[2], z[0] * a[1] - z[1] * a[0]};
+        for (int k = 0; k < 3; k++) {
+            float head = eye[k] + right[k] * hx + up[k] * hy + ahead[k] * hz;
+            pose[k] = head - a[k] * HEAD_AT * HAMMER_SIZE;
+            pose[3 + k * 3] = a[k];
+            pose[4 + k * 3] = y[k];
+            pose[5 + k * 3] = z[k];
+        }
+    }
+
+    /**
+     * The hammer thrown: its head at head, turning end over end about the line across its
+     * flight, by turns of a whole circle; the handle trails behind as it leaves the hand.
+     */
+    private static int flying(float[] out, int v, float[] head, float turns, float[] from) {
+        float dx = head[0] - from[0], dz = head[2] - from[2];
+        float l = (float) Math.sqrt(dx * dx + dz * dz);
+        if (l < 1e-4f) { dx = 0f; dz = -1f; l = 1f; }
+        dx /= l;
+        dz /= l;
+        // the tumble: the handle along the flight, turning in the upright plane of the flight
+        double a = turns * Math.PI * 2;
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        float[] hx = {dx * c, s, dz * c};
+        float[] hz = {-dz, 0f, dx};
+        float[] hy = {hz[1] * hx[2] - hz[2] * hx[1], hz[2] * hx[0] - hz[0] * hx[2], hz[0] * hx[1] - hz[1] * hx[0]};
+        float[] pose = new float[12];
+        for (int k = 0; k < 3; k++) {
+            pose[k] = head[k] - hx[k] * HEAD_AT * HAMMER_SIZE;
+            pose[3 + k * 3] = hx[k];
+            pose[4 + k * 3] = hy[k];
+            pose[5 + k * 3] = hz[k];
+        }
+        return woodHammer(out, v, pose, HAMMER_SIZE);
+    }
+
+    private static float[] toWorld(float[] right, float[] up, float[] ahead, float[] p) {
+        return new float[] {right[0] * p[0] + up[0] * p[1] + ahead[0] * p[2],
+                right[1] * p[0] + up[1] * p[1] + ahead[1] * p[2],
+                right[2] * p[0] + up[2] * p[1] + ahead[2] * p[2]};
+    }
+
+    private static void normalize(float[] p) {
+        float l = (float) Math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2]);
+        p[0] /= l;
+        p[1] /= l;
+        p[2] /= l;
+    }
+
+    /** Vertices the hammer takes. */
+    static final int HAMMER_VERTS = HAMMER_PARTS.length * BOX;
 
     static int sphere(float[] out, int v, float x, float y, float z, float r) {
         for (int i = 0; i < SPHERE; i++) {

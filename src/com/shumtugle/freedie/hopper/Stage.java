@@ -98,7 +98,12 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
     private boolean stretching;
 
     private int sky, liquid, scene, sceneCut, mirage, hud, text;
-    private int triBuf, liquidBuf, islandBuf, movingBuf, farBuf, hudBuf, quadBuf, mirageBuf, cityBuf, freshBuf;
+    private int triBuf, liquidBuf, islandBuf, movingBuf, farBuf, hudBuf, quadBuf, mirageBuf, cityBuf, freshBuf, heldBuf;
+    /** The hammer in the hand: its pose this frame, its geometry, and whether it is shown. */
+    private final float[] held = new float[12];
+    private final float[] heldData = new float[Mesh.HAMMER_VERTS * Mesh.FLOATS];
+    private boolean heldShown;
+    private final float[] right = new float[3], up = new float[3], ahead = new float[3], button = new float[3];
     private int fieldTex, titleTex, digitTex;
     private int islandVerts, movingVerts, farVerts, mirageVerts, islandVersion = -1;
     private float[] islandData, movingData, farData, mirageData;
@@ -247,8 +252,8 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         sceneCut = program("scene.vert", "scene.frag", "#define CUT\n");
         hud = program("hud.vert", "hud.frag");
         text = program("text.vert", "text.frag");
-        int[] ids = new int[11];
-        GLES30.glGenBuffers(11, ids, 0);
+        int[] ids = new int[12];
+        GLES30.glGenBuffers(12, ids, 0);
         triBuf = ids[0];
         liquidBuf = ids[1];
         islandBuf = ids[2];
@@ -260,6 +265,7 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         cityBuf = ids[8];
         freshBuf = ids[9];
         previewBuf = ids[10];
+        heldBuf = ids[11];
         city = null;
         preview = null;
         upload2(triBuf, new float[] {-1, -1, 3, -1, -1, 3});
@@ -426,7 +432,11 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
                             // the hopscotch, with its settings
                             openChalk();
                         } else if (hudShapes != null && hudShapes.eyeShown && ex * ex + ey * ey < Hud.EYE_R * Hud.EYE_R * 2.2f) summon();
-                        else if (cityShown && w.state == World.DARK) {
+                        else if (aimed(w, x, y)) {
+                            // a tap on the red button throws the hammer at it, from the hand
+                            float k = Mesh.HEAD_AT * Mesh.HAMMER_SIZE;
+                            w.throwAt(held[0] + held[3] * k, held[1] + held[6] * k, held[2] + held[9] * k);
+                        } else if (cityShown && w.state == World.DARK) {
                             // the first tap sends the world under; the level wakes once it is gone
                             if (cityLeave < 0f) cityLeave = 0f;
                         } else w.hold();
@@ -548,6 +558,7 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         drawSky();
         drawLiquid(w);
         drawScene(w);
+        drawHeld(w);
         if (chalk.open) {
             drawChalk();
         } else {
@@ -668,6 +679,50 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         drawMesh(mirageBuf, mirageVerts);
         GLES30.glDisable(GLES30.GL_BLEND);
         GLES30.glDepthMask(true);
+    }
+
+    /**
+     * The hammer in the hand, over everything, low on the right; it sways with the hops. Not
+     * shown in the dark, from above, once thrown, or under the hopscotch.
+     */
+    private void drawHeld(World w) {
+        for (int k = 0; k < 3; k++) {
+            right[k] = view[k * 4];
+            up[k] = view[k * 4 + 1];
+            ahead[k] = -view[k * 4 + 2];
+        }
+        float bob = w.state == World.PLAY ? -(float) Math.cos(w.hopPhase() * Math.PI * 2) : 0f;
+        Mesh.heldPose(eye, right, up, ahead, aspect, bob, held);
+        heldShown = !chalk.open && !cityShown && w.state != World.DARK && w.throwAge < 0f && w.lift < 0.05f;
+        if (!heldShown) return;
+        int n = Mesh.woodHammer(heldData, 0, held, Mesh.HAMMER_SIZE);
+        upload(heldBuf, heldData, n, GLES30.GL_STREAM_DRAW);
+        // nothing of the world comes between the eye and its own hand
+        GLES30.glClear(GLES30.GL_DEPTH_BUFFER_BIT);
+        GLES30.glEnable(GLES30.GL_DEPTH_TEST);
+        use(scene);
+        GLES30.glUniformMatrix4fv(loc(scene, "uMvp"), 1, false, mvp, 0);
+        GLES30.glUniform3f(loc(scene, "uEye"), eye[0], eye[1], eye[2]);
+        GLES30.glUniform1f(loc(scene, "uTime"), w.time);
+        GLES30.glUniform1f(loc(scene, "uFilm"), w.film);
+        drawMesh(heldBuf, n);
+    }
+
+    /**
+     * Whether a tap at (x, y), in screen widths from the middle, falls on the red button: near
+     * enough to it as seen, a little more generously than its size, as a far button is small.
+     */
+    private boolean aimed(World w, float x, float y) {
+        if (!heldShown || !w.button(button)) return false;
+        float cx = mvp[0] * button[0] + mvp[4] * button[1] + mvp[8] * button[2] + mvp[12];
+        float cy = mvp[1] * button[0] + mvp[5] * button[1] + mvp[9] * button[2] + mvp[13];
+        float cw = mvp[3] * button[0] + mvp[7] * button[1] + mvp[11] * button[2] + mvp[15];
+        if (cw < 0.05f) return false;
+        float sx = cx / cw * 0.5f, sy = cy / cw * 0.5f * aspect;
+        float size = 0.07f * proj[0] / cw * 0.5f;
+        float r = Math.max(0.08f, size * 2f);
+        float dx = x - sx, dy = y - sy;
+        return dx * dx + dy * dy < r * r;
     }
 
     /** The world in the dark, sinking whole into the liquid once a tap has sent it under. */

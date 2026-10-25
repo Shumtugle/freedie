@@ -77,6 +77,20 @@ void main() {
             col = (0.04 + e * 1.3) * fres * tint;
             if (vTag.x > 900.0) col += tint * (vTag.x > 955.0 ? 0.14 : 0.07);
         }
+    } else if (tag > 3.5) {
+        // wood: the hammer in hand. A plain colour with a coarse grain across it, lit from
+        // above and a little from the eye, so it reads in the dark; past the tone curve as it is
+        float part = floor(vTag.x / 100.0);
+        float g = vTag.x - part * 100.0 - 50.0;
+        vec3 base = part < 0.5 ? vec3(0.60, 0.40, 0.22) : part < 1.5 ? vec3(0.43, 0.25, 0.15)
+                : part < 2.5 ? vec3(0.87, 0.66, 0.41) : vec3(0.33, 0.32, 0.31);
+        if (part < 0.5 || (part > 1.5 && part < 2.5)) {
+            float k = fract(sin(floor(g * 0.45) * 12.9898 + part * 78.233) * 43758.5453);
+            base *= 0.84 + 0.26 * k;
+        }
+        float lit = 0.45 + 0.45 * max(dot(n, normalize(vec3(-0.35, 1.0, 0.3))), 0.0) + 0.18 * c;
+        o = vec4(base * lit * mix(1.0, fog(dist), 0.6), 1.0);
+        return;
     } else if (tag > 2.5) {
         // light of its own, brighter towards the edges of each face
         // white light is the gate's, kept softer than the shards so it does not burn out

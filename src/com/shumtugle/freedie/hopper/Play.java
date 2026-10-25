@@ -11,8 +11,8 @@ import android.view.View;
  * The game played on one of the bridge's screens, inside this one: what was its own window
  * is now a part of the window, shown while it is played. It keeps its own things apart (its
  * levels, marks and settings), plays its own sound, and goes back to the bridge when its
- * hopscotch is left or its red button is pressed three times. Golden cubes found in it are
- * the game's own, and go into the row by the bridge.
+ * hopscotch is left or the hammer in hand is thrown at its red button. Golden cubes found in
+ * it, rare as they are, go into the row by the bridge.
  */
 public final class Play {
     /** What the game this one is played in is told. */
@@ -236,14 +236,21 @@ public final class Play {
             case World.EV_GOLD:
                 onGold(w.index);
                 break;
-            case World.EV_CALL:
-                // the red button on its island: a ring, as on the street
-                sound.strike(425f, 0.35f, 0.7f);
-                sound.strikeLater(850f, 0.15f, 0.5f, 0.04f);
+            case World.EV_THROW:
+                // the hammer leaves the hand: a low swish
+                sound.thud(320f, 140f, 0.22f, 0.22f);
                 tick();
                 break;
+            case World.EV_CALL:
+                // the hammer strikes the red button: a knock of wood, and the box rings, as on the street
+                sound.knock(620f, 0.45f, 0.035f);
+                sound.knock(240f, 0.3f, 0.04f);
+                sound.strikeLater(425f, 0.4f, 0.9f, 0.05f);
+                sound.strikeLater(850f, 0.18f, 0.6f, 0.09f);
+                thump(false);
+                break;
             case World.EV_DISPATCH:
-                // the third ring: the dispatcher answers, and the bridge comes back
+                // the dispatcher answers, and the bridge comes back
                 sound.strike(293.66f, 0.4f, 1.6f);
                 thump(true);
                 quit();

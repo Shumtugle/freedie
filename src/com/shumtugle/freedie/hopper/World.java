@@ -52,7 +52,7 @@ final class World {
             EV_QUEUE = 13, EV_LEAP = 14, EV_BONK = 15, EV_WAKE = 16, EV_TREMOR = 17, EV_SHIFT = 18,
             EV_RISEN = 19, EV_FUNNEL = 20, EV_ECHO = 21, EV_BEATEN = 22, EV_RIVAL_READY = 23,
             EV_BOSS_LAND = 24, EV_STRIKE = 25, EV_RUPTURE = 26, EV_CRUSHED = 27, EV_STOMP = 28, EV_SAVED = 29,
-            EV_GOLD = 30, EV_CALL = 31, EV_DISPATCH = 32;
+            EV_GOLD = 30, EV_CALL = 31, EV_DISPATCH = 32, EV_THROW = 33;
     /** A shard humming: EV_HUM + rank * 16 + loudness, 1 to 15. */
     static final int EV_HUM = 1000;
     /** A rival landing near the drop: EV_RIVAL + loudness, 1 to 15. */
@@ -83,17 +83,31 @@ final class World {
     static Kept kept;
 
     /**
-     * Now and then one shard of a level is a golden cube instead: taken, it counts as the shard
-     * and is kept besides, once a level. The second level always has one. -1: none here.
+     * Rarely one shard of a level is a golden cube instead: taken, it counts as the shard and is
+     * kept besides, once a level. The second level always has one; after it, one level in every
+     * twenty-five. -1: none here.
      */
     int goldShard = -1;
+    /** Levels counted together, one of which hides a golden cube. */
+    static final int GOLD_EVERY = 25;
     /**
-     * One plain island of every level carries a call box with a red button. Each landing on it
-     * rings; three landings in a row on it, and the dispatcher answers: back to the bridge.
+     * One plain island of every level carries a call box with a red button. The hammer in hand
+     * is thrown at it: it flies, strikes the button, the box rings, and the dispatcher answers:
+     * back to the bridge.
      */
     int callCell = -1;
-    private Level callLevel;
-    private int calls;
+    /** Where the call box stands on its island, off the middle, and the height of its button. */
+    static final float BOX_OFF = 0.22f, BUTTON_UP = 0.40f;
+    /** Seconds since the hammer left the hand, or below 0 while it is held. */
+    float throwAge = -1f;
+    /** How long its flight takes; once over, the button is struck. */
+    float throwTime;
+    /** Where the throw began: the head of the hammer in the hand. */
+    final float[] throwFrom = new float[3];
+    /** The button has been struck; and the dispatcher has answered. */
+    boolean struck, dispatched;
+    /** From the strike to the bridge: long enough to see the hammer fall and hear the ring. */
+    static final float ANSWER = 0.8f;
     private final boolean ghost;
     /** The board in play: the level, or in a shifting level the act now standing. */
     Level level;
@@ -275,8 +289,7 @@ final class World {
         } else {
             boss = null;
         }
-        if (!ghost && !fight && acts == 1 && index >= 1 && (index == 1 || mix(index) % 3 == 0)
-                && (kept == null || !kept.taken(index))) {
+        if (!ghost && goldLevel(index) && (kept == null || !kept.taken(index))) {
             for (int i = 0; i < shard.length && goldShard < 0; i++) if (shard[i]) goldShard = i;
         }
         if (!ghost) pickCall();
@@ -290,9 +303,30 @@ final class World {
         return h & 0x7FFFFFFF;
     }
 
+    /** Whether a level can hold a golden cube: one with shards, all in one act. */
+    private static boolean goldable(int n) {
+        return n >= 1 && !Maze.boss(n) && Maze.acts(n) == 1;
+    }
+
+    /**
+     * Whether level n hides a golden cube: the second level, and after it one level in every
+     * GOLD_EVERY, its place in the run picked by the run's number from the run's middle, so two
+     * never come close together; if that level cannot hold a cube, the next one that can.
+     */
+    static boolean goldLevel(int n) {
+        if (n == 1) return true;
+        int run = n / GOLD_EVERY;
+        if (run == 0) return false;
+        int first = run * GOLD_EVERY, at = GOLD_EVERY / 5 + mix(run * 977 + 13) % (GOLD_EVERY * 3 / 5);
+        for (int k = 0; k < GOLD_EVERY; k++) {
+            int m = first + (at + k) % GOLD_EVERY;
+            if (goldable(m)) return m == n;
+        }
+        return false;
+    }
+
     /** The island with the call box: a plain one, away from the start, the same each time. */
     private void pickCall() {
-        callLevel = level;
         callCell = -1;
         int best = -1;
         for (int f = 0; f < floors; f++)
@@ -330,6 +364,70 @@ final class World {
         stateAge = 0f;
         rise = 1f;
         hopAge = 0f;
+    }
+
+    /**
+     * The red button of the call box, where it stands now, into out; false if there is none
+     * to aim at: no box, or its island gone under.
+     */
+    boolean button(float[] out) {
+        int c = callCell;
+        if (c < 0 || c >= sink.length || sink[c] > 0f || type[c] == Level.LIQUID) return false;
+        int plane = cols * rows, f = c / plane;
+        out[0] = c % plane % cols + BOX_OFF;
+        out[1] = top(f) - under(f, c) + BUTTON_UP;
+        out[2] = c % plane / cols + BOX_OFF;
+        return true;
+    }
+
+    /**
+     * The hammer is thrown at the red button from (x, y, z), the head of it in the hand. Only
+     * one throw, and only while the drop is in play; true if it left the hand.
+     */
+    boolean throwAt(float fx, float fy, float fz) {
+        if (throwAge >= 0f || (state != PLAY && state != FALL_IN) || shift != 0) return false;
+        float[] b = new float[3];
+        if (!button(b)) return false;
+        throwFrom[0] = fx;
+        throwFrom[1] = fy;
+        throwFrom[2] = fz;
+        float dx = b[0] - fx, dy = b[1] - fy, dz = b[2] - fz;
+        float d = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        // a near box is struck at once, a far one after a long arc
+        throwTime = Math.min(0.95f, 0.32f + 0.075f * d);
+        throwAge = 0f;
+        struck = false;
+        dispatched = false;
+        emit(EV_THROW);
+        return true;
+    }
+
+    /**
+     * The flying hammer's head, into out: an arc from the hand to the button, higher the further
+     * it goes; after the strike it drops onto the island beside the box. Returns the tumble, in
+     * turns of the hammer end over end.
+     */
+    float thrown(float[] out) {
+        float[] b = new float[3];
+        if (!button(b)) {
+            b[0] = throwFrom[0];
+            b[1] = throwFrom[1];
+            b[2] = throwFrom[2];
+        }
+        if (!struck) {
+            float t = Math.min(1f, throwAge / throwTime);
+            float dx = b[0] - throwFrom[0], dz = b[2] - throwFrom[2];
+            float arc = 0.12f + 0.09f * (float) Math.sqrt(dx * dx + dz * dz);
+            for (int k = 0; k < 3; k++) out[k] = throwFrom[k] + (b[k] - throwFrom[k]) * t;
+            out[1] += 4f * arc * t * (1f - t);
+            return t * (1.25f + 0.25f * throwTime);
+        }
+        // knocked back off the button, down onto the stone
+        float s = Math.min(1f, (throwAge - throwTime) / 0.32f);
+        out[0] = b[0] - 0.1f * s;
+        out[1] = b[1] + (BUTTON_UP - 0.04f) * (-s * s) + 0.08f * s * (1f - s) * 4f;
+        out[2] = b[2] - 0.1f * s;
+        return 1.25f + 0.25f * throwTime + 0.2f * s;
     }
 
     /** A rival has landed; heard if it is near the drop. */
@@ -522,6 +620,20 @@ final class World {
         }
         awake += dt;
         mapAge += dt;
+        if (throwAge >= 0f) {
+            throwAge += dt;
+            if (!struck && throwAge >= throwTime) {
+                // the hammer meets the button: the box rings
+                struck = true;
+                if (callCell >= 0) dent[callCell] = 1f;
+                emit(EV_CALL);
+            }
+            if (struck && !dispatched && throwAge >= throwTime + ANSWER) {
+                // and the dispatcher answers: back to the bridge
+                dispatched = true;
+                emit(EV_DISPATCH);
+            }
+        }
         if (shift == 1) {
             // the eye goes up to watch; the old act goes down; once the next one is grown, it comes up
             shiftAge += dt;
@@ -761,19 +873,6 @@ final class World {
         int i = level.index(cellX, cellZ, cellF);
         int t = typeAt(cellX, cellZ, cellF);
         dent[i] = 1f;
-        if (!ghost) {
-            if (level != callLevel) pickCall();
-            if (i == callCell) {
-                calls++;
-                emit(EV_CALL);
-                if (calls >= 3) {
-                    calls = 0;
-                    emit(EV_DISPATCH);
-                }
-            } else {
-                calls = 0;
-            }
-        }
         if (t == Level.HOT) {
             if (beads > 0) {
                 beads--;
@@ -993,6 +1092,7 @@ final class World {
         dent = new float[type.length];
         act++;
         actHops = 0;
+        if (!ghost) pickCall();
         actLeft = level.shards();
         budget = act >= acts - 1 ? Integer.MAX_VALUE : Math.max(4, level.hops) + 4;
         if (pilot != null) {

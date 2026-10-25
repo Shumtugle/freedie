@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.1
+- In the first game of the bridge the hammer is in hand: the wooden one from the street,
+  low on the right, its head across the view, swaying with every hop.
+- The call box is answered with it: a tap on the red button throws the hammer, end over
+  end, the button goes in, the box rings and shakes, the hammer drops onto the stone, and
+  the dispatcher takes you back to the bridge. Bouncing on the box no longer calls.
+- The game there goes on without end, so its golden cubes are rare now: the second level
+  still has one, and after it one level in every twenty-five, never two close together.
+
 ## 0.7
 - The first game of the bridge is played: its screen is lit from the start, showing islands
   going away over the dark and a cube turning over the far one, and a poke at it goes into
