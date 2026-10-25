@@ -1,0 +1,27 @@
+# The hammer thrown at the parked car on the left: crumpled metal, glass, the alarm blinking;
+# three blows and it is a wreck. The ring starts where the last throw went, so the later
+# throws keep the finger still. The stretch of curb on the right is kept clear for the yard.
+screen 1096 2560
+keep level 4
+keep gifts 0
+restart
+skip
+wait 2.6
+shot c0_cars
+down 140 300
+move 80 330
+move 10 362
+wait 1.0
+up 10 362
+wait 0.6
+shot c1_hit
+wait 3.6
+down 140 300
+wait 1.0
+up 140 300
+wait 3.6
+down 140 300
+wait 1.0
+up 140 300
+wait 0.7
+shot c2_wreck

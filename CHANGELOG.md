@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13
+- The parked cars take what falls on them: the hammer, blocks, boards, stones, balls. A
+  light knock only clatters; a real blow crumples metal, sprays glass and sets the alarm
+  off, the indicators blinking. Each blow is a step worse: crazed glass and a dented boot
+  and hood; then the roof pressed lower, a side window gone, the back dented, a headlamp
+  out; then the rear window gone and a door stove in. The cars stay as dented as they are.
+- A parked car is a thing to aim at: the ring settles on it as on the building.
+- On the right, a stretch of the curb is kept clear of parked cars: the way into a yard
+  is to be there.
+
 ## 0.12
 - Episodes: the levels are played as the game's episodes, the first from 1 to 9, the second
   from 10 to 20. Down the last building of an episode and, up among the gods, a light rises

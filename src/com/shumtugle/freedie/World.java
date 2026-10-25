@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.12";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.13";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -71,6 +71,7 @@ final class World {
         intro = new Intro(host, host.loadInt("met") != 1);
         cubes = host.loadInt("cubes");
         game = new Game(host, host.loadInt("level"));
+        game.traffic = traffic;
         level = game.level;
         // along the pavement under the houses, along the promenade, and across the road far off
         java.util.Random r = people.random();

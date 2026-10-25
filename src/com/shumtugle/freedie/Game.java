@@ -81,6 +81,11 @@ final class Game implements Physics.Listener {
     private final float[] thunderIn = {-1f, -1f, -1f, -1f}, thunderGain = new float[4], thunderRate = new float[4];
     private final int[] thunderId = new int[4];
     private Body plinth;
+    /** The parked cars: their bodies here, their dents and alarms in the street's traffic. */
+    Traffic traffic;
+    private final Body[] cars = new Body[Traffic.PARK_X.length];
+    private final float[] carHitAt = new float[Traffic.PARK_X.length];
+    private float carAlarmAt = -9f;
     final ArrayList<Body> pieces = new ArrayList<Body>();
     private float totalMass;
     final Body hammer;
@@ -165,9 +170,9 @@ final class Game implements Physics.Listener {
         phys.add(plinth);
         // the parked cars and the cones, as solid as the plinth: what falls on them stays off the road
         for (int i = 0; i < Traffic.PARK_X.length; i++) {
-            Body car = new Body(0.95f, 0.65f, 2.3f, Body.CAR, 0);
-            car.setPose(Traffic.PARK_X[i], 0.65f, Traffic.PARK_Z[i], 1, 0, 0, 0);
-            phys.add(car);
+            cars[i] = new Body(0.95f, 0.65f, 2.3f, Body.CAR, 0);
+            cars[i].setPose(Traffic.PARK_X[i], 0.65f, Traffic.PARK_Z[i], 1, 0, 0, 0);
+            phys.add(cars[i]);
         }
         ArrayList<Body> made = buildingFor(lv);
         // grown at the first plinth spot: carried along to where the plinth stands now
@@ -462,7 +467,7 @@ final class Game implements Physics.Listener {
         for (int k = 0; k < 3; k++) out[k] = ahead[k] + right[k] * u + up[k] * v;
     }
 
-    /** The world point under a frame point: the nearest piece, the plinth, or the plane through it. */
+    /** The world point under a frame point: the nearest piece, the plinth, a parked car, or the plane through the plinth. */
     void target(float sx, float sy, float[] out) {
         ray(sx, sy, dir);
         float dx = dir[0], dy = dir[1], dz = dir[2];
@@ -476,6 +481,13 @@ final class Game implements Physics.Listener {
             float t = rayBox(plinth, eye[0], eye[1], eye[2], dx, dy, dz);
             if (t > 0f) best = t;
         }
+        if (best > 1e8f)
+            // a parked car is a thing to aim at too
+            for (Body c : cars) {
+                if (c == null) continue;
+                float t = rayBox(c, eye[0], eye[1], eye[2], dx, dy, dz);
+                if (t > 0f && t < best) best = t;
+            }
         if (best > 1e8f) {
             // the upright plane through the plinth's middle; under the ground, the ground
             best = (Builder.CX - eye[0]) * ahead[0] + (Builder.CZ - eye[2]) * ahead[2];
@@ -825,7 +837,7 @@ final class Game implements Physics.Listener {
         boolean hammerHit = a == hammer || b == hammer;
         Body other = a == hammer ? b : a;
         if (a.material == Body.CAR || (b != null && b.material == Body.CAR)) {
-            if (speed > 2.2f) host.sound(Synth.CRASH, Math.min(0.6f, speed / 12f), 1.2f);
+            carKnock(a.material == Body.CAR ? a : b, speed, x, y, z);
             return;
         }
         // the first building flies to pieces at the first touch of the hammer; so does any, at the golden one
@@ -865,6 +877,32 @@ final class Game implements Physics.Listener {
         } else if (speed > 3f && b == null) {
             for (int i = 0; i < 4; i++) spawn(x, 0.02f, z, true, 0xD8CFC0, 1f);
         }
+    }
+
+    /**
+     * Something hard against a parked car: a light knock only clatters; a real blow crumples
+     * metal, sprays glass, makes the car one step worse and sets its alarm off.
+     */
+    private void carKnock(Body car, float speed, float x, float y, float z) {
+        int i = 0;
+        while (i < cars.length && cars[i] != car) i++;
+        if (i == cars.length || traffic == null) return;
+        if (speed < 2.2f) {
+            host.sound(Synth.CRASH, 0.25f, 1.3f);
+            return;
+        }
+        if (clock - carHitAt[i] < 0.5f) return;
+        carHitAt[i] = clock;
+        boolean wasQuiet = traffic.damage[i] == 0 || clock - carAlarmAt > 1.8f;
+        traffic.hit(i);
+        host.sound(Synth.CRASH, Math.min(1f, 0.4f + speed * 0.08f), 0.85f + fx.nextFloat() * 0.3f);
+        host.sound(Synth.GLASS, 0.5f, 1.1f + fx.nextFloat() * 0.3f);
+        if (wasQuiet) {
+            host.sound(Synth.ALARM, 0.45f, 1f);
+            carAlarmAt = clock;
+        }
+        host.buzz(50);
+        for (int k = 0; k < 12; k++) spawn(x, y, z, false, (k & 1) == 0 ? 0xCFE2EC : 0x9FB6C4, speed * 0.4f);
     }
 
     /** Throws every piece of the building away from the blow, after the step, never inside it. */
