@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1
+- A new icon: Freedie's head, stone brow, brick jaw, eyes like coals, lace cap and bow.
+- The project page, in `docs/`: who she is, the street drawn live in the browser by the
+  game's own shaders (drag to look around), the opening frame by frame.
+
 ## 0.3
 - The opening: the eye flies in an arc high over the seaside town and comes down onto the
   street before Freedie, who raises her eyes; the town goes dark, light left on her alone;

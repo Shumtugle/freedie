@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freedie</title>
+<meta name="description" content="A game for Android about knocking down buildings with a hammer, on a summer street of a seaside town. Early days.">
+<link rel="icon" href="icon.png">
+<style>
+  :root {
+    --ink: #f3ece0;
+    --dim: #b9ad9c;
+    --night: #12131a;
+    --deep: #1b1d27;
+    --gold: #f2c230;
+    --brick: #c0603e;
+    --line: #2c2f3c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--night); color: var(--ink); }
+  body { font: 17px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  a { color: var(--gold); }
+  main { max-width: 980px; margin: 0 auto; padding: 0 16px 64px; }
+  header { display: grid; grid-template-columns: 1fr minmax(0, 420px); gap: 24px; align-items: center; padding: 40px 0 16px; }
+  h1 { font: 800 clamp(48px, 11vw, 96px)/0.95 ui-monospace, "Cascadia Mono", Menlo, monospace; letter-spacing: 0.06em; margin: 0 0 16px;
+       color: var(--gold); text-shadow: 0 0 24px rgba(242, 194, 48, 0.35); }
+  .lede { font-size: 20px; color: var(--ink); max-width: 34ch; margin: 0 0 16px; }
+  .state { display: inline-block; font: 600 14px/1 ui-monospace, Menlo, monospace; color: var(--night); background: var(--gold); padding: 8px 10px; border-radius: 4px; }
+  .hero img { width: 100%; height: auto; display: block; filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.6)); }
+  section { padding: 40px 0 8px; border-top: 1px solid var(--line); margin-top: 32px; }
+  h2 { font: 700 26px/1.2 system-ui, sans-serif; margin: 0 0 12px; }
+  p { margin: 0 0 12px; max-width: 64ch; }
+  .muted { color: var(--dim); }
+  .live { display: grid; grid-template-columns: minmax(0, 360px) 1fr; gap: 28px; align-items: start; }
+  .screen { position: relative; width: 100%; aspect-ratio: 274 / 560; background: #000; border-radius: 18px; overflow: hidden;
+            border: 6px solid #07080c; box-shadow: 0 0 0 1px var(--line), 0 24px 48px rgba(0, 0, 0, 0.5); touch-action: pan-y; }
+  .screen canvas, .screen img { width: 100%; height: 100%; display: block; image-rendering: pixelated; cursor: grab; }
+  .screen .hint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font: 600 13px/1 ui-monospace, Menlo, monospace;
+                  color: #fff; opacity: 0.8; pointer-events: none; text-shadow: 0 1px 2px #000; }
+  .strip { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 8px; }
+  .strip img { height: 420px; width: auto; display: block; image-rendering: pixelated; border-radius: 8px; }
+  ol.steps { padding-left: 22px; margin: 16px 0 0; max-width: 64ch; }
+  ol.steps li { margin-bottom: 6px; }
+  .maid { display: grid; grid-template-columns: 160px 1fr; gap: 20px; align-items: center; }
+  .maid img { width: 160px; height: auto; }
+  ul { max-width: 64ch; padding-left: 22px; }
+  footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 16px; color: var(--dim); font-size: 15px; }
+  @media (max-width: 720px) {
+    header, .live { grid-template-columns: 1fr; }
+    header { padding-top: 24px; }
+    .hero { order: -1; max-width: 360px; margin: 0 auto; }
+    .screen { max-width: 360px; margin: 0 auto; }
+    .strip img { height: 340px; }
+    .maid { grid-template-columns: 96px 1fr; }
+    .maid img { width: 96px; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>FREEDIE</h1>
+      <p class="lede">A game for Android about knocking down buildings with a hammer, on a summer street of a seaside town.</p>
+      <span class="state">0.3.1 · early days · no release yet</span>
+    </div>
+    <div class="hero"><img src="freedie.webp" alt="Freedie: a giant heaped together from stone, brick and planks, dressed as a maid in a black dress with a lace apron" width="720" height="726"></div>
+  </header>
+
+  <section class="maid">
+    <img src="head.webp" alt="Freedie's head: a stone brow, a brick jaw, eyes like coals, a lace cap and a bow">
+    <div>
+      <h2>Who she is</h2>
+      <p>Freedie is a stooping giant heaped together from what buildings are made of: stone shoulders and fists, brick forearms and jaw, planks for sinews, rusty rods out of her back, eyes like coals. And she is dressed, of all things, as a maid: a black dress, a white apron, lace. She is the mascot, the opening, and in time the one to beat.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>The street, drawn live</h2>
+    <div class="live">
+      <div class="screen" id="screen">
+        <canvas id="street" aria-label="The game's street, drawn live; drag to look around"></canvas>
+        <div class="hint" id="hint">drag to look around</div>
+      </div>
+      <div>
+        <p>This is not a video. Your browser draws the street here with the game's own shaders, the same ones the phone runs: first the sun's depth map, then the sky and some six thousand boxes into a frame 274 pixels across, then that frame onto the screen with every pixel a hard square.</p>
+        <p>The boxes are one frame the game wrote out on the desktop: houses with shutters, balconies and awnings, palms of blocks whose fronds let the light through, the promenade and the sea, parked cars, the plinth with its golden cube. Drag across, and the eye turns as it does in the game, and swings back when you let go. The red button on the lamp post glows; in the game, it calls something.</p>
+        <p class="muted">What the page cannot do: the cars stand still here, and nothing breaks. That needs the game itself.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The opening</h2>
+    <div class="strip"><img src="opening.png" alt="Six frames of the opening: over the town, Freedie looks up, the hammer raised, the blow, her pieces falling, the name in gold" width="1644" height="640"></div>
+    <ol class="steps">
+      <li>The eye flies in an arc high over the town and comes down onto the street.</li>
+      <li>Freedie stands before the plinth and raises her eyes.</li>
+      <li>The town goes dark; light is left on her alone.</li>
+      <li>She swings her golden hammer straight at you, and the glass cracks.</li>
+      <li>She herself breaks apart and falls, every piece of her a body of the game's own physics.</li>
+      <li>On the black, the name burns in gold.</li>
+      <li>A flash, and the street. A touch at any moment goes straight there.</li>
+    </ol>
+    <p class="muted">Frames from the desktop stand, which plays the game's Java and draws it with the game's shaders. The sound is synthesized too: wind over the town, the swing, the blow, the pieces knocking down, a golden chime.</p>
+  </section>
+
+  <section>
+    <h2>How it is made</h2>
+    <ul>
+      <li>Java 8 and the platform alone, no build system, no libraries.</li>
+      <li>The game lives in plain Java: rules, physics, what stands where. Each frame it fills a draw list, the eye, the sun, the sky and every box in the scene, and a renderer draws it.</li>
+      <li>On the phone that renderer is OpenGL ES 3; on the desktop stand and on this page it is the same shaders in a browser.</li>
+      <li>Everything you see is boxes; everything you hear is made by a synthesizer in the game.</li>
+    </ul>
+    <p><strong>Coming next:</strong> the first level: a building on the plinth, the hammer in your hand, the aim, the throw.</p>
+  </section>
+
+  <footer>
+    Freedie · Zero-Clause BSD · <a href="https://github.com/Shumtugle/freedie">source</a>
+  </footer>
+</main>
+<script src="street.js"></script>
+<script>
+(function () {
+  var canvas = document.getElementById('street');
+  var fallback = function () {
+    var img = new Image();
+    img.src = 'street.png';
+    img.alt = 'The street, as the game draws it';
+    canvas.replaceWith(img);
+    document.getElementById('hint').textContent = 'a frame of the street';
+  };
+  if (!window.WebGL2RenderingContext) { fallback(); return; }
+  window.freedieStreet(canvas, '').catch(fallback);
+  var hint = document.getElementById('hint');
+  canvas.addEventListener('pointerdown', function () { hint.style.opacity = '0'; }, { once: true });
+})();
+</script>
+</body>
+</html>

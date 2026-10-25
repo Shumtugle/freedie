@@ -18,6 +18,12 @@ Early days: the engine, the street and the opening stand, the game is still to c
 - The desktop stand (`stand/`) plays scenes against the same Java and writes each frame's
   draw list; `stand/web/index.html` draws it with the same shaders in a browser.
 
+## The page
+
+`docs/` is the project page. Its street is drawn live by the game's shaders from a frame
+the stand wrote: `python3 stand/page.py out/stand/s0_rest.json` refreshes `docs/street.*`
+and the copy of the shaders in `docs/shaders`.
+
 ## Build
 
 ```sh
