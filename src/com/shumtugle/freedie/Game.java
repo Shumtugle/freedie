@@ -23,6 +23,9 @@ import java.util.Random;
  * always brings the heavy hammer: a few heavy throws, marked under the stars; a tap on the
  * hammer in hand, or the one waiting low on the left, swaps one for the other.
  *
+ * Lose the same building ten times running and the gods give the golden hammer: one throw
+ * that scatters the building whatever it hits, as the very first one did.
+ *
  * For now the levels go as far as the end of the first run of them, and the last comes round
  * again.
  *
@@ -57,8 +60,15 @@ final class Game implements Physics.Listener {
     // the marks in the corner lag behind the gift: they drop into place once the view is back down
     private int heavyShown, marksLanded;
     private float markT = -1f;
-    private static final float MARK_FALL = 0.32f, MARK_GAP = 0.24f;
+    private static final float MARK_FALL = Crest.MARK_FALL, MARK_GAP = Crest.MARK_GAP;
     private boolean giftShown;
+    // the golden hammer: lose the same building ten times running and the gods give one throw
+    // that scatters it whatever it hits
+    static final int GOLD_AFTER = 10;
+    int fails;
+    boolean goldOn, goldSeen;
+    private boolean goldThrow, goldGift;
+    final Crest crest = new Crest();
     // the gods' sky, made once the frame's size is known
     private Sky sky;
     private int throwsMade, boltsHeard;
@@ -111,6 +121,9 @@ final class Game implements Physics.Listener {
         hammer = new Body(0.42f, 0.08f, 0.17f, Body.HAMMER, 0xD9A066);
         heavyLeft = Math.max(0, Math.min(HEAVY_MAX, host.loadInt("gifts")));
         heavyShown = heavyLeft;
+        fails = Math.max(0, host.loadInt("fails"));
+        goldSeen = host.loadInt("goldSeen") == 1;
+        crest.settle(fails);
         start(this.level, false);
     }
 
@@ -125,6 +138,13 @@ final class Game implements Physics.Listener {
      * the sky, its pieces are thrown down by the gods; else they come down just above the plinth.
      */
     void start(int lv, boolean thrown) {
+        if (lv != level) {
+            // a new building: the count of lost tries starts again
+            fails = 0;
+            host.saveInt("fails", 0);
+        }
+        goldOn = fails >= GOLD_AFTER;
+        crest.fresh();
         level = lv;
         buildFromSky = thrown;
         host.saveInt("level", lv);
@@ -371,7 +391,8 @@ final class Game implements Physics.Listener {
         hammer.vy = dy / t - 0.5f * Physics.G * t;
         hammer.vz = dz / t;
         spinSign = aimX < fw * 0.5f ? 1f : -1f;
-        heavyThrow = heavyOn && heavyLeft > 0;
+        goldThrow = goldOn;
+        heavyThrow = !goldThrow && heavyOn && heavyLeft > 0;
         if (heavyThrow) {
             hammer.scaleMass(HEAVY_MASS);
             heavyLeft--;
@@ -383,6 +404,7 @@ final class Game implements Physics.Listener {
         flightTime = t;
         throwsMade++;
         stars--;
+        crest.burn(stars);
         hs = FLY;
         hsTime = 0f;
         power = 0f;
@@ -511,6 +533,9 @@ final class Game implements Physics.Listener {
         hammerMoves(dt);
         thunderStep(dt);
         marksStep(dt);
+        crest.update(dt);
+        // a lost try shows on the ring once the street is back in sight
+        if (tilt() * fh < fh / 8f && state != SKY_UP && state != SKY_HOLD) crest.attempts(fails);
         if (sky != null && (state == SKY_UP || state == SKY_HOLD || fromSky)) {
             sky.update(dt);
             if (sky.bolts != boltsHeard) {
@@ -582,6 +607,7 @@ final class Game implements Physics.Listener {
             if (k >= 1f) {
                 host.sound(Synth.CATCH, 0.8f, heavyThrow ? 0.75f : 1f);
                 host.buzz(heavyThrow ? 45 : 25);
+                goldThrow = false;
                 if (heavyThrow) {
                     hammer.scaleMass(1f / HEAVY_MASS);
                     heavyThrow = false;
@@ -618,6 +644,22 @@ final class Game implements Physics.Listener {
         boltsHeard = sky.bolts;
         holdFor = verdict == Sky.GLOOM ? 2.2f : verdict == Sky.OVATION ? 3.2f : 2.4f;
         giftShown = false;
+        goldGift = false;
+        if (verdict == Sky.GLOOM) {
+            fails++;
+            host.saveInt("fails", fails);
+            if (fails == GOLD_AFTER) {
+                // the tenth time the same building would not fall: the gods give the golden hammer
+                goldGift = true;
+                goldSeen = true;
+                host.saveInt("goldSeen", 1);
+                giftShown = true;
+                giftT0 = -1f;
+            }
+        } else if (fails > 0) {
+            fails = 0;
+            host.saveInt("fails", 0);
+        }
         if (verdict == Sky.OVATION) {
             // the gods give the heavy hammer, and put it in the hand for the next building
             heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
@@ -726,8 +768,13 @@ final class Game implements Physics.Listener {
             if (speed > 2.2f) host.sound(Synth.CRASH, Math.min(0.6f, speed / 12f), 1.2f);
             return;
         }
-        // the first building flies to pieces at the first touch of the hammer
-        if (level == 0 && hammerHit && other != null && other != plinth && !blasted) {
+        // the first building flies to pieces at the first touch of the hammer; so does any, at the golden one
+        if ((level == 0 || goldThrow) && hammerHit && other != null && other != plinth && !blasted) {
+            if (goldThrow) {
+                goldOn = false;
+                fails = 0;
+                host.saveInt("fails", 0);
+            }
             blasted = true;
             blastX = x;
             blastY = y;
@@ -998,8 +1045,9 @@ final class Game implements Physics.Listener {
         } else {
             Hammer.of(hammer, pose);
         }
-        boolean heavy = hs == HAND ? heavyOn : heavyThrow;
-        Hammer.draw(d, pose, heavy, 1f);
+        boolean heavy = hs == HAND ? heavyOn && !goldOn : heavyThrow;
+        boolean gold = hs == HAND ? goldOn : goldThrow;
+        Hammer.draw(d, pose, gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN, 1f);
         // the other hammer waits at the lower left, in sight and in reach of a tap
         if (heavyLeft > 0 || heavy) {
             Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f, 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
@@ -1088,108 +1136,20 @@ final class Game implements Physics.Listener {
         }
     }
 
-    /**
-     * Stars along the top left, burnt one a throw; under them the heavy throws left, ringed in
-     * gold when in hand; beside them the golden cubes in the rack. On the right the weight still
-     * on the plinth, with the line it has to fall below, and the level's number under it.
-     */
+    /** The crest at the top, with what it has to show this frame. */
     private void hud(Px f) {
-        int x = 6, y = 8;
-        for (int i = 0; i < STARS; i++) {
-            boolean on = i < stars;
-            boolean flash = state == CLEARED && on && ((int) (stateTime * 6) & 1) == 0;
-            star(f, x + i * 15 + 6, y + 6, 6.6f, on ? (flash ? 0xFFFFFFFF : 0xFFFFC93A) : 0x00000000, 0xFF8A5A12, on);
-        }
-        for (int i = 0; i < heavyShown; i++) heavyMark(f, x + i * 13 + 1, y + 16, heavyOn);
-        // the new ones, dropping in one after another from above the edge, with a bounce and a glint
-        if (markT >= 0f)
-            for (int i = heavyShown; i < heavyLeft; i++) {
-                float tk = markT - (i - heavyShown) * MARK_GAP;
-                if (tk <= 0f) continue;
-                float yy;
-                if (tk < MARK_FALL) {
-                    float u = tk / MARK_FALL;
-                    yy = y + 16 - 30f * (1f - u * u);
-                } else {
-                    float b = tk - MARK_FALL;
-                    yy = y + 16 - 4f * (float) Math.abs(Math.sin(b * 14f)) * (float) Math.exp(-b * 9f);
-                }
-                int mx = x + i * 13 + 1, my = Math.round(yy);
-                float since = tk - MARK_FALL;
-                if (since > 0f && since < 0.3f) {
-                    int a = Math.round(2f + 3f * (1f - since / 0.3f));
-                    f.rect(mx - a, my - a, mx + 11 + a, my + 8 + a, 0xFFFFF0B0);
-                }
-                heavyMark(f, mx, my, heavyOn);
-            }
-        int cx = x + STARS * 15 + 3;
-        if (cubes <= 6) for (int i = 0; i < cubes; i++) cubeMark(f, cx + i * 11, y + 2);
-        else {
-            cubeMark(f, cx, y + 2);
-            PixelFont.draw(f, String.valueOf(cubes), cx + 12, y + 3, 1, 0xFFFFE89A);
-        }
-        int bw = 58, bx = fw - bw - 7, by = 9;
-        f.rect(bx - 1, by - 1, bx + bw + 1, by + 7, 0xFF8A5A12);
-        f.rect(bx, by, bx + bw, by + 6, 0xFFF3E9D2);
-        float on = onPlinth();
-        f.rect(bx, by, bx + Math.round(bw * on), by + 6, on <= 1f - CLEAR ? 0xFF6FBF5A : 0xFFE8963C);
-        int mark = bx + Math.round(bw * (1f - CLEAR));
-        f.rect(mark, by - 3, mark + 1, by + 9, 0xFF5A3A0E);
-        levelPlate(f, bx + bw + 1, by + 11);
-    }
-
-    /** The level's number on a plate of its own, framed like the bar, so the sky never swallows it. */
-    private void levelPlate(Px f, int right, int top) {
-        String lv = String.valueOf(level + 1);
-        int bg = 0xFFCFEBB4, ink = 0xFF2E3A12;
-        int tw = PixelFont.width(lv, 1), px0 = right - tw - 6, py1 = top + 11;
-        f.rect(px0, top, right, py1, 0xFF8A5A12);
-        f.rect(px0 + 1, top + 1, right - 1, py1 - 1, bg);
-        f.rect(px0 + 1, py1 - 2, right - 1, py1 - 1, Px.scale(bg, 0.86f));
-        PixelFont.draw(f, lv, px0 + 3, top + 2, 1, ink);
-    }
-
-    /** A tiny heavy hammer for the corner, 11 by 8 pixels, from its top left corner. */
-    private static void heavyMark(Px f, int x, int y, boolean lit) {
-        if (lit) f.rect(x - 1, y - 1, x + 12, y + 9, 0xFFFFC93A);
-        f.rect(x, y, x + 11, y + 8, 0xFF2E2A28);
-        f.rect(x + 1, y + 1, x + 7, y + 5, 0xFF6A676A);
-        f.rect(x + 1, y + 1, x + 7, y + 2, 0xFF8E8A8C);
-        f.rect(x + 2, y + 1, x + 3, y + 5, 0xFFC08A3C);
-        f.rect(x + 5, y + 1, x + 6, y + 5, 0xFFC08A3C);
-        f.rect(x + 7, y + 2, x + 10, y + 4, 0xFF8A5A32);
-    }
-
-    /** A golden cube for the corner, nine pixels: a lit top, a face, a shaded side. */
-    private static void cubeMark(Px f, int x, int y) {
-        f.rect(x, y, x + 9, y + 9, 0xFF8A5A12);
-        f.rect(x + 1, y + 1, x + 8, y + 3, 0xFFFFE89A);
-        f.rect(x + 1, y + 3, x + 6, y + 8, 0xFFF2C64A);
-        f.rect(x + 6, y + 3, x + 8, y + 8, 0xFFC0902C);
-    }
-
-    /** A five-pointed star; hollow when spent. */
-    private static void star(Px f, int cx, int cy, float r, int fill, int edge, boolean full) {
-        int R = (int) Math.ceil(r) + 1;
-        for (int y = -R; y <= R; y++)
-            for (int x = -R; x <= R; x++) {
-                float d = starDist(x, y, r);
-                if (d < -1.1f) {
-                    if (full) f.set(cx + x, cy + y, Px.scale(fill, 1.08f - 0.25f * (x + y) / (2f * r)));
-                } else if (d < 0.2f) {
-                    f.set(cx + x, cy + y, edge);
-                }
-            }
-    }
-
-    /** Signed distance-like value for a star outline: negative inside. */
-    private static float starDist(float x, float y, float r) {
-        double a = Math.atan2(x, -y);
-        double seg = Math.PI * 2 / 5;
-        double m = ((a % seg) + seg) % seg - seg / 2;
-        double t = Math.abs(m) / (seg / 2);
-        double edge = r + (r * 0.48 - r) * t;
-        return (float) (Math.sqrt(x * x + y * y) - edge);
+        Crest c = crest;
+        c.level = level;
+        c.stars = stars;
+        c.cubes = cubes;
+        c.heavyShown = heavyShown;
+        c.heavyLeft = heavyLeft;
+        c.heavyOn = heavyOn && !goldOn;
+        c.goldOn = goldOn && hs == HAND || goldThrow;
+        c.won = state == CLEARED;
+        c.knocked = 1f - onPlinth();
+        c.markT = markT;
+        c.draw(f);
     }
 
     // ---- the gift in the sky ----
@@ -1235,7 +1195,8 @@ final class Game implements Physics.Listener {
                 float u = (x * ca + y * sa) / s, v = (-x * sa + y * ca) / s;
                 int c = 0;
                 if (u > 0.2f && u < 0.62f && Math.abs(v) < 0.34f) {
-                    c = (u > 0.27f && u < 0.32f) || (u > 0.5f && u < 0.55f) ? 0xFFC08A3C : 0xFF4A484E;
+                    c = (u > 0.27f && u < 0.32f) || (u > 0.5f && u < 0.55f)
+                            ? (goldGift ? 0xFFFFF0B0 : 0xFFC08A3C) : goldGift ? 0xFFE8B83A : 0xFF4A484E;
                     if (v < -0.2f) c = Px.scale(c, 1.35f);
                 } else if (u > -0.75f && u <= 0.2f && Math.abs(v) < 0.08f) {
                     c = v < 0f ? 0xFF8A5A32 : 0xFF6A4226;

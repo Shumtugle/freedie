@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.11
+- The top of the frame is a crest. In the middle a medallion with the level's number; its
+  colour is the tries at this level, ripening from green through amber to red, and a ring of
+  ten segments round it counts them, the newest flashing as it lights; with two left it
+  beats. The stars on the left wing, the outermost spent first: each flares white and
+  scatters sparks as it burns, the last one left glows. The heavy throws under them. On the
+  right wing the way through the level fills toward a flag, a spark at its edge; reached, a
+  flash runs along it, it turns green and the flag waves. The golden cubes under it catch a
+  glint now and then.
+- The golden hammer: lose the same building ten times running and the gods drop it from
+  the thunderer's cloud. Back on the street the medallion and its ring turn to gold; one
+  golden throw scatters the building whatever it hits, and the count starts again.
+- A new building starts the count of tries afresh; the game keeps it between games.
+
 ## 0.10
 - The corner, as in the game this one grows from: five stars along the top left, one burnt
   a throw, flashing when a building comes down; the golden cubes in the rack beside them;
