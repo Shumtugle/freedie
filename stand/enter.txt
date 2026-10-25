@@ -1,0 +1,29 @@
+# Into an episode from the bridge: on the eleventh building, the button pressed three times,
+# the ring turned back one screen to the first episode, a poke at it, and through the light
+# onto its first building.
+screen 1096 2560
+keep level 10
+keep best 11
+restart
+skip
+wait 2.6
+shot n0_eleventh
+down 240 325
+up 240 325
+wait 0.3
+down 240 325
+up 240 325
+wait 0.3
+down 240 325
+up 240 325
+wait 1.2
+shot n1_bridge
+drag 120 250 200 250 0.25
+wait 1.2
+shot n2_first
+down 137 329
+up 137 329
+wait 0.5
+shot n3_light
+wait 2.2
+shot n4_first_building

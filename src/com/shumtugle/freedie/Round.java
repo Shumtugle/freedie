@@ -51,6 +51,23 @@ final class Round {
         cylinder(d, x, y, z, null, -half, half, r, rgb, material);
     }
 
+    // a road cone's bands, up its half height from -1 to 1: where each ends, its colour
+    private static final float[] CONE_Y = {-0.8f, -0.12f, 0.12f, 0.36f, 0.56f, 1f};
+    private static final int[] CONE_COL = {0xF0641E, 0xF4F2EC, 0xF0641E, 0xF4F2EC, 0xF0641E};
+
+    /** A road cone on its square dark foot, banded orange and white, narrowing in steps. */
+    static void cone(DrawList d, float x, float y, float z, float[] rot, float r, float hh) {
+        float[] R = rot == null ? UPRIGHT : rot;
+        float fy = -hh * 0.9f;
+        d.box(x + R[1] * fy, y + R[4] * fy, z + R[7] * fy, r, hh * 0.1f, r, rot, 0x34302E, DrawList.PLAIN);
+        for (int k = 0; k + 1 < CONE_Y.length; k++) {
+            float mid = (CONE_Y[k] + CONE_Y[k + 1]) * 0.5f;
+            // the radius at the middle of the band: full at the foot, a quarter at the tip
+            float rr = r * (0.82f - 0.6f * (mid + 0.8f) / 1.8f);
+            cylinder(d, x, y, z, rot, CONE_Y[k] * hh, CONE_Y[k + 1] * hh, rr, CONE_COL[k], DrawList.PAINT);
+        }
+    }
+
     // a water bottle's profile, up its half height from -1 to 1: where each part ends, and its radius
     private static final float[] BOTTLE_Y = {-1f, 0.42f, 0.58f, 0.74f, 0.8f, 1f};
     private static final float[] BOTTLE_R = {1f, 0.8f, 0.56f, 0.36f, 0.42f};

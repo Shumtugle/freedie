@@ -36,8 +36,8 @@ final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6;
     static final int STARS = 5;
-    /** The last level there is yet: the end of the first run. */
-    static final int LAST = 8;
+    /** The last level there is yet: into the second episode as far as its new things go. */
+    static final int LAST = 10;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
@@ -69,6 +69,10 @@ final class Game implements Physics.Listener {
     boolean goldOn, goldSeen;
     private boolean goldThrow, goldGift;
     final Crest crest = new Crest();
+    // between episodes: a light that rises over the sky and clears onto the next one
+    static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
+    private float chapterT = -1f;
+    private boolean chapterDue;
     // the gods' sky, made once the frame's size is known
     private Sky sky;
     private int throwsMade, boltsHeard;
@@ -145,6 +149,7 @@ final class Game implements Physics.Listener {
         }
         goldOn = fails >= GOLD_AFTER;
         crest.fresh();
+        episodeRun(lv);
         level = lv;
         buildFromSky = thrown;
         host.saveInt("level", lv);
@@ -543,6 +548,10 @@ final class Game implements Physics.Listener {
                 strikeHeard(sky.boltNear);
             }
         }
+        if (chapterT >= 0f) {
+            chapterT += dt;
+            if (chapterT >= CHAPTER_RISE + CHAPTER_FADE) chapterT = -1f;
+        }
         if (fromSky) {
             backT += dt;
             if (backT >= TILT + 0.2f) fromSky = false;
@@ -555,6 +564,7 @@ final class Game implements Physics.Listener {
             case PLAY:
                 if (1f - onPlinth() >= CLEAR) {
                     if (!blasted && throwsMade <= 1) host.sound(Synth.THUNDER, 1.1f, 1f);
+                    episodeWin();
                     setState(CLEARED);
                 } else if (stars == 0 && hs == HAND && !aiming && (phys.settled() || stateTime > 3f)) {
                     setState(LOST);
@@ -579,8 +589,14 @@ final class Game implements Physics.Listener {
                 if (stateTime >= TILT) setState(SKY_HOLD);
                 break;
             case SKY_HOLD:
-                if (stateTime >= holdFor) {
+                // an episode won: the light rises first
+                if (stateTime >= holdFor && chapterDue && chapterT < 0f) {
+                    chapterT = 0f;
+                    host.sound(Synth.WHOOSH, 0.7f, 0.7f);
+                }
+                if (stateTime >= holdFor && (chapterT < 0f || chapterT >= CHAPTER_RISE)) {
                     // the gods have thrown the blocks: the next building falls into place as the eye comes down
+                    chapterDue = false;
                     start(Math.min(LAST, nextLevel), true);
                     fromSky = true;
                     backT = 0f;
@@ -698,6 +714,50 @@ final class Game implements Physics.Listener {
         }
     }
 
+    // ---- episodes ----
+
+    /**
+     * A run through an episode: its stars count when the whole episode is played from its first
+     * level on, one level after another. Kept: epRun, the stars left so far; epRunOk, whether
+     * the run is whole; for each episode ep<i>done and ep<i>stars, its best whole run.
+     */
+    private void episodeRun(int lv) {
+        int plate = lv + 1;
+        if (Episode.first(plate)) {
+            host.saveInt("epRun", 0);
+            host.saveInt("epRunOk", 1);
+        } else if (lv != level && lv != level + 1) host.saveInt("epRunOk", 0);
+    }
+
+    /** A building down: its stars go to the run; the last of an episode closes it, and the light comes. */
+    private void episodeWin() {
+        int plate = level + 1, e = Episode.of(plate);
+        int run = host.loadInt("epRun") + Math.max(0, stars);
+        host.saveInt("epRun", run);
+        if (!Episode.last(plate)) return;
+        host.saveInt("ep" + e + "done", 1);
+        if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
+        if (Episode.ENDS[e] == Episode.NEW) chapterDue = true;
+    }
+
+    /** Into an episode from the bridge: its first building, through the light. */
+    void enter(int lv) {
+        fromSky = false;
+        start(Math.max(0, Math.min(LAST, lv)), false);
+        chapterT = CHAPTER_RISE;
+    }
+
+    /** How white the light between episodes makes the frame, 0 to 1. */
+    float light() {
+        if (chapterT < 0f) return 0f;
+        if (chapterT < CHAPTER_RISE) {
+            float u = chapterT / CHAPTER_RISE;
+            return u * u;
+        }
+        float u = Math.min(1f, (chapterT - CHAPTER_RISE) / CHAPTER_FADE);
+        return (1f - u) * (1f - u);
+    }
+
     /** What is left goes in a puff, and the building rises again. */
     private void vanish() {
         for (Body b : pieces) {
@@ -784,7 +844,8 @@ final class Game implements Physics.Listener {
         // water bottles burst at a hard blow, or a hard landing
         if (a.material == Body.WATER && (speed > 4.2f || hammerHit && speed > 2.4f)) burst(a);
         if (b != null && b.material == Body.WATER && (speed > 4.2f || hammerHit && speed > 2.4f)) burst(b);
-        boolean plastic = a.material == Body.WATER || (b != null && b.material == Body.WATER);
+        boolean plastic = a.material == Body.WATER || a.material == Body.CONE
+                || (b != null && (b.material == Body.WATER || b.material == Body.CONE));
         float gain = Math.min(1f, (speed - 1f) / 5f);
         if (hammerHit) gain = Math.min(1.3f, gain * 1.4f + 0.2f);
         if (b == null || other == null) {
@@ -1018,6 +1079,10 @@ final class Game implements Physics.Listener {
         turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
         if (b.material == Body.WATER) {
             Round.bottle(d, b.px, b.py + drop, b.pz, turn, b.hx * scale, b.hy * scale);
+            return;
+        }
+        if (b.material == Body.CONE) {
+            Round.cone(d, b.px, b.py + drop, b.pz, turn, b.hx * scale, b.hy * scale);
             return;
         }
         int mat = b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;

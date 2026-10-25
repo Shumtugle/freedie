@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.11";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.12";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -191,7 +191,8 @@ final class World {
         float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f, 0.1f, 500f);
         game.frame(d);
-        d.flash = flashOut / FLASH_OUT;
+        // the flash off the opening, or the light between two episodes
+        d.flash = Math.max(flashOut / FLASH_OUT, game.light());
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
         if (bridge != null) {
             // the world fades as the room comes up, and is not drawn once it is up
@@ -280,10 +281,13 @@ final class World {
         tvOn = 0f;
     }
 
-    /** A screen with its cube, thrown at: into its episode, through the light. No levels yet: the street. */
+    /** A screen with its cube, thrown at: into its episode, through the light; the crossroads not yet. */
     void bridgeEnter(int which) {
         bridge = null;
-        flashOut = FLASH_OUT;
+        if (which < Episode.COUNT) {
+            game.enter(Episode.FIRST[which] - 1);
+            level = game.level;
+        } else flashOut = FLASH_OUT;
     }
 
     /** A game's screen, poked: the game is played over the bridge, which waits behind it. */

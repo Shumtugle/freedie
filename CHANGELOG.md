@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12
+- Episodes: the levels are played as the game's episodes, the first from 1 to 9, the second
+  from 10 to 20. Down the last building of an episode and, up among the gods, a light rises
+  and whitens the sky, and the next episode opens out of it. A run through an episode from
+  its first building on keeps its stars; the bridge knows which episodes are done.
+- The bridge takes you into an episode: a screen with its cube, poked, and the game goes
+  through the light onto that episode's first building.
+- The second episode opens with a road cone on the tenth building: a dark square foot,
+  orange and white bands narrowing upward, a plastic knock. The game goes as far as the
+  eleventh building for now; the next ones bring tyres, a drum and a mattress, suitcases,
+  sandbags and balls, one at a time.
+
 ## 0.11
 - The top of the frame is a crest. In the middle a medallion with the level's number; its
   colour is the tries at this level, ripening from green through amber to red, and a ring of

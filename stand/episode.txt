@@ -1,0 +1,28 @@
+# The last building of the first episode, felled with the golden hammer; up to the gods,
+# then the light between episodes rises over the sky, and the second episode opens on the
+# tenth building, with a road cone in it.
+screen 1096 2560
+keep level 8
+keep fails 10
+keep best 9
+restart
+skip
+wait 2.6
+shot e0_ninth
+down 200 520
+wait 1.0
+up 200 520
+wait 1.0
+shot e1_down
+wait 5.2
+shot e2_gods
+wait 3.0
+shot e3_light
+wait 0.25
+shot e4_white
+wait 0.25
+shot e5_whiter
+wait 0.35
+shot e6_clear
+wait 2.6
+shot e7_tenth
