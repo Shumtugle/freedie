@@ -77,6 +77,17 @@ final class Square {
         }
     }
 
+    private static DrawList scene;
+
+    /** The square, built once and kept. */
+    static DrawList scene() {
+        if (scene == null) {
+            scene = new DrawList();
+            build(scene);
+        }
+        return scene;
+    }
+
     /** Everything that stands still, into the list. */
     static void build(DrawList d) {
         // the ground: pavement everywhere, the square on it, the roads with their curbs

@@ -6,8 +6,8 @@ import java.util.Random;
  * The dispatcher's bridge: a dark round room, the player in the middle, a ring of screens
  * round him, one for each episode, one for the crossroads of five cubes and one for each of
  * the two games that open after the last episode. A swipe turns the ring, with a run-on and
- * a spring that settles it on the nearest screen with a click. A tap throws the hammer at
- * what is under the finger.
+ * a spring that settles it on the nearest screen with a click. A tap pokes what is under
+ * the finger with the hammer, held like a hand: out from the lower right, a knock, and back.
  *
  * The ring is seen from inside: the rails it hangs on and the seams of the wall behind it
  * bow away above and below toward the sides, and the outer edge of a screen turned away is
@@ -38,7 +38,9 @@ final class Bridge {
     static final int ALLEY = 0, GOLEM = 1, SKIP = 2, HOME = 3;
     private static final int AT_SCREEN = 0, AT_SLOT = 1, AT_CONSOLE = 2;
     private static final int SET = 0, SCOPE = 1, MONITOR = 2;
-    static final float OPEN_T = 0.3f, THROW_T = 0.42f, INSERT_T = 0.55f;
+    static final float OPEN_T = 0.3f, INSERT_T = 0.55f;
+    // the poke: out to what was tapped, the knock as it gets there, and back to the hand
+    static final float POKE_OUT = 0.11f, POKE_T = 0.27f;
     static final float LEVER_T = 0.12f, OFF_T = 0.42f, TV_ON_T = 0.3f;
     private static final float CHARGE_T = 0.45f, TEAR_T = 0.1f;
 
@@ -94,7 +96,7 @@ final class Bridge {
         pos = current();
         target = current();
         for (int i = 0; i < SCREENS; i++) {
-            slot[i] = i == 0 || host.loadInt("slot" + i) == 1;
+            slot[i] = host.loadInt("slot" + i) == 1;
             if (i < Episode.COUNT) {
                 stars[i] = host.loadInt("ep" + i + "stars");
                 won[i] = host.loadInt("ep" + i + "cubes");
@@ -205,12 +207,10 @@ final class Bridge {
         shakeT += dt;
         if (thudAt >= 0 && (thudT += dt) > 0.4f) thudAt = -1;
         if (aimKind >= 0) {
+            float was = aimT;
             aimT += dt;
-            if (aimT >= THROW_T) {
-                int k = aimKind, which = aimWhich;
-                aimKind = -1;
-                arrive(k, which);
-            }
+            if (was < POKE_OUT && aimT >= POKE_OUT) arrive(aimKind, aimWhich);
+            if (aimT >= POKE_T) aimKind = -1;
         }
         if (inserting >= 0) {
             insertT += dt;
@@ -360,7 +360,7 @@ final class Bridge {
         aimT = 0f;
         aimX = x;
         aimY = y;
-        host.sound(Synth.WHOOSH, 0.6f, 1.2f);
+        host.sound(Synth.WHOOSH, 0.35f, 1.8f);
     }
 
     /** How much taller things are drawn at this column: the bow of the drum. */
@@ -444,13 +444,24 @@ final class Bridge {
             int s = Math.round(9 + 3 * e);
             cube(f, Math.round(x - s * 0.5f), Math.round(y - s * 0.5f), s);
         }
-        // the hammer in flight to what was tapped: from the hand at the lower right, turning
-        // end over end, smaller as it goes away
+        // the hammer poking what was tapped, held like a hand: in from below the lower right
+        // corner, head first, its face meeting the spot; a jolt there; back out of sight
         if (aimKind >= 0) {
-            float u = Math.min(1f, aimT / THROW_T), e = u * (2f - u);
-            float x0 = W - 20, y0 = h - 40;
-            float x = x0 + (aimX - x0) * e, y = y0 + (aimY - y0) * e - (float) Math.sin(u * Math.PI) * 46f;
-            hammer(f, x, y, 2.1f + 5.2f * u, 260f - 205f * e);
+            float out = aimT < POKE_OUT ? aimT / POKE_OUT : 1f - (aimT - POKE_OUT) / (POKE_T - POKE_OUT);
+            float e = Math.max(0f, out) * (2f - Math.max(0f, out));
+            float x0 = W + 26f, y0 = h + 40f;
+            float ang = (float) Math.atan2(-(aimY - y0), aimX - x0);
+            float ppm = 230f - 90f * e;
+            // the head's face, not the middle of the hammer, comes to the spot
+            float reach = 0.41f * ppm;
+            float ex = aimX - (float) Math.cos(ang) * reach, ey = aimY + (float) Math.sin(ang) * reach;
+            float x = x0 + (ex - x0) * e, y = y0 + (ey - y0) * e;
+            // a little kick back at the knock
+            if (aimT > POKE_OUT && aimT < POKE_OUT + 0.05f) {
+                x += (float) Math.cos(ang) * 3f;
+                y -= (float) Math.sin(ang) * 3f;
+            }
+            hammer(f, x, y, ang, ppm);
         }
         // the jolt of a cube going home: down three pixels and back
         if (shakeT < 0.2f) {

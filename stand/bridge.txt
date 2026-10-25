@@ -1,5 +1,5 @@
-# The bridge: three presses of the red button open it; the ring turned by a swipe; a throw
-# at the first screen (open from the start) goes back to the street through the light; the
+# The bridge: three presses of the red button open it; the ring turned by a swipe; a poke
+# at the first screen (its cube was the gift of the first meeting) goes back to the street through the light; the
 # second time, a golden cube kept from before goes into the second slot; the lever HOME.
 screen 1096 2560
 skip
@@ -28,6 +28,10 @@ drag 200 250 120 250 0.25
 wait 1.2
 down 137 329
 up 137 329
+wait 0.08
+shot b3a_poke
+wait 0.06
+shot b3b_knock
 wait 1.0
 shot b4_slot
 down 137 252

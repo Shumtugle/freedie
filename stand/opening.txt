@@ -1,0 +1,25 @@
+# Every game after the first: the name on the square. The game is started once to the
+# end of the first meeting, then again.
+screen 1096 2560
+wait 7.0
+restart
+wait 0.05
+shot o0_high
+wait 1.3
+shot o1_letters
+wait 1.4
+shot o2_down
+wait 0.6
+shot o3_held
+wait 0.3
+shot o4_throw
+wait 0.3
+shot o5_blow
+wait 0.5
+shot o6_pieces
+wait 0.6
+shot o7_glide
+wait 0.45
+shot o8_light
+wait 0.4
+shot o9_game

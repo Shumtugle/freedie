@@ -241,7 +241,7 @@ final class Frida {
                 // the hammer goes on where it was swung, toward the eye, and drops
                 b.vx = (rnd.nextFloat() - 0.5f) * 0.6f;
                 b.vy = 0.8f;
-                b.vz = -2.5f;
+                b.vz = -1.2f;
             }
             b.wx = (rnd.nextFloat() - 0.5f) * 7f;
             b.wy = (rnd.nextFloat() - 0.5f) * 7f;

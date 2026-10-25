@@ -6,14 +6,15 @@ package com.shumtugle.freedie;
  * calls, always from one thread: touch() for each queued touch, update(dt), then draw().
  * Coordinates of touches are frame pixels, W across.
  *
- * It opens with Freedie (see Intro); then, for now, the street under a low evening sun:
+ * The first game opens with Freedie herself and her gift (see Intro); every game after with
+ * the name on the square (see Opening). Then, for now, the street under a low evening sun:
  * houses, palms, the sea beyond the promenade, cars parked and cars coming; on the plinth a
  * stack of blocks with a golden cube turning on top. A finger dragged across turns the eye;
  * the red button on the lamp post rings the dispatcher, and three presses open the bridge.
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.5";     // shown on screen; keep in step with versionName
+    static final String VERSION = "0.6";     // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -59,13 +60,14 @@ final class World {
     private float callAt = -9f;
     private float tvOn = -1f;
 
-    private Intro intro;
+    private Prelude intro;
     private boolean swallow;                  // the touch that skipped the opening, until it lifts
     private float flashOut;                   // the flash fading off the game, seconds left
 
     World(Host host) {
         this.host = host;
-        intro = new Intro(host);
+        // the first meeting once, and the gift that comes with it; the usual opening after
+        intro = host.loadInt("met") == 1 ? new Opening(host) : new Intro(host);
         cubes = host.loadInt("cubes");
     }
 
@@ -124,7 +126,12 @@ final class World {
         traffic.update(dt);
         if (intro != null) {
             intro.update(dt);
-            if (intro.peaked) {
+            if (intro.done()) {
+                if (intro instanceof Intro) {
+                    // her heart is the first cube, and it is in the first slot already
+                    host.saveInt("met", 1);
+                    host.saveInt("slot0", 1);
+                }
                 intro = null;
                 flashOut = FLASH_OUT;
             }

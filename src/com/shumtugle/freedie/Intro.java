@@ -7,10 +7,11 @@ import java.util.Random;
  * the eye flies in an arc over the seaside town down onto a square, cars going by, people
  * walking, and stops before Freedie, who looks up; the town goes dark, light left on her alone; she swings her golden
  * hammer straight at the eye, the glass cracks, and she herself breaks and falls apart;
- * on the black the name burns in gold; a flash, and the game. A touch at any moment goes
- * straight to the flash.
+ * out of what is left of her rises her heart, a golden cube, her gift: the first of the cubes
+ * the game is played for; on the black the name burns in gold; a flash, and the game. Played
+ * once, at the first meeting. A touch at any moment goes straight to the flash.
  */
-final class Intro {
+final class Intro implements Prelude {
     static final float FLY_END = 2.5f, LOOK_END = 3.0f, DARK_END = 3.6f, RAISE_END = 3.95f, HIT = 4.25f;
     static final float NAME = 5.2f, FLASH = 6.2f, PEAK = 6.45f;
     static final String TITLE = "FREEDIE";
@@ -26,8 +27,6 @@ final class Intro {
     private final World.Host host;
     private final Frida frida = new Frida();
     private final Square square = new Square();
-    private final DrawList scene = new DrawList();      // the square, built once
-    private boolean built;
     private final Random rnd = new Random(23);
     float t;
     boolean peaked;                           // the flash is at its whitest: the game takes over
@@ -76,15 +75,22 @@ final class Intro {
         if (host != null) host.sound(id, gain, rate);
     }
 
+    @Override
+    public boolean done() {
+        return peaked;
+    }
+
     /** A touch: straight to the flash. */
-    void skip() {
+    @Override
+    public void skip() {
         if (t < FLASH) {
             t = FLASH + 0.08f;
             sound(Synth.WHOOSH, 0.5f, 1.5f);
         }
     }
 
-    void update(float dt) {
+    @Override
+    public void update(float dt) {
         float was = t;
         t += dt;
         if (crossed(was, 0f)) sound(Synth.WIND, 0.8f, 1f);
@@ -94,6 +100,7 @@ final class Intro {
             sound(Synth.GROUND, 1f, 0.7f);
             sound(Synth.GLASS, 0.9f, 0.8f);
         }
+        if (crossed(was, HIT + 0.6f)) sound(Synth.CHIME, 0.5f, 1.5f);
         if (crossed(was, NAME)) sound(Synth.CHIME, 0.9f, 1f);
         if (crossed(was, FLASH)) sound(Synth.WHOOSH, 0.5f, 1.5f);
         if (t >= PEAK) peaked = true;
@@ -147,8 +154,8 @@ final class Intro {
 
     private final float[] eye = new float[3], aim = new float[3];
 
-    /** The eye, the light and the dark for this moment; the world has set the rest. */
-    void frame(DrawList d, int w) {
+    @Override
+    public void frame(DrawList d, int w) {
         float u = ease(span(t, 0f, FLY_END));
         bezier(P0, P1, P2, u, eye);
         bezier(T0, T1, T2, u, aim);
@@ -181,13 +188,10 @@ final class Intro {
         if (t >= FLASH) d.flash = Math.min(1f, (t - FLASH) / (PEAK - FLASH));
     }
 
-    /** Everything of hers: herself, or what is left of her; the name. */
-    void draw(DrawList d) {
-        if (!built) {
-            Square.build(scene);
-            built = true;
-        }
-        d.append(scene);
+    /** Everything of hers: herself, or what is left of her, her heart; the name. */
+    @Override
+    public void draw(DrawList d) {
+        d.append(Square.scene());
         square.life(d, t, eye[0], eye[1], eye[2]);
         if (frida.broken) frida.drawBroken(d);
         else {
@@ -202,10 +206,37 @@ final class Intro {
                 d.box(dotX[i], dotY[i], NAME_Z, s, s, s, null, Street.mix(0xFFF4C8, 0xF2C230, age / 0.3f), DrawList.GLOW);
             else d.box(dotX[i], dotY[i], NAME_Z, s, s, s * 1.6f, null, 0xF2C230, DrawList.GOLD);
         }
+        heart(d);
+    }
+
+    // her heart: where it sits in her chest, and where it comes to rest under the name
+    private static final float[] HEART0 = {FX, 2.75f, FZ - 0.2f}, HEART1 = {FX, 4.6f, FZ - 1f}, HEART2 = {FX, NAME_Y - 2.3f, NAME_Z - 6.5f};
+    private final float[] heartAt = new float[3], heartTurn = new float[9];
+
+    /**
+     * The gift: from the blow on, a golden cube that was her heart rises out of the falling
+     * pieces, turning slowly, glowing on its own in the dark, and comes to rest under her name.
+     */
+    private void heart(DrawList d) {
+        if (t < HIT) return;
+        float u = ease(span(t, HIT + 0.15f, NAME + 0.4f));
+        bezier(HEART0, HEART1, HEART2, u, heartAt);
+        heartAt[1] += 0.04f * (float) Math.sin(t * 3f);
+        float a = t * 1.3f, c = (float) Math.cos(a), s = (float) Math.sin(a), tilt = 0.35f;
+        float ct = (float) Math.cos(tilt), st = (float) Math.sin(tilt);
+        // turning about the upright, leaning toward the eye
+        heartTurn[0] = c; heartTurn[1] = s * st; heartTurn[2] = s * ct;
+        heartTurn[3] = 0f; heartTurn[4] = ct; heartTurn[5] = -st;
+        heartTurn[6] = -s; heartTurn[7] = c * st; heartTurn[8] = c * ct;
+        float breathe = 0.85f + 0.15f * (float) Math.sin(t * 4f);
+        int gold = Street.mix(0x8A5E10, 0xFFD24A, breathe);
+        float size = 0.14f + 0.2f * ease(span(t, HIT, HIT + 0.4f));
+        d.box(heartAt[0], heartAt[1], heartAt[2], size, size, size, heartTurn, gold, DrawList.GLOW);
     }
 
     /** The flat layer: the cracked glass, from the blow until the name. */
-    void flat(Px f, DrawList d) {
+    @Override
+    public void flat(Px f, DrawList d) {
         if (t < HIT || t > NAME) return;
         if (crackN == 0) cracks(d);
         float a = t < HIT + 0.3f ? 1f : Math.max(0f, 1f - (t - HIT - 0.3f) / (NAME - HIT - 0.3f));

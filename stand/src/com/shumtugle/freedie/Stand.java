@@ -17,7 +17,8 @@ import javax.imageio.ImageIO;
  * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
  * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays) ·
  * sounds (every sound of the synthesizer in turn, each after the last has died away) ·
- * keep KEY VALUE (as kept by an earlier game) · back (the phone's back key).
+ * keep KEY VALUE (as kept by an earlier game) · back (the phone's back key) · restart (the
+ * game started again, with what it kept).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -25,7 +26,7 @@ public final class Stand implements World.Host {
     private static final float DT = 1f / 60f;
     private final java.util.ArrayList<float[]> sounds = new java.util.ArrayList<float[]>();
     private final java.util.HashMap<String, Integer> kept = new java.util.HashMap<String, Integer>();
-    private final World world = new World(this);
+    private World world = new World(this);
     private final DrawList list = new DrawList();
     private final File out;
     private float time;
@@ -169,6 +170,10 @@ public final class Stand implements World.Host {
             // keep KEY VALUE: as if a game before had kept it
             saveInt(p[1], Integer.parseInt(p[2]));
             if (p[1].equals("cubes")) world.cubes = Integer.parseInt(p[2]);
+        } else if (c.equals("restart")) {
+            // the game started again, with what it kept
+            world = new World(this);
+            world.resize(1096, 2560);
         } else if (c.equals("back")) {
             world.touch(World.BACK, 0f, 0f);
             step();

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6
+- The first game opens with Freedie, once: out of what is left of her after the blow rises
+  her heart, a golden cube, turning and glowing in the dark, and comes to rest under her
+  name. It is her gift, the first cube, and it is in the first slot of the bridge already.
+- Every game after opens with the name on the square: the eye comes down over the town,
+  the blocks of FREEDIE come down out of the sky onto a long pedestal letter by letter, the
+  hammer comes up in the hand and flies, the name flies to pieces, the eye glides down onto
+  them, and a burst of light carries it into the game. A touch goes straight on.
+- On the bridge the hammer is held like a hand: a tap pokes what is under the finger, out
+  from the lower right, a knock, and back.
+- The desktop stand can start the game again with what it kept (`restart`).
+
 ## 0.5
 - The red button calls the dispatcher: each press rings, and three in a row open the
   bridge, the same room as in the game this one grows from: a ring of old sets, one for
