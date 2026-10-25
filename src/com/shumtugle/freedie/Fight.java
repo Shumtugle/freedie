@@ -518,9 +518,9 @@ final class Fight {
     }
 
     // ---- the marks over the frame ----
-    // Through the red and the fire the eye needs help: brackets round her weak points that
-    // are still whole, brackets round each car in her hand or in the air (red when the ring
-    // has it), the ring itself in the diamond's colours, and a burst where a blow lands.
+    // Through the red and the fire the eye needs help: brackets round each car in her hand or
+    // in the air (red when the ring has it), the ring itself in the diamond's colours, and a
+    // burst where a blow lands. Her weak points show by their own throbbing glow.
 
     private static final int POPS = 6, CAR_POP = 0, WEAK_POP = 1, BODY_POP = 2;
     private final float[] popX = new float[POPS], popY = new float[POPS], popZ = new float[POPS];
@@ -560,23 +560,6 @@ final class Fight {
         if (end >= 0f) {
             pops(f);
             return;
-        }
-        float beat = 0.5f + 0.5f * (float) Math.sin(giant.time * 7f);
-        int cyan = Px.mix(0xFF7FE6FF, 0xFFFFFFFF, beat);
-        // her weak points, while whole
-        if (!giant.down) {
-            if (giant.kneeL > 0) {
-                giant.knee(false, w3);
-                bracket(f, w3, Giant.KNEE_HIT * 0.7f, cyan, 1);
-            }
-            if (giant.kneeR > 0) {
-                giant.knee(true, w3);
-                bracket(f, w3, Giant.KNEE_HIT * 0.7f, cyan, 1);
-            }
-            if (giant.head > 0) {
-                giant.headCenter(w3);
-                bracket(f, w3, Giant.HEAD_HIT * 0.8f, cyan, 1);
-            }
         }
         // the cars: white, red when the ring has one
         int lock = aiming ? locked(ax, ay) : -1;

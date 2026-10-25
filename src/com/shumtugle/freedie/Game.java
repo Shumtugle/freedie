@@ -345,6 +345,12 @@ final class Game implements Physics.Listener {
         return winSky < 0.9f ? winSky / 0.9f : Math.max(0f, 1f - (winSky - 0.9f) / 1.3f);
     }
 
+    /** Waking after a fight lost: the street blurred at first, then clear, in frame pixels. */
+    float blur() {
+        if (wake < 0f) return 0f;
+        return Math.max(0f, 1f - wake / 1.6f) * 7f;
+    }
+
     /** The street's jolt this frame, frame pixels across and up. */
     void jolt(float[] out) {
         if (fight != null && state == FIGHT) fight.jolt(out);

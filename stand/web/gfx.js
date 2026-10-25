@@ -214,6 +214,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform1f(u(blitP, 'uRed'), frame.red || 0);
   gl.uniform1f(u(blitP, 'uGold'), frame.gold || 0);
   gl.uniform1f(u(blitP, 'uTime'), frame.time || 0);
+  gl.uniform1f(u(blitP, 'uBlur'), frame.blur || 0);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

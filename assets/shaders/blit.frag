@@ -15,6 +15,7 @@ uniform float uTube;      // the set coming on, 0 to 1; below 0 it is on
 uniform float uRed;       // how far the world is seen red, 0 to 1
 uniform float uGold;      // how far it is seen gold
 uniform float uTime;
+uniform float uBlur;      // out of focus by so many frame pixels, waking from the dark
 
 out vec4 outColor;
 
@@ -28,6 +29,20 @@ void main() {
         if (uv.y < 0.0 || uv.y > 1.0) { outColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
     }
     vec4 sc = texture(uScene, uv);
+    if (uBlur > 0.05) {
+        // a soft disc of the frame round the pixel, as eyes not yet in focus see it
+        vec2 px = uBlur / vec2(textureSize(uScene, 0));
+        vec3 sum = vec3(0.0);
+        float n = 0.0;
+        for (int j = -3; j <= 3; j++)
+            for (int i = -3; i <= 3; i++) {
+                vec2 o = vec2(float(i), float(j)) / 3.0;
+                if (dot(o, o) > 1.0) continue;
+                sum += texture(uScene, uv + o * px).rgb;
+                n += 1.0;
+            }
+        sc.rgb = sum / n;
+    }
     vec3 scene = sc.rgb;
     // what glows of her own (her eyes, her knees), and the diamond hammer, keep their colours through it all
     if ((uRed > 0.0 || uGold > 0.0) && sc.a > 0.375) {

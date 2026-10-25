@@ -45,6 +45,7 @@ final class DrawList {
     // the fight's world: how far it is seen red and black (what burns, in golden fire), and
     // how far gold as it ends
     float red, gold;
+    float blur;                                // the frame out of focus by so many of its pixels, waking
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -222,7 +223,7 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
-        s.append(",\"red\":").append(red).append(",\"gold\":").append(gold);
+        s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
         s.append(",\"count\":").append(count).append(",\"boxes\":[");

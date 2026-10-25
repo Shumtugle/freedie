@@ -4,8 +4,8 @@ import java.util.Random;
 
 /**
  * The dispatcher's bridge: a dark round room, the player in the middle, a ring of screens
- * round him, one for each episode, one for the crossroads of five cubes and one for each of
- * the two games that open after the last episode. A swipe turns the ring, with a run-on and
+ * round him, one for each episode, one for the crossroads of five cubes, one for the game
+ * of the islands and one for the fight with Freedie herself. A swipe turns the ring, with a run-on and
  * a spring that settles it on the nearest screen with a click. A tap pokes what is under
  * the finger with the hammer, held like a hand: out from the lower right, a knock, and back.
  *
@@ -15,7 +15,8 @@ import java.util.Random;
  * middle lights the screen in front; the more slots hold a cube, the warmer the room.
  *
  * Screens take after their world: wooden color sets for the street, round green radar
- * scopes for the sea, black and white monitors for the crossroads and the games. A screen
+ * scopes for the sea, black and white monitors for the crossroads and the games; on the
+ * fight's monitor she comes up a grey street in leaps, the only colour her golden fire. A screen
  * whose episode has been reached shows a still of a level being played; the episode being
  * played shivers like a tube on air; those still ahead are dead grey glass and answer a
  * throw with snow and the busy tone. On the plate under each: the levels, the best stars,
@@ -25,9 +26,8 @@ import java.util.Random;
  * then on a throw at it goes to the episode's first level, as often as the player likes. The
  * first episode's slot holds a cube from the start. A cube goes in once and never comes out.
  *
- * On the console: the alley, the golem and the stones on the water, each a black and white
- * monitor that answers only where the game is (the first two on the street, the last at
- * sea); a dial that shows the whole ring from above; the HOME lever, back to the level being
+ * On the console: the alley and the stones on the water, each a black and white monitor
+ * that answers only where the game is (the first on the street, the second at sea); a dial that shows the whole ring from above; the HOME lever, back to the level being
  * played, whose number glows in the tubes beside it. Leaving, the room goes out like a set
  * switched off.
  *
@@ -162,9 +162,8 @@ final class Bridge {
     boolean reached(int i) {
         if (i < Episode.COUNT) return Episode.FIRST[i] <= w.best();
         if (i == HUB) return alleyDone;
-        // the first game is lit from the start, to be seen; it opens with a cube, as the rest
-        if (i == GAME_A) return true;
-        return finale;
+        // the games are lit from the start, to be seen; they open with a cube, as the rest
+        return true;
     }
 
     boolean open(int i) {
@@ -308,9 +307,11 @@ final class Bridge {
             return;
         }
         if (which == GAME_B) {
-            // the second game is not wired in yet: the screen only snows
-            snow[which] = 1f;
-            host.sound(Synth.BUSY, 0.7f, 1f);
+            // the fight: out of the room, straight onto the red street
+            flash[which] = 1f;
+            host.sound(Synth.CLANG, 0.7f, 1f);
+            host.buzz(30);
+            w.bridgeFight();
             return;
         }
         flash[which] = 1f;
@@ -403,7 +404,9 @@ final class Bridge {
     static float[] consoleRect(int k, int h) {
         int W = World.W;
         if (k == HOME) return new float[]{W * 0.5f - 46, h - 92, W * 0.5f + 46, h - 34};
-        float cx = W * (0.2f + 0.3f * k);
+        // the fight has its own screen on the ring now: no monitor for it here
+        if (k == GOLEM) return new float[]{-99f, -99f, -98f, -98f};
+        float cx = W * (k == ALLEY ? 0.3f : 0.7f);
         return new float[]{cx - 36, h - 172, cx + 36, h - 116};
     }
 
@@ -784,7 +787,7 @@ final class Bridge {
             gy1 = CH - 18;
         }
         int gw = gx1 - gx0, gh = gy1 - gy0;
-        boolean lit = reached(i) && !(i == GAME_B && !finale);
+        boolean lit = reached(i);
         boolean cur = i < Episode.COUNT && i == current();
         float bright = !lit ? 0f : open(i) ? 1f : 0.72f;
         if (cur) bright *= 0.94f + 0.06f * (float) Math.sin(t * 47f) * (float) Math.sin(t * 3.1f);
@@ -900,6 +903,7 @@ final class Bridge {
             return on ? 0xFFE6ECEE : 0xFF23282C;
         }
         if (i == GAME_A) return hopsPixel(x, y);
+        if (i == GAME_B) return fightPixel(x, y);
         // the test card: a grid, a circle, a ramp of greys
         float r = (float) Math.sqrt(x * x + y * y);
         if (Math.abs(r - 0.32f) < 0.02f) return 0xFFE6ECEE;
@@ -928,6 +932,52 @@ final class Bridge {
                 if (Math.abs(ox) < hw && Math.abs(oy) < hh) return oy < -hh * 0.3f ? 0xFFDCE2E6 : 0xFF9AA2A8;
                 if (Math.abs(ox) < hw * 0.8f && oy >= hh && oy < hh + 0.3f / d) return 0xFF41474D;
             }
+        }
+        return c;
+    }
+
+    /**
+     * The fight: a grey street going away between dark houses, and up it Freedie coming in
+     * leaps, a heap of blocks in golden fire with two hot eyes; now and then a car comes
+     * tumbling out of her raised hand at the glass.
+     */
+    private int fightPixel(float x, float y) {
+        float hy = -0.12f;
+        int c;
+        if (y < hy) c = Px.mix(0xFF2A2E32, 0xFF15181B, Math.min(1f, (hy - y) * 3f));
+        else {
+            // the road narrowing to the far end, the houses either side
+            float k = (y - hy) / 0.62f, half = 0.06f + k * 0.55f;
+            c = Math.abs(x) < half ? Px.mix(0xFF2E3338, 0xFF4A5056, k) : 0xFF1B1E21;
+            if (Math.abs(x) < 0.012f + k * 0.02f && ((int) ((k * 9f + t * 2f) % 2f)) == 0) c = 0xFF8A9298;
+        }
+        if (y < hy && Math.abs(x) > 0.09f) {
+            // windows in the house fronts
+            boolean win = ((int) ((x + 2f) * 22f) & 1) == 0 && ((int) ((y + 2f) * 18f) & 1) == 0;
+            c = win ? 0xFF3A4046 : 0xFF202428;
+        }
+        // she leaps every two seconds: up and a little nearer, then down with a jolt
+        float ph = (t * 0.5f) % 1f, air = ph < 0.5f ? (float) Math.sin(ph * 2f * Math.PI) * 0.09f : 0f;
+        float s = 1.5f + 0.5f * ((t * 0.5f) % 4f) / 4f;
+        float fy0 = hy + 0.15f - air;
+        float lx = x / s, ly = (y - fy0) / s;
+        boolean body = (Math.abs(lx) < 0.07f && ly > -0.2f && ly < -0.04f)            // the dress and chest
+                || (Math.abs(lx) < 0.05f && ly > -0.27f && ly <= -0.2f)                 // the head
+                || (Math.abs(Math.abs(lx) - 0.1f) < 0.035f && ly > -0.2f && ly < -0.06f) // the arms
+                || (Math.abs(Math.abs(lx) - 0.035f) < 0.022f && ly >= -0.04f && ly < 0f); // the legs
+        if (body) {
+            // golden fire, flickering up her
+            float fl = 0.5f + 0.5f * (float) Math.sin(ly * 60f + t * 11f);
+            c = Px.mix(0xFFB8501A, 0xFFFFD86A, fl * 0.7f + 0.3f * Math.max(0f, -ly * 3f));
+            if (Math.abs(Math.abs(lx) - 0.022f) < 0.01f && Math.abs(ly + 0.235f) < 0.008f) c = 0xFFFFFFF0;
+        }
+        // a car tumbling at the glass, growing as it comes
+        float cp = (t * 0.5f + 0.25f) % 2f;
+        if (cp < 1f) {
+            float cx = -0.12f + cp * 0.1f, cy = hy - 0.18f + cp * cp * 0.3f, cs = 0.03f + cp * cp * 0.16f, a = cp * 5f;
+            float rx = ((x - cx) * (float) Math.cos(a) + (y - cy) * (float) Math.sin(a)) / cs;
+            float ry = (-(x - cx) * (float) Math.sin(a) + (y - cy) * (float) Math.cos(a)) / cs;
+            if (Math.abs(rx) < 1f && Math.abs(ry) < 0.45f) c = ry < -0.1f ? 0xFF9AA2A8 : 0xFFDCE2E6;
         }
         return c;
     }
@@ -1123,6 +1173,7 @@ final class Bridge {
             f.rect(x, h - 8, x + 2, h - 6, 0xFF2E353C);
         }
         for (int k = 0; k < 3; k++) {
+            if (k == GOLEM) continue;
             float[] r = consoleRect(k, h);
             int x0 = Math.round(r[0]), y0 = Math.round(r[1]), x1 = Math.round(r[2]), y1 = Math.round(r[3]);
             boolean on = answers(k);
@@ -1135,8 +1186,7 @@ final class Bridge {
                 f.rect(x0 + 3, y, x1 - 3, y + 1, (y & 1) == 0 ? g : Px.scale(g, on ? 0.86f : 0.9f));
             int ink = on ? 0xFF16181A : 0xFF3A3E42;
             int cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-            if (k == GOLEM) PixelFont.draw(f, "GOLEM", cx - PixelFont.width("GOLEM", 1) / 2, cy - 3, 1, ink);
-            else if (k == ALLEY) World.glyph(f, BOWLING, cx, cy, 2, ink);
+            if (k == ALLEY) World.glyph(f, BOWLING, cx, cy, 2, ink);
             else {
                 // the stones' wave runs slowly along the monitor
                 World.glyph(f, World.SKIP, cx, cy, 2, ink);

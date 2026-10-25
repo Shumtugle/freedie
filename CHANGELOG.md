@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17
+- The fight has its own screen on the bridge, the last on the ring: a black and white
+  monitor where Freedie comes up a grey street in leaps, the only colour her golden fire,
+  and a car comes tumbling at the glass. Lit from the start; a golden cube in its slot
+  opens it for good, and from then on a poke at it starts the fight, as often as the player
+  likes. The console has no monitor for the fight any more: the alley and the stones only.
+- The brackets round her weak points are gone; her eyes and knees show by their own glow.
+- Waking after a fight lost, the street is out of focus at first and comes clear as the
+  eyelids part.
+
 ## 0.16.1
 - The fight reads now. The ring comes up right over the finger and follows it, in the
   diamond's colours with a dark edge, and turns red when it has a car in the air; a car

@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.16.1";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.17";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -162,7 +162,7 @@ final class World {
         return bridge != null;
     }
 
-    /** For the desktop stand: the fight at once, as from the console. */
+    /** For the desktop stand: the fight at once, as from its screen on the bridge. */
     void standFight() {
         game.fightNow();
     }
@@ -230,6 +230,7 @@ final class World {
         game.frame(d);
         d.red = game.red();
         d.gold = game.gold();
+        d.blur = game.blur();
         // the flash off the opening, or the light between two episodes
         d.flash = Math.max(flashOut / FLASH_OUT, game.light());
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
@@ -284,6 +285,7 @@ final class World {
         d.tube = -1f;
         d.red = 0f;
         d.gold = 0f;
+        d.blur = 0f;
     }
 
     // ---- the call box and the bridge ----
@@ -311,19 +313,21 @@ final class World {
         return Math.max(level + 1, host.loadInt("best"));
     }
 
-    /** Whether a console monitor has a game behind it yet: the fight has; the alley and the stones are still to come. */
+    /** Whether a console monitor has a game behind it yet: the alley and the stones are still to come. */
     boolean offers(int which) {
-        return which == Bridge.HOME || which == Bridge.GOLEM;
+        return which == Bridge.HOME;
     }
 
-    /**
-     * A console monitor, answered, once the room has gone out: the game comes on like a set,
-     * and for the fight's monitor, straight into the fight.
-     */
+    /** The lever, answered, once the room has gone out: the game comes on like a set. */
     void bridgeAct(int which) {
         bridge = null;
         tvOn = 0f;
-        if (which == Bridge.GOLEM) game.fightNow();
+    }
+
+    /** The fight's screen, with its cube, poked: out of the room and onto the red street, where she comes. */
+    void bridgeFight() {
+        bridge = null;
+        game.fightNow();
     }
 
     /** A screen with its cube, thrown at: into its episode, through the light; the crossroads not yet. */

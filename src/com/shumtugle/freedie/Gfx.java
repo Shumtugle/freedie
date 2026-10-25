@@ -220,6 +220,7 @@ final class Gfx {
         GLES30.glUniform1f(u(blitP, "uRed"), d.red);
         GLES30.glUniform1f(u(blitP, "uGold"), d.gold);
         GLES30.glUniform1f(u(blitP, "uTime"), d.time);
+        GLES30.glUniform1f(u(blitP, "uBlur"), d.blur);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);

@@ -38,6 +38,8 @@ fightstate
 shot s6
 wait 0.8
 shot s7
+wait 0.3
+shot s7b
 wait 0.8
 shot s8
 wait 1.2
