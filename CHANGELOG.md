@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.2
+- The icon stands on nothing now: Freedie's head alone, the desk showing round it.
+
 ## 0.3.1
 - A new icon: Freedie's head, stone brow, brick jaw, eyes like coals, lace cap and bow.
 - The project page, in `docs/`: who she is, the street drawn live in the browser by the
