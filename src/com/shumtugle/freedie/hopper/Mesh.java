@@ -138,8 +138,8 @@ final class Mesh {
             v = hammer(out, v, w.x, w.y, w.z, w.yaw);
             if (w.cut) sawnDrop(w, out, first, v);
         }
-        if (w.throwAge >= 0f) {
-            // the wooden hammer in flight, spinning flat, or lying where it fell
+        if (w.throwAge >= 0f && !w.caught) {
+            // the wooden hammer in flight, spinning flat, there and back
             float[] head = new float[3];
             float turn = w.thrown(head);
             v = flying(out, v, head, turn, w.throwFrom);

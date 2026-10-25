@@ -162,13 +162,13 @@ final class Bridge {
     boolean reached(int i) {
         if (i < Episode.COUNT) return Episode.FIRST[i] <= w.best();
         if (i == HUB) return alleyDone;
-        // the first game is open from the start: its golden cubes are the ones to be found
+        // the first game is lit from the start, to be seen; it opens with a cube, as the rest
         if (i == GAME_A) return true;
         return finale;
     }
 
     boolean open(int i) {
-        return slot[i] || i == GAME_A;
+        return slot[i];
     }
 
     private static int style(int i) {

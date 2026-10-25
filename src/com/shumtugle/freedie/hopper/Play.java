@@ -11,7 +11,7 @@ import android.view.View;
  * The game played on one of the bridge's screens, inside this one: what was its own window
  * is now a part of the window, shown while it is played. It keeps its own things apart (its
  * levels, marks and settings), plays its own sound, and goes back to the bridge when its
- * hopscotch is left or the hammer in hand is thrown at its red button. Golden cubes found in
+ * hopscotch is left or the hammer in hand, thrown at its red button, is back. Golden cubes found in
  * it, rare as they are, go into the row by the bridge.
  */
 public final class Play {
@@ -247,6 +247,12 @@ public final class Play {
                 sound.knock(240f, 0.3f, 0.04f);
                 sound.strikeLater(425f, 0.4f, 0.9f, 0.05f);
                 sound.strikeLater(850f, 0.18f, 0.6f, 0.09f);
+                thump(false);
+                break;
+            case World.EV_CATCH:
+                // back in the hand: a solid knock of wood on the palm
+                sound.knock(300f, 0.5f, 0.04f);
+                sound.thud(160f, 90f, 0.3f, 0.12f);
                 thump(false);
                 break;
             case World.EV_DISPATCH:

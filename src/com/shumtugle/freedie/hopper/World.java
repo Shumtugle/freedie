@@ -52,7 +52,7 @@ final class World {
             EV_QUEUE = 13, EV_LEAP = 14, EV_BONK = 15, EV_WAKE = 16, EV_TREMOR = 17, EV_SHIFT = 18,
             EV_RISEN = 19, EV_FUNNEL = 20, EV_ECHO = 21, EV_BEATEN = 22, EV_RIVAL_READY = 23,
             EV_BOSS_LAND = 24, EV_STRIKE = 25, EV_RUPTURE = 26, EV_CRUSHED = 27, EV_STOMP = 28, EV_SAVED = 29,
-            EV_GOLD = 30, EV_CALL = 31, EV_DISPATCH = 32, EV_THROW = 33;
+            EV_GOLD = 30, EV_CALL = 31, EV_DISPATCH = 32, EV_THROW = 33, EV_CATCH = 34;
     /** A shard humming: EV_HUM + rank * 16 + loudness, 1 to 15. */
     static final int EV_HUM = 1000;
     /** A rival landing near the drop: EV_RIVAL + loudness, 1 to 15. */
@@ -92,8 +92,8 @@ final class World {
     static final int GOLD_EVERY = 25;
     /**
      * One plain island of every level carries a call box with a red button. The hammer in hand
-     * is thrown at it: it flies, strikes the button, the box rings, and the dispatcher answers:
-     * back to the bridge.
+     * is thrown at it: it flies, strikes the button, the box rings, the hammer comes back to the
+     * hand as it always does, and the dispatcher answers: back to the bridge.
      */
     int callCell = -1;
     /** Where the call box stands on its island, off the middle, and the height of its button. */
@@ -104,10 +104,12 @@ final class World {
     float throwTime;
     /** Where the throw began: the head of the hammer in the hand. */
     final float[] throwFrom = new float[3];
-    /** The button has been struck; and the dispatcher has answered. */
-    boolean struck, dispatched;
-    /** From the strike to the bridge: long enough to see the hammer fall and hear the ring. */
-    static final float ANSWER = 0.8f;
+    /** The button has been struck; the hammer is back in the hand; the dispatcher has answered. */
+    boolean struck, caught, dispatched;
+    /** The way back from the button to the hand, and the beat in the hand before the bridge. */
+    static final float RETURN = 0.6f, ANSWER = 0.3f;
+    /** Where the hand is now, so the hammer knows where to come back to; the stage keeps it. */
+    final float[] hand = new float[3];
     private final boolean ghost;
     /** The board in play: the level, or in a shifting level the act now standing. */
     Level level;
@@ -397,7 +399,9 @@ final class World {
         throwTime = Math.max(0.18f, d * METERS / THROW_SPEED);
         throwAge = 0f;
         struck = false;
+        caught = false;
         dispatched = false;
+        System.arraycopy(throwFrom, 0, hand, 0, 3);
         emit(EV_THROW);
         return true;
     }
@@ -411,8 +415,8 @@ final class World {
 
     /**
      * The flying hammer's head, into out: a throw as on the street, under the ground's pull,
-     * from the hand onto the button; after the strike it drops onto the island beside the box.
-     * Returns how far it has turned in its flat spin, in radians.
+     * from the hand onto the button; after the strike it comes back to the hand in an arc, as
+     * it does on the street, still spinning. Returns how far it has turned, in radians.
      */
     float thrown(float[] out) {
         float[] b = new float[3];
@@ -428,12 +432,11 @@ final class World {
             out[1] += 0.5f * PULL * t * (T - t);
             return SPIN * t;
         }
-        // knocked back off the button, down onto the stone, its spin dying
-        float s = Math.min(1f, (throwAge - throwTime) / 0.32f);
-        out[0] = b[0] - 0.1f * s;
-        out[1] = b[1] + (BUTTON_UP - 0.04f) * (-s * s) + 0.08f * s * (1f - s) * 4f;
-        out[2] = b[2] - 0.1f * s;
-        return SPIN * (throwTime + 0.16f * (1f - (1f - s) * (1f - s)));
+        // back to the hand, whatever the drop has done since, over a little hump
+        float k = Math.min(1f, (throwAge - throwTime) / RETURN), e = k * k * (3f - 2f * k);
+        for (int i = 0; i < 3; i++) out[i] = b[i] + (hand[i] - b[i]) * e;
+        out[1] += (float) Math.sin(Math.PI * k) * 1.2f / METERS;
+        return SPIN * (throwTime + 0.93f * (throwAge - throwTime));
     }
 
     /** A rival has landed; heard if it is near the drop. */
@@ -634,7 +637,12 @@ final class World {
                 if (callCell >= 0) dent[callCell] = 1f;
                 emit(EV_CALL);
             }
-            if (struck && !dispatched && throwAge >= throwTime + ANSWER) {
+            if (struck && !caught && throwAge >= throwTime + RETURN) {
+                // the hammer is back in the hand, as it always comes back
+                caught = true;
+                emit(EV_CATCH);
+            }
+            if (caught && !dispatched && throwAge >= throwTime + RETURN + ANSWER) {
                 // and the dispatcher answers: back to the bridge
                 dispatched = true;
                 emit(EV_DISPATCH);

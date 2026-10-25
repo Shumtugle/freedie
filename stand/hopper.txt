@@ -1,5 +1,6 @@
-# The first game: open from the start; the ring turned back past the second game's snow to it,
-# a poke at its screen plays it, and the way back from it comes out on the bridge again.
+# The first game: lit from the start, shut until a cube goes into its slot; the ring turned
+# back past the second game's snow to it, a poke with a cube in the rack puts the cube in,
+# a second poke plays it, and the way back from it comes out on the bridge again.
 screen 1096 2560
 skip
 wait 1.0
@@ -21,6 +22,10 @@ shot h1_snow
 drag 120 250 200 250 0.25
 wait 1.2
 shot h2_hops
+down 137 329
+up 137 329
+wait 1.2
+shot h3_cube
 down 137 329
 up 137 329
 wait 0.08

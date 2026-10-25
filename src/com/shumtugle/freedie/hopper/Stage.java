@@ -683,7 +683,7 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
 
     /**
      * The hammer in the hand, over everything, low on the right; it sways with the hops. Not
-     * shown in the dark, from above, once thrown, or under the hopscotch.
+     * shown in the dark, from above, while it flies, or under the hopscotch.
      */
     private void drawHeld(World w) {
         for (int k = 0; k < 3; k++) {
@@ -693,7 +693,10 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         }
         float bob = w.state == World.PLAY ? -(float) Math.cos(w.hopPhase() * Math.PI * 2) : 0f;
         Mesh.heldPose(eye, right, up, ahead, aspect, bob, held);
-        heldShown = !chalk.open && !cityShown && w.state != World.DARK && w.throwAge < 0f && w.lift < 0.05f;
+        // the hand, for a hammer in flight to come back to
+        float k = Mesh.HEAD_AT * Mesh.HAMMER_SIZE;
+        for (int j = 0; j < 3; j++) w.hand[j] = held[j] + held[3 + j * 3] * k;
+        heldShown = !chalk.open && !cityShown && w.state != World.DARK && (w.throwAge < 0f || w.caught) && w.lift < 0.05f;
         if (!heldShown) return;
         int n = Mesh.woodHammer(heldData, 0, held, Mesh.HAMMER_SIZE);
         upload(heldBuf, heldData, n, GLES30.GL_STREAM_DRAW);

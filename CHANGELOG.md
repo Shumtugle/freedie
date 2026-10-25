@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+- The hammer is never left behind: thrown at the call box in the first game of the
+  bridge, it strikes the button and comes back to the hand like a boomerang, as it does
+  on the street; only once it is caught does the dispatcher answer.
+- The first game's screen on the bridge is lit, but shut until a golden cube goes into its
+  slot, as with every other screen.
+
 ## 0.8
 - The first level: the building comes down onto the plinth block by block, the same first
   building as in the game this one grows from, wooden posts and boards and two bottles of
