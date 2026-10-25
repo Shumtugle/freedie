@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Freedie stand</title>
+<style>html, body { margin: 0; background: #000; } canvas { display: block; }</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="gfx.js"></script>
+<script>
+// index.html?frame=<frame.json>&flat=<flat.png>&scale=4 draws one frame the stand wrote out
+(async () => {
+  const q = new URLSearchParams(location.search);
+  try {
+    const frame = await (await fetch(q.get('frame'))).json();
+    const img = new Image();
+    img.src = q.get('flat');
+    await img.decode();
+    await render(document.getElementById('c'), frame, img, +(q.get('scale') || 4), q.get('shaders') || '../../assets/shaders/');
+    window.DONE = 'ok';
+  } catch (e) {
+    window.DONE = 'error: ' + e.message;
+  }
+})();
+</script>
+</body>
+</html>

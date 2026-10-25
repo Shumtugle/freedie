@@ -1,0 +1,9 @@
+# The engine's first frame: the street under a low sun, the plinth, the stack, the golden cube;
+# then the eye turned aside by a finger, and back at rest.
+screen 1096 2560
+wait 0.5
+shot s0_rest
+drag 200 300 100 300 0.4
+shot s1_turned
+wait 2.5
+shot s2_back

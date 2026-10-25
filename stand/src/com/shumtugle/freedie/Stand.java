@@ -1,0 +1,101 @@
+package com.shumtugle.freedie;
+
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.List;
+
+import javax.imageio.ImageIO;
+
+/**
+ * The desktop stand: plays a scene file against the world on an ordinary JVM, and for each
+ * shot writes the frame's draw list (name.json) and its flat layer (name.flat.png). The
+ * page in stand/web draws them with the game's own shaders.
+ *
+ * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
+ * drag X0 Y0 X1 Y1 SECONDS · shot NAME. Coordinates are frame pixels. # starts a comment.
+ */
+public final class Stand {
+    private static final float DT = 1f / 60f;
+    private final World world = new World();
+    private final DrawList list = new DrawList();
+    private final File out;
+    private float time;
+
+    private Stand(File out) {
+        this.out = out;
+        world.resize(1096, 2560);
+    }
+
+    public static void main(String[] args) throws IOException {
+        File scene = new File(args.length > 0 ? args[0] : "stand/scene.txt");
+        File out = new File(args.length > 1 ? args[1] : "out/stand");
+        out.mkdirs();
+        Stand s = new Stand(out);
+        List<String> lines = Files.readAllLines(scene.toPath(), StandardCharsets.UTF_8);
+        for (String raw : lines) {
+            String line = raw.trim();
+            if (line.isEmpty() || line.startsWith("#")) continue;
+            s.exec(line.split("\\s+"));
+        }
+        System.out.println("done: " + String.format("%.1f", s.time) + "s of game time");
+    }
+
+    private void step() {
+        world.update(DT);
+        time += DT;
+    }
+
+    private void run(float seconds) {
+        int n = Math.round(seconds / DT);
+        for (int i = 0; i < n; i++) step();
+    }
+
+    private static float f(String s) {
+        return Float.parseFloat(s);
+    }
+
+    private void exec(String[] p) throws IOException {
+        String c = p[0];
+        if (c.equals("screen")) {
+            world.resize(Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+        } else if (c.equals("wait")) {
+            run(f(p[1]));
+        } else if (c.equals("down")) {
+            world.touch(World.DOWN, f(p[1]), f(p[2]));
+            step();
+        } else if (c.equals("move")) {
+            world.touch(World.MOVE, f(p[1]), f(p[2]));
+            step();
+        } else if (c.equals("up")) {
+            world.touch(World.UP, f(p[1]), f(p[2]));
+            step();
+        } else if (c.equals("drag")) {
+            float x0 = f(p[1]), y0 = f(p[2]), x1 = f(p[3]), y1 = f(p[4]);
+            int n = Math.max(2, Math.round(f(p[5]) / DT));
+            world.touch(World.DOWN, x0, y0);
+            step();
+            for (int i = 1; i <= n; i++) {
+                world.touch(World.MOVE, x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n);
+                step();
+            }
+            world.touch(World.UP, x1, y1);
+            step();
+        } else if (c.equals("shot")) {
+            shot(p[1]);
+        } else {
+            throw new IllegalArgumentException("unknown command: " + c);
+        }
+    }
+
+    private void shot(String name) throws IOException {
+        world.draw(list);
+        Files.write(new File(out, name + ".json").toPath(), list.json().getBytes(StandardCharsets.UTF_8));
+        BufferedImage img = new BufferedImage(list.w, list.h, BufferedImage.TYPE_INT_ARGB);
+        img.setRGB(0, 0, list.w, list.h, list.flat, 0, list.w);
+        ImageIO.write(img, "png", new File(out, name + ".flat.png"));
+        System.out.println(String.format("%7.2fs  %s (%d boxes)", time, name, list.count));
+    }
+}
