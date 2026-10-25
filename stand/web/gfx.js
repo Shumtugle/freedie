@@ -162,8 +162,8 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform3fv(u(boxP, 'uAmbGround'), frame.ambientGround);
   gl.uniform3fv(u(boxP, 'uEye'), frame.eye);
   gl.uniform3fv(u(boxP, 'uFog'), frame.fog);
-  gl.uniform1f(u(boxP, 'uFogNear'), frame.fogNear);
-  gl.uniform1f(u(boxP, 'uFogFar'), frame.fogFar);
+  gl.uniform1f(u(boxP, 'uFogStart'), frame.fogStart);
+  gl.uniform1f(u(boxP, 'uFogScale'), frame.fogScale);
   gl.bindVertexArray(vao);
   gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
 

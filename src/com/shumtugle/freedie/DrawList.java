@@ -11,6 +11,8 @@ package com.shumtugle.freedie;
 final class DrawList {
     // what a box's faces are made of; the shaders turn these into patterns
     static final int PLAIN = 0, GRAIN = 1, STONE = 2, ASPHALT = 3, WOOD = 4, PAVING = 5, PAINT = 6, GOLD = 7;
+    static final int FACADE = 8, FROND = 9, TRUNK = 10, ROAD = 11, GLASS = 12, GLOW = 13, SEA = 14, RAIL = 15,
+            PROMENADE = 16, AWNING = 17;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 
@@ -24,7 +26,7 @@ final class DrawList {
     final float[] skyTop = new float[3], skyHorizon = new float[3], skyGlow = new float[3];
     final float[] ambientSky = new float[3], ambientGround = new float[3];
     final float[] fog = new float[3];
-    float fogNear = 60f, fogFar = 220f;
+    float fogStart = 8f, fogScale = 150f;      // the haze begins so far off, and thickens over so many meters
     float time;                                // seconds of game time, for what drifts in the sky
 
     float[] boxes = new float[STRIDE * 256];
@@ -39,8 +41,42 @@ final class DrawList {
         count = 0;
     }
 
+    /** A material with a number of its own, 0 to 255, that the shader reads as a seed or a flag. */
+    static float material(int material, int seed) {
+        return material + (seed & 0xFF) / 256f;
+    }
+
+    /** Every box of another list, added to this one: the still part of a scene, built once. */
+    void append(DrawList o) {
+        int n = o.count * STRIDE;
+        while ((count * STRIDE) + n > boxes.length) {
+            float[] more = new float[boxes.length * 2];
+            System.arraycopy(boxes, 0, more, 0, boxes.length);
+            boxes = more;
+        }
+        System.arraycopy(o.boxes, 0, boxes, count * STRIDE, n);
+        count += o.count;
+    }
+
+    /** Where a point lands in the frame, in frame pixels; false behind the eye. */
+    boolean project(float x, float y, float z, float[] out) {
+        float[] m = viewProj;
+        float cx = m[0] * x + m[4] * y + m[8] * z + m[12];
+        float cy = m[1] * x + m[5] * y + m[9] * z + m[13];
+        float cw = m[3] * x + m[7] * y + m[11] * z + m[15];
+        if (cw < 0.05f) return false;
+        out[0] = (cx / cw * 0.5f + 0.5f) * w;
+        out[1] = (0.5f - cy / cw * 0.5f) * h;
+        return true;
+    }
+
     /** A box: its middle, its half sizes, its turn (a 3x3, row by row), color as 0xRRGGBB. */
     void box(float x, float y, float z, float hx, float hy, float hz, float[] rot, int rgb, int material) {
+        box(x, y, z, hx, hy, hz, rot, rgb, (float) material);
+    }
+
+    /** The same, with a material that carries its own number (see material()). */
+    void box(float x, float y, float z, float hx, float hy, float hz, float[] rot, int rgb, float material) {
         if ((count + 1) * STRIDE > boxes.length) {
             float[] more = new float[boxes.length * 2];
             System.arraycopy(boxes, 0, more, 0, boxes.length);
@@ -99,10 +135,11 @@ final class DrawList {
     }
 
     /**
-     * The sun: its direction (toward it), and the square of ground its shadows are worked
-     * out over, around a middle point, so many meters across and deep.
+     * The sun: its direction (toward it), and the stretch its shadows are worked out over,
+     * around a middle point: so many meters across the sun's beams level with the ground,
+     * so many up and down them, so many deep along them.
      */
-    void sun(float dx, float dy, float dz, float cx, float cy, float cz, float size, float depth) {
+    void sun(float dx, float dy, float dz, float cx, float cy, float cz, float across, float upDown, float depth) {
         float l = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
         dx /= l; dy /= l; dz /= l;
         sun[0] = dx; sun[1] = dy; sun[2] = dz;
@@ -114,10 +151,10 @@ final class DrawList {
         rx /= rl; rz /= rl;
         float ux = fy * rz - fz * ry, uy = fz * rx - fx * rz, uz = fx * ry - fy * rx;
         float ex = cx - fx * depth * 0.5f, ey = cy - fy * depth * 0.5f, ez = cz - fz * depth * 0.5f;
-        float s = 2f / size, k = 2f / depth;
+        float s = 2f / across, t = 2f / upDown, k = 2f / depth;
         float[] m = lightProj;
         m[0] = s * rx; m[4] = s * ry; m[8] = s * rz; m[12] = -s * (rx * ex + ry * ey + rz * ez);
-        m[1] = s * ux; m[5] = s * uy; m[9] = s * uz; m[13] = -s * (ux * ex + uy * ey + uz * ez);
+        m[1] = t * ux; m[5] = t * uy; m[9] = t * uz; m[13] = -t * (ux * ex + uy * ey + uz * ez);
         m[2] = k * fx; m[6] = k * fy; m[10] = k * fz; m[14] = -k * (fx * ex + fy * ey + fz * ez) - 1f;
         m[3] = 0; m[7] = 0; m[11] = 0; m[15] = 1;
     }
@@ -146,7 +183,7 @@ final class DrawList {
         arr(s, "ambientSky", ambientSky);
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
-        s.append(",\"fogNear\":").append(fogNear).append(",\"fogFar\":").append(fogFar).append(",\"time\":").append(time);
+        s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
         s.append(",\"count\":").append(count).append(",\"boxes\":[");
         for (int i = 0; i < count * STRIDE; i++) {
             if (i > 0) s.append(',');

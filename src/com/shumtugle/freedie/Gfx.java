@@ -180,8 +180,8 @@ final class Gfx {
         GLES30.glUniform3fv(u(boxP, "uAmbGround"), 1, d.ambientGround, 0);
         GLES30.glUniform3fv(u(boxP, "uEye"), 1, d.eye, 0);
         GLES30.glUniform3fv(u(boxP, "uFog"), 1, d.fog, 0);
-        GLES30.glUniform1f(u(boxP, "uFogNear"), d.fogNear);
-        GLES30.glUniform1f(u(boxP, "uFogFar"), d.fogFar);
+        GLES30.glUniform1f(u(boxP, "uFogStart"), d.fogStart);
+        GLES30.glUniform1f(u(boxP, "uFogScale"), d.fogScale);
         GLES30.glBindVertexArray(vao);
         GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, n);
 

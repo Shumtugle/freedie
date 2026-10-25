@@ -1,9 +1,23 @@
-# The engine's first frame: the street under a low sun, the plinth, the stack, the golden cube;
-# then the eye turned aside by a finger, and back at rest.
+# The street: at rest; the eye turned to the houses, back, turned to the sea; cars come
+# down the road and turn round short of the plinth; the red button on the lamp post pressed.
 screen 1096 2560
 wait 0.5
 shot s0_rest
-drag 200 300 100 300 0.4
-shot s1_turned
-wait 2.5
-shot s2_back
+drag 200 300 60 300 0.4
+shot s1_houses
+wait 3.0
+drag 60 300 200 300 0.4
+shot s2_sea
+wait 3.0
+shot s3_back
+wait 5.0
+shot s4a_coming
+wait 4.0
+shot s4_cars
+wait 4.0
+shot s5_turn
+wait 2.0
+down 240 325
+up 240 325
+wait 0.05
+shot s6_button
