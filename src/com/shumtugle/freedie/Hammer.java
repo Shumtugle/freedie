@@ -16,6 +16,16 @@ final class Hammer {
     };
     private static final int[] COL = {0x9A6638, 0x6E3F27, 0xDFA868, 0x55524F, 0x55524F};
     private static final int[] MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.WOOD, DrawList.PLAIN, DrawList.PLAIN};
+    // the gift of the gods: a dark wrought head, broader and deeper, bound in bronze, on a stout handle
+    static final float[][] HEAVY = {
+            {-0.1f, 0f, 0f, 0.31f, 0.038f, 0.038f},
+            {-0.36f, 0f, 0f, 0.07f, 0.044f, 0.044f},
+            {0.31f, 0f, 0f, 0.13f, 0.1f, 0.2f},
+            {0.31f, 0f, 0.15f, 0.134f, 0.104f, 0.02f},
+            {0.31f, 0f, -0.15f, 0.134f, 0.104f, 0.02f},
+    };
+    private static final int[] HEAVY_COL = {0x6E4A2C, 0x3E2618, 0x3F3D44, 0xA8783A, 0xA8783A};
+    private static final int[] HEAVY_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.STONE, DrawList.PAINT, DrawList.PAINT};
 
     private static final float[] T = new float[9];
 
@@ -23,15 +33,23 @@ final class Hammer {
     }
 
     static void draw(DrawList d, float[] pose) {
+        draw(d, pose, false, 1f);
+    }
+
+    /** The plain hammer or the heavy one, so big. */
+    static void draw(DrawList d, float[] pose, boolean heavy, float scale) {
+        float[][] parts = heavy ? HEAVY : PARTS;
+        int[] col = heavy ? HEAVY_COL : COL, mat = heavy ? HEAVY_MAT : MAT;
         T[0] = pose[3]; T[1] = pose[4]; T[2] = pose[5];
         T[3] = pose[6]; T[4] = pose[7]; T[5] = pose[8];
         T[6] = pose[9]; T[7] = pose[10]; T[8] = pose[11];
-        for (int i = 0; i < PARTS.length; i++) {
-            float[] p = PARTS[i];
-            float cx = pose[0] + T[0] * p[0] + T[1] * p[1] + T[2] * p[2];
-            float cy = pose[1] + T[3] * p[0] + T[4] * p[1] + T[5] * p[2];
-            float cz = pose[2] + T[6] * p[0] + T[7] * p[1] + T[8] * p[2];
-            d.box(cx, cy, cz, p[3], p[4], p[5], T, COL[i], MAT[i]);
+        for (int i = 0; i < parts.length; i++) {
+            float[] p = parts[i];
+            float ox = p[0] * scale, oy = p[1] * scale, oz = p[2] * scale;
+            float cx = pose[0] + T[0] * ox + T[1] * oy + T[2] * oz;
+            float cy = pose[1] + T[3] * ox + T[4] * oy + T[5] * oz;
+            float cz = pose[2] + T[6] * ox + T[7] * oy + T[8] * oz;
+            d.box(cx, cy, cz, p[3] * scale, p[4] * scale, p[5] * scale, T, col[i], mat[i]);
         }
     }
 

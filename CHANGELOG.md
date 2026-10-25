@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10
+- The corner, as in the game this one grows from: five stars along the top left, one burnt
+  a throw, flashing when a building comes down; the golden cubes in the rack beside them;
+  on the right the weight still on the plinth with the line it must fall below, and the
+  level's number on its plate.
+- Run out of stars and the gods frown, anger, sleep and doubt, and the same building comes
+  down out of the sky again for another try.
+- The first building is the gods' welcome: it stands close, flies to pieces at the first
+  touch, they all laugh and give the heavy hammer. From the second on the plinth stands a
+  little further off and the game is played fair.
+- The heavy hammer: a building felled at one throw brings three heavy throws, nine at most.
+  The gift drops from the thunderer's cloud past the gods; back on the street its marks drop
+  in under the stars one by one. A dark wrought head bound in bronze, slower off the hand,
+  far heavier on the building. A tap on the hammer in hand or on the one waiting low on the
+  left swaps them. The game keeps the heavy throws left.
+- The cost of a frame moved to the bottom left, out of the stars' way.
+
 ## 0.9
 - The sky with the gods: a building down, and once all is still the eye tips up into the
   evening sky. Far clouds hang there and the old gods of the place sail in, each in a cloud

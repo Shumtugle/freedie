@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.9";     // shown on screen; keep in step with versionName
+    static final String VERSION = "0.10";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -153,6 +153,7 @@ final class World {
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
+            game.cubes = cubes;
             game.update(dt);
             level = game.level;
         }
@@ -221,7 +222,7 @@ final class World {
         PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
         if (frameMs > 0f) {
             String ms = String.valueOf(Math.round(frameMs));
-            PixelFont.draw(f, ms, 4, 4, 1, 0xCCFFFFFF);
+            PixelFont.draw(f, ms, 4, h - 10, 1, 0xCCFFFFFF);
         }
     }
 

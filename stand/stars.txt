@@ -1,0 +1,46 @@
+# The second level, played fair: the plinth a little further off. With three heavy throws in
+# hand from the gods, a tap on the hammer waiting low on the left swaps to it and back; then
+# five throws into the air burn the five stars, the gods frown, and the same building comes
+# down again out of the sky.
+screen 1096 2560
+keep level 1
+keep gifts 3
+restart
+skip
+wait 2.4
+shot t0_second
+down 50 600
+up 50 600
+wait 0.3
+shot t1_heavy
+down 50 600
+up 50 600
+wait 0.3
+down 140 300
+move 140 200
+move 140 60
+up 140 60
+wait 0.3
+shot t2_miss
+wait 3.3
+down 140 300
+move 140 60
+up 140 60
+wait 3.6
+down 140 300
+move 140 60
+up 140 60
+wait 3.6
+down 140 300
+move 140 60
+up 140 60
+wait 3.6
+down 140 300
+move 140 60
+up 140 60
+wait 3.6
+shot t3_spent
+wait 2.5
+shot t4_gloom
+wait 2.5
+shot t5_again

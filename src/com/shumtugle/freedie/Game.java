@@ -11,19 +11,29 @@ import java.util.Random;
  * hammer flies: a quick release lobs, a full one flies flat. It knocks into the building with
  * the game's own physics, then comes back to the hand.
  *
- * The first building flies to pieces at the first touch of the hammer. Knock three quarters
- * of a building's weight off the plinth and, once things are still, the view tips up into the
- * sky, where the gods gather and judge the fall (see Sky); then the next building falls out of
- * the sky onto the plinth as the view comes back down. For now the levels go as far as the
- * end of the first run of them, and the last comes round again.
+ * Every throw burns one of five stars in the corner. Knock three quarters of a building's
+ * weight off the plinth before the stars run out and, once things are still, the view tips up
+ * into the sky, where the gods gather and judge the fall (see Sky); then the next building
+ * falls out of the sky onto the plinth as the view comes back down. Run out of stars, and the
+ * gods frown, and the same building comes down again for another try.
+ *
+ * The first building is the gods' welcome: it stands close, flies to pieces at the first touch
+ * of the hammer, and they all laugh and give the heavy hammer. From the second on the plinth
+ * stands a little further off, and the game is played fair. A building felled at one throw
+ * always brings the heavy hammer: a few heavy throws, marked under the stars; a tap on the
+ * hammer in hand, or the one waiting low on the left, swaps one for the other.
+ *
+ * For now the levels go as far as the end of the first run of them, and the last comes round
+ * again.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
  * where the eye is with frame() before any of them needs it.
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5;
-    /** The last level there is yet: the end of the first run, until the stars come. */
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6;
+    static final int STARS = 5;
+    /** The last level there is yet: the end of the first run. */
     static final int LAST = 8;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
@@ -32,6 +42,23 @@ final class Game implements Physics.Listener {
 
     private final World.Host host;
     final Physics phys = new Physics();
+    int stars = STARS;
+    /** The golden cubes in the rack, shown by the stars; the world keeps them. */
+    int cubes;
+    private int nextLevel;
+
+    // the heavy hammer: the gods give a few heavy throws for a building felled at one throw
+    static final int HEAVY_GIFT = 3, HEAVY_MAX = 9;
+    static final float HEAVY_MASS = 2.5f;
+    int heavyLeft;
+    boolean heavyOn;
+    private boolean heavyThrow, tapOnHammer;
+    private float downAt, tapX, tapY, tapFar;
+    // the marks in the corner lag behind the gift: they drop into place once the view is back down
+    private int heavyShown, marksLanded;
+    private float markT = -1f;
+    private static final float MARK_FALL = 0.32f, MARK_GAP = 0.24f;
+    private boolean giftShown;
     // the gods' sky, made once the frame's size is known
     private Sky sky;
     private int throwsMade, boltsHeard;
@@ -82,6 +109,8 @@ final class Game implements Physics.Listener {
         this.level = Math.max(0, Math.min(LAST, level));
         phys.listener = this;
         hammer = new Body(0.42f, 0.08f, 0.17f, Body.HAMMER, 0xD9A066);
+        heavyLeft = Math.max(0, Math.min(HEAVY_MAX, host.loadInt("gifts")));
+        heavyShown = heavyLeft;
         start(this.level, false);
     }
 
@@ -100,7 +129,8 @@ final class Game implements Physics.Listener {
         buildFromSky = thrown;
         host.saveInt("level", lv);
         if (host.loadInt("best") < lv + 1) host.saveInt("best", lv + 1);
-        Builder.CZ = Builder.BASE_CZ;
+        // the first stands close; the rest a little further off
+        Builder.CZ = Builder.BASE_CZ + Builder.farther(lv);
         Builder.CX = 0f;
         Builder.PHZ = Builder.PHZ1;
         phys.clear();
@@ -115,6 +145,8 @@ final class Game implements Physics.Listener {
             phys.add(car);
         }
         ArrayList<Body> made = buildingFor(lv);
+        // grown at the first plinth spot: carried along to where the plinth stands now
+        for (Body b : made) b.homeZ += Builder.CZ - Builder.BASE_CZ;
         totalMass = 0f;
         for (Body b : made) {
             b.setPose(b.homeX, b.homeY, b.homeZ, 1, 0, 0, 0);
@@ -130,6 +162,9 @@ final class Game implements Physics.Listener {
         aiming = false;
         aimedBefore = false;
         throwsMade = 0;
+        stars = STARS;
+        heavyThrow = false;
+        if (heavyLeft == 0) heavyOn = false;
         blasted = blastNow = false;
         toBurst.clear();
         pN = 0;
@@ -198,7 +233,7 @@ final class Game implements Physics.Listener {
 
     /** Whether the hammer is in hand and a finger may aim. */
     boolean ready() {
-        return state == PLAY && hs == HAND;
+        return state == PLAY && hs == HAND && stars > 0;
     }
 
     /** Whether the hand is free for something else: the hammer in it, no aim begun. */
@@ -208,8 +243,15 @@ final class Game implements Physics.Listener {
 
     void touch(int type, float x, float y) {
         if (type == DOWN) {
+            tapX = x;
+            tapY = y;
+            tapFar = 0f;
+        } else tapFar = Math.max(tapFar, (float) Math.hypot(x - tapX, y - tapY));
+        if (type == DOWN) {
             if (!ready() || !seen) return;
             aiming = true;
+            downAt = clock;
+            tapOnHammer = heavyLeft > 0 && onHammer(x, y);
             lastX = x;
             lastY = y;
             if (!aimedBefore) buildingCenter();
@@ -235,9 +277,22 @@ final class Game implements Physics.Listener {
         }
         if (type == UP) {
             aiming = false;
+            // a short tap on the hammer, without a move, swaps hammers instead of throwing
+            if (tapOnHammer && clock - downAt < 0.6f && tapFar < 6f) {
+                heavyOn = !heavyOn;
+                power = 0f;
+                host.sound(Synth.CATCH, 0.6f, heavyOn ? 0.7f : 1.2f);
+                host.buzz(heavyOn ? 30 : 10);
+                return;
+            }
             aimedBefore = true;
             throwHammer();
         }
+    }
+
+    /** Where the hammer in hand is on screen, the other one at the lower left, and the marks. */
+    private boolean onHammer(float x, float y) {
+        return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 32f);
     }
 
     /** Lets a finger go without a throw: the room took it, or the game was put away. */
@@ -266,7 +321,8 @@ final class Game implements Physics.Listener {
 
     /** Throw speed in m/s from the wind-up: a quick release lobs, a full one flies flat. */
     private float throwSpeed() {
-        return 8f + power * 5.5f;
+        // the heavy hammer leaves the hand slower and tops out lower, but carries far more weight
+        return heavyOn ? 7.5f + power * 4.5f : 8f + power * 5.5f;
     }
 
     /** Seconds in the air over a distance; far off, the arm puts more into it. */
@@ -315,11 +371,18 @@ final class Game implements Physics.Listener {
         hammer.vy = dy / t - 0.5f * Physics.G * t;
         hammer.vz = dz / t;
         spinSign = aimX < fw * 0.5f ? 1f : -1f;
-        hammer.wy = spinSign * 15f;
+        heavyThrow = heavyOn && heavyLeft > 0;
+        if (heavyThrow) {
+            hammer.scaleMass(HEAVY_MASS);
+            heavyLeft--;
+            host.saveInt("gifts", heavyLeft);
+        }
+        hammer.wy = spinSign * (heavyThrow ? 8f : 15f);
         hammer.wx = 0.6f;
         hammer.savePrev();
         flightTime = t;
         throwsMade++;
+        stars--;
         hs = FLY;
         hsTime = 0f;
         power = 0f;
@@ -447,6 +510,7 @@ final class Game implements Physics.Listener {
         windUp(dt);
         hammerMoves(dt);
         thunderStep(dt);
+        marksStep(dt);
         if (sky != null && (state == SKY_UP || state == SKY_HOLD || fromSky)) {
             sky.update(dt);
             if (sky.bolts != boltsHeard) {
@@ -465,13 +529,21 @@ final class Game implements Physics.Listener {
                 break;
             case PLAY:
                 if (1f - onPlinth() >= CLEAR) {
-                    if (!blasted) host.sound(Synth.THUNDER, 1.1f, 1f);
+                    if (!blasted && throwsMade <= 1) host.sound(Synth.THUNDER, 1.1f, 1f);
                     setState(CLEARED);
+                } else if (stars == 0 && hs == HAND && !aiming && (phys.settled() || stateTime > 3f)) {
+                    setState(LOST);
                 }
                 break;
             case CLEARED:
                 if (stateTime > 2.2f && hs == HAND && (phys.settled() || stateTime > 4.5f)) {
-                    if (sky != null) lookUp();
+                    if (sky != null) lookUp(throwsMade <= 1 ? Sky.OVATION : throwsMade <= 3 ? Sky.CHEER : Sky.POLITE, level + 1);
+                    else vanish();
+                }
+                break;
+            case LOST:
+                if (stateTime > 0.7f) {
+                    if (sky != null) lookUp(Sky.GLOOM, level);
                     else vanish();
                 }
                 break;
@@ -484,7 +556,7 @@ final class Game implements Physics.Listener {
             case SKY_HOLD:
                 if (stateTime >= holdFor) {
                     // the gods have thrown the blocks: the next building falls into place as the eye comes down
-                    start(Math.min(LAST, level + 1), true);
+                    start(Math.min(LAST, nextLevel), true);
                     fromSky = true;
                     backT = 0f;
                 }
@@ -505,13 +577,20 @@ final class Game implements Physics.Listener {
             hammer.px = retX + (tmp[0] - retX) * e;
             hammer.py = retY + (tmp[1] - retY) * e + (float) Math.sin(Math.PI * k) * 1.2f;
             hammer.pz = retZ + (tmp[2] - retZ) * e;
-            hammer.rotateBy(0f, spinSign * 14f * dt, 0f);
+            hammer.rotateBy(0f, spinSign * (heavyThrow ? 8f : 14f) * dt, 0f);
             hammer.updateR();
             if (k >= 1f) {
-                host.sound(Synth.CATCH, 0.8f, 1f);
-                host.buzz(25);
+                host.sound(Synth.CATCH, 0.8f, heavyThrow ? 0.75f : 1f);
+                host.buzz(heavyThrow ? 45 : 25);
+                if (heavyThrow) {
+                    hammer.scaleMass(1f / HEAVY_MASS);
+                    heavyThrow = false;
+                    if (heavyLeft == 0) heavyOn = false;
+                }
                 hs = HAND;
                 hsTime = 0f;
+                // the last star spent waits for the hammer back, and then for things to settle
+                if (state == PLAY) stateTime = 0f;
             }
         }
     }
@@ -529,14 +608,24 @@ final class Game implements Physics.Listener {
 
     /**
      * Up into the sky, where the gods judge the fall: laughter and lightning for a building
-     * felled at one throw, smiles for a few, a sceptic look for many. The first building is
-     * their welcome: they all laugh aloud.
+     * felled at one throw, and the heavy hammer; smiles for a few; a sceptic look for many;
+     * anger, sleep and scepticism when the stars ran out. The first building is their
+     * welcome: they all laugh aloud. Then the building for the level next.
      */
-    private void lookUp() {
-        int verdict = throwsMade <= 1 ? Sky.OVATION : throwsMade <= 3 ? Sky.CHEER : Sky.POLITE;
+    private void lookUp(int verdict, int next) {
+        nextLevel = next;
         sky.begin(verdict, level == 0 && verdict == Sky.OVATION);
         boltsHeard = sky.bolts;
-        holdFor = verdict == Sky.OVATION ? 3.2f : 2.4f;
+        holdFor = verdict == Sky.GLOOM ? 2.2f : verdict == Sky.OVATION ? 3.2f : 2.4f;
+        giftShown = false;
+        if (verdict == Sky.OVATION) {
+            // the gods give the heavy hammer, and put it in the hand for the next building
+            heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
+            heavyOn = true;
+            host.saveInt("gifts", heavyLeft);
+            giftShown = true;
+            giftT0 = -1f;
+        }
         aiming = false;
         host.sound(Synth.WHOOSH, 0.5f, 0.6f);
         setState(SKY_UP);
@@ -909,8 +998,16 @@ final class Game implements Physics.Listener {
         } else {
             Hammer.of(hammer, pose);
         }
-        Hammer.draw(d, pose);
+        boolean heavy = hs == HAND ? heavyOn : heavyThrow;
+        Hammer.draw(d, pose, heavy, 1f);
+        // the other hammer waits at the lower left, in sight and in reach of a tap
+        if (heavyLeft > 0 || heavy) {
+            Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f, 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
+            Hammer.draw(d, other, !heavy, 0.62f);
+        }
     }
+
+    private final float[] other = new float[12];
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {
@@ -920,7 +1017,10 @@ final class Game implements Physics.Listener {
             float shift = k * fh - fh;
             sky.drawFar(f, shift);
             sky.drawClouds(f, shift);
+            if (giftShown && state == SKY_HOLD && stateTime > 0.9f) drawGift(f, stateTime - 0.9f);
         }
+        // the corner, while the street is in sight
+        if (k * fh < fh / 8f) hud(f);
         if (!aiming) return;
         float speed = throwSpeed();
         target(aimX + tremX, aimY + tremY, tmp);
@@ -958,6 +1058,197 @@ final class Game implements Physics.Listener {
         for (int a = 0; a < 48; a++) {
             double t = a * Math.PI * 2 / 48;
             f.set(cx + (int) Math.round(Math.cos(t) * r), cy + (int) Math.round(Math.sin(t) * r), c);
+        }
+    }
+
+    // ---- the corner ----
+
+    /** The new marks drop in once the view is back down from the sky where the gift was seen. */
+    private void marksStep(float dt) {
+        if (heavyShown > heavyLeft) heavyShown = heavyLeft;
+        if (heavyShown == heavyLeft) {
+            markT = -1f;
+            return;
+        }
+        if (markT < 0f) {
+            if (state == SKY_UP || state == SKY_HOLD || tilt() * fh >= fh / 8f) return;
+            markT = 0f;
+            marksLanded = 0;
+        }
+        markT += dt;
+        int n = heavyLeft - heavyShown;
+        while (marksLanded < n && markT >= marksLanded * MARK_GAP + MARK_FALL) {
+            host.sound(Synth.CATCH, 0.45f, 1.05f + marksLanded * 0.14f);
+            host.buzz(12);
+            marksLanded++;
+        }
+        if (markT >= (n - 1) * MARK_GAP + MARK_FALL + 0.45f) {
+            heavyShown = heavyLeft;
+            markT = -1f;
+        }
+    }
+
+    /**
+     * Stars along the top left, burnt one a throw; under them the heavy throws left, ringed in
+     * gold when in hand; beside them the golden cubes in the rack. On the right the weight still
+     * on the plinth, with the line it has to fall below, and the level's number under it.
+     */
+    private void hud(Px f) {
+        int x = 6, y = 8;
+        for (int i = 0; i < STARS; i++) {
+            boolean on = i < stars;
+            boolean flash = state == CLEARED && on && ((int) (stateTime * 6) & 1) == 0;
+            star(f, x + i * 15 + 6, y + 6, 6.6f, on ? (flash ? 0xFFFFFFFF : 0xFFFFC93A) : 0x00000000, 0xFF8A5A12, on);
+        }
+        for (int i = 0; i < heavyShown; i++) heavyMark(f, x + i * 13 + 1, y + 16, heavyOn);
+        // the new ones, dropping in one after another from above the edge, with a bounce and a glint
+        if (markT >= 0f)
+            for (int i = heavyShown; i < heavyLeft; i++) {
+                float tk = markT - (i - heavyShown) * MARK_GAP;
+                if (tk <= 0f) continue;
+                float yy;
+                if (tk < MARK_FALL) {
+                    float u = tk / MARK_FALL;
+                    yy = y + 16 - 30f * (1f - u * u);
+                } else {
+                    float b = tk - MARK_FALL;
+                    yy = y + 16 - 4f * (float) Math.abs(Math.sin(b * 14f)) * (float) Math.exp(-b * 9f);
+                }
+                int mx = x + i * 13 + 1, my = Math.round(yy);
+                float since = tk - MARK_FALL;
+                if (since > 0f && since < 0.3f) {
+                    int a = Math.round(2f + 3f * (1f - since / 0.3f));
+                    f.rect(mx - a, my - a, mx + 11 + a, my + 8 + a, 0xFFFFF0B0);
+                }
+                heavyMark(f, mx, my, heavyOn);
+            }
+        int cx = x + STARS * 15 + 3;
+        if (cubes <= 6) for (int i = 0; i < cubes; i++) cubeMark(f, cx + i * 11, y + 2);
+        else {
+            cubeMark(f, cx, y + 2);
+            PixelFont.draw(f, String.valueOf(cubes), cx + 12, y + 3, 1, 0xFFFFE89A);
+        }
+        int bw = 58, bx = fw - bw - 7, by = 9;
+        f.rect(bx - 1, by - 1, bx + bw + 1, by + 7, 0xFF8A5A12);
+        f.rect(bx, by, bx + bw, by + 6, 0xFFF3E9D2);
+        float on = onPlinth();
+        f.rect(bx, by, bx + Math.round(bw * on), by + 6, on <= 1f - CLEAR ? 0xFF6FBF5A : 0xFFE8963C);
+        int mark = bx + Math.round(bw * (1f - CLEAR));
+        f.rect(mark, by - 3, mark + 1, by + 9, 0xFF5A3A0E);
+        levelPlate(f, bx + bw + 1, by + 11);
+    }
+
+    /** The level's number on a plate of its own, framed like the bar, so the sky never swallows it. */
+    private void levelPlate(Px f, int right, int top) {
+        String lv = String.valueOf(level + 1);
+        int bg = 0xFFCFEBB4, ink = 0xFF2E3A12;
+        int tw = PixelFont.width(lv, 1), px0 = right - tw - 6, py1 = top + 11;
+        f.rect(px0, top, right, py1, 0xFF8A5A12);
+        f.rect(px0 + 1, top + 1, right - 1, py1 - 1, bg);
+        f.rect(px0 + 1, py1 - 2, right - 1, py1 - 1, Px.scale(bg, 0.86f));
+        PixelFont.draw(f, lv, px0 + 3, top + 2, 1, ink);
+    }
+
+    /** A tiny heavy hammer for the corner, 11 by 8 pixels, from its top left corner. */
+    private static void heavyMark(Px f, int x, int y, boolean lit) {
+        if (lit) f.rect(x - 1, y - 1, x + 12, y + 9, 0xFFFFC93A);
+        f.rect(x, y, x + 11, y + 8, 0xFF2E2A28);
+        f.rect(x + 1, y + 1, x + 7, y + 5, 0xFF6A676A);
+        f.rect(x + 1, y + 1, x + 7, y + 2, 0xFF8E8A8C);
+        f.rect(x + 2, y + 1, x + 3, y + 5, 0xFFC08A3C);
+        f.rect(x + 5, y + 1, x + 6, y + 5, 0xFFC08A3C);
+        f.rect(x + 7, y + 2, x + 10, y + 4, 0xFF8A5A32);
+    }
+
+    /** A golden cube for the corner, nine pixels: a lit top, a face, a shaded side. */
+    private static void cubeMark(Px f, int x, int y) {
+        f.rect(x, y, x + 9, y + 9, 0xFF8A5A12);
+        f.rect(x + 1, y + 1, x + 8, y + 3, 0xFFFFE89A);
+        f.rect(x + 1, y + 3, x + 6, y + 8, 0xFFF2C64A);
+        f.rect(x + 6, y + 3, x + 8, y + 8, 0xFFC0902C);
+    }
+
+    /** A five-pointed star; hollow when spent. */
+    private static void star(Px f, int cx, int cy, float r, int fill, int edge, boolean full) {
+        int R = (int) Math.ceil(r) + 1;
+        for (int y = -R; y <= R; y++)
+            for (int x = -R; x <= R; x++) {
+                float d = starDist(x, y, r);
+                if (d < -1.1f) {
+                    if (full) f.set(cx + x, cy + y, Px.scale(fill, 1.08f - 0.25f * (x + y) / (2f * r)));
+                } else if (d < 0.2f) {
+                    f.set(cx + x, cy + y, edge);
+                }
+            }
+    }
+
+    /** Signed distance-like value for a star outline: negative inside. */
+    private static float starDist(float x, float y, float r) {
+        double a = Math.atan2(x, -y);
+        double seg = Math.PI * 2 / 5;
+        double m = ((a % seg) + seg) % seg - seg / 2;
+        double t = Math.abs(m) / (seg / 2);
+        double edge = r + (r * 0.48 - r) * t;
+        return (float) (Math.sqrt(x * x + y * y) - edge);
+    }
+
+    // ---- the gift in the sky ----
+    // The heavy hammer drops from the thunderer's cloud and tumbles down past the gods toward
+    // the street, a glint on its head. Its fall is new each time.
+
+    private float giftT0 = -1f, giftX, giftY, giftVx, giftVy, giftG, giftS, giftAng, giftSpin, giftSway, giftPhase;
+    private final Random giftRnd = new Random(0x61F7L);
+    private final float[] godAt = new float[2];
+
+    private void planGift() {
+        Random r = giftRnd;
+        giftT0 = 0f;
+        sky.godAt(Sky.THUNDERER, 0f, godAt);
+        int gw = Math.max(40, sky.godW(Sky.THUNDERER)), gh = Math.max(30, sky.godH(Sky.THUNDERER));
+        giftX = godAt[0] + (r.nextFloat() - 0.5f) * gw * 0.6f;
+        giftY = godAt[1] + gh * (0.1f + r.nextFloat() * 0.25f);
+        // a near one is bigger and falls faster across the screen
+        float near = r.nextFloat();
+        giftS = 17f + near * 15f;
+        giftG = 300f + near * 260f + r.nextFloat() * 80f;
+        // tossed toward the middle of the sky more often than away from it, sometimes up first
+        float toMid = Math.signum(fw * 0.5f - giftX);
+        giftVx = (r.nextFloat() < 0.75f ? toMid : -toMid) * (15f + r.nextFloat() * 70f);
+        giftVy = -60f + r.nextFloat() * 110f;
+        giftAng = r.nextFloat() * 6.28f;
+        giftSpin = (r.nextBoolean() ? 1f : -1f) * (3f + r.nextFloat() * 5f);
+        giftSway = r.nextFloat() * 9f;
+        giftPhase = r.nextFloat() * 6.28f;
+    }
+
+    private void drawGift(Px f, float t) {
+        if (giftT0 < 0f) planGift();
+        float cx = giftX + giftVx * t + giftSway * (float) Math.sin(t * 2.3f + giftPhase);
+        float cy = giftY + giftVy * t + 0.5f * giftG * t * t;
+        if (cy > fh + 40 || cx < -40 || cx > fw + 40) return;
+        float ang = giftAng + t * giftSpin, s = giftS;
+        float ca = (float) Math.cos(ang), sa = (float) Math.sin(ang);
+        int r = (int) (s * 1.1f) + 2;
+        for (int y = -r; y <= r; y++)
+            for (int x = -r; x <= r; x++) {
+                // into the hammer's own frame: u along the handle, v across
+                float u = (x * ca + y * sa) / s, v = (-x * sa + y * ca) / s;
+                int c = 0;
+                if (u > 0.2f && u < 0.62f && Math.abs(v) < 0.34f) {
+                    c = (u > 0.27f && u < 0.32f) || (u > 0.5f && u < 0.55f) ? 0xFFC08A3C : 0xFF4A484E;
+                    if (v < -0.2f) c = Px.scale(c, 1.35f);
+                } else if (u > -0.75f && u <= 0.2f && Math.abs(v) < 0.08f) {
+                    c = v < 0f ? 0xFF8A5A32 : 0xFF6A4226;
+                }
+                if (c != 0) f.set(Math.round(cx) + x, Math.round(cy) + y, c);
+            }
+        if (((int) (t * 10f) & 3) == 0) {
+            int gx = Math.round(cx + ca * s * 0.45f), gy = Math.round(cy + sa * s * 0.45f);
+            f.set(gx, gy, 0xFFFFFFFF);
+            f.set(gx - 1, gy, 0xFFFFF0C0);
+            f.set(gx + 1, gy, 0xFFFFF0C0);
+            f.set(gx, gy - 1, 0xFFFFF0C0);
+            f.set(gx, gy + 1, 0xFFFFF0C0);
         }
     }
 
