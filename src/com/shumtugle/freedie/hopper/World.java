@@ -393,8 +393,8 @@ final class World {
         throwFrom[2] = fz;
         float dx = b[0] - fx, dy = b[1] - fy, dz = b[2] - fz;
         float d = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
-        // a near box is struck at once, a far one after a long arc
-        throwTime = Math.min(0.95f, 0.32f + 0.075f * d);
+        // thrown as on the street: so many meters a second, the meters the hammer's own
+        throwTime = Math.max(0.18f, d * METERS / THROW_SPEED);
         throwAge = 0f;
         struck = false;
         dispatched = false;
@@ -402,10 +402,17 @@ final class World {
         return true;
     }
 
+    /** How many meters of the street one unit here is: the wooden hammer is the same hammer. */
+    static final float METERS = 3.4f;
+    /** The throw's speed, meters a second, and the pull of the ground, units a second squared. */
+    static final float THROW_SPEED = 11f, PULL = 9.81f / METERS;
+    /** How fast the hammer spins flat about the upright in flight, radians a second. */
+    static final float SPIN = 15f;
+
     /**
-     * The flying hammer's head, into out: an arc from the hand to the button, higher the further
-     * it goes; after the strike it drops onto the island beside the box. Returns the tumble, in
-     * turns of the hammer end over end.
+     * The flying hammer's head, into out: a throw as on the street, under the ground's pull,
+     * from the hand onto the button; after the strike it drops onto the island beside the box.
+     * Returns how far it has turned in its flat spin, in radians.
      */
     float thrown(float[] out) {
         float[] b = new float[3];
@@ -415,19 +422,18 @@ final class World {
             b[2] = throwFrom[2];
         }
         if (!struck) {
-            float t = Math.min(1f, throwAge / throwTime);
-            float dx = b[0] - throwFrom[0], dz = b[2] - throwFrom[2];
-            float arc = 0.12f + 0.09f * (float) Math.sqrt(dx * dx + dz * dz);
-            for (int k = 0; k < 3; k++) out[k] = throwFrom[k] + (b[k] - throwFrom[k]) * t;
-            out[1] += 4f * arc * t * (1f - t);
-            return t * (1.25f + 0.25f * throwTime);
+            float t = Math.min(throwAge, throwTime), T = throwTime;
+            for (int k = 0; k < 3; k++) out[k] = throwFrom[k] + (b[k] - throwFrom[k]) * t / T;
+            // the rise and fall a throw under the pull takes to come down where it was aimed
+            out[1] += 0.5f * PULL * t * (T - t);
+            return SPIN * t;
         }
-        // knocked back off the button, down onto the stone
+        // knocked back off the button, down onto the stone, its spin dying
         float s = Math.min(1f, (throwAge - throwTime) / 0.32f);
         out[0] = b[0] - 0.1f * s;
         out[1] = b[1] + (BUTTON_UP - 0.04f) * (-s * s) + 0.08f * s * (1f - s) * 4f;
         out[2] = b[2] - 0.1f * s;
-        return 1.25f + 0.25f * throwTime + 0.2f * s;
+        return SPIN * (throwTime + 0.16f * (1f - (1f - s) * (1f - s)));
     }
 
     /** A rival has landed; heard if it is near the drop. */

@@ -6,15 +6,15 @@ package com.shumtugle.freedie;
  * calls, always from one thread: touch() for each queued touch, update(dt), then draw().
  * Coordinates of touches are frame pixels, W across.
  *
- * The first game opens with Freedie herself and her gift (see Intro); every game after with
- * the name on the square (see Opening). Then, for now, the street under a low evening sun:
- * houses, palms, the sea beyond the promenade, cars parked and cars coming; on the plinth a
- * stack of blocks with a golden cube turning on top. A finger dragged across turns the eye;
- * the red button on the lamp post rings the dispatcher, and three presses open the bridge.
+ * Every game opens with Freedie herself (see Intro); the first time, with her gift. Then the
+ * street under a low evening sun: houses, palms, the sea beyond the promenade, cars parked
+ * and cars coming, and on the plinth in the middle of the road a building, with the hammer
+ * in hand to knock it down (see Game). The red button on the lamp post rings the
+ * dispatcher, and three presses open the bridge.
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.7.1";   // shown on screen; keep in step with versionName
+    static final String VERSION = "0.8";     // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -41,9 +41,7 @@ final class World {
     int h = 640;
     float time;
     float frameMs;                           // how long the last frame took, set by the shell
-    private float look, lookVel;              // the eye turned aside by a finger, radians
-    private float downX, downY, lastX, travel;
-    private boolean down;
+    private final Game game;                  // the building on the plinth, and the hammer
 
     private final DrawList still = new DrawList();   // the street, built once
     private boolean built;
@@ -68,9 +66,10 @@ final class World {
 
     World(Host host) {
         this.host = host;
-        // the first meeting once, and the gift that comes with it; the usual opening after
-        intro = host.loadInt("met") == 1 ? new Opening(host) : new Intro(host);
+        // she opens every game; her heart is given at the first meeting only
+        intro = new Intro(host, host.loadInt("met") != 1);
         cubes = host.loadInt("cubes");
+        game = new Game(host, 0);
     }
 
     void resize(int screenW, int screenH) {
@@ -107,25 +106,15 @@ final class World {
             return;
         }
         if (type == BACK) return;
-        if (type == DOWN) {
-            down = true;
-            downX = lastX = x;
-            downY = y;
-            travel = 0f;
-            lookVel = 0f;
-        } else if (type == MOVE && down) {
-            travel += Math.abs(x - lastX);
-            look = Math.max(-0.7f, Math.min(0.7f, look - (x - lastX) * 0.006f));
-            lastX = x;
-        } else if (type == UP) {
-            // a tap, not a drag, on the button
-            if (down && travel < 6f && Math.hypot(downX - button[0], downY - button[1]) < 11f) {
-                pressedAt = time;
-                host.sound(Synth.TOCK, 0.8f, 1f);
-                call();
-            }
-            down = false;
+        // the red button, pressed with the hammer in hand, before it can be taken for an aim
+        if (type == DOWN && game.handFree() && Math.hypot(x - button[0], y - button[1]) < 11f) {
+            pressedAt = time;
+            host.sound(Synth.TOCK, 0.8f, 1f);
+            call();
+            swallow = true;
+            return;
         }
+        game.touch(type, x, y);
     }
 
     void update(float dt) {
@@ -134,7 +123,7 @@ final class World {
         if (intro != null) {
             intro.update(dt);
             if (intro.done()) {
-                if (intro instanceof Intro) {
+                if (((Intro) intro).gift) {
                     // her heart is the first cube, and it is in the first slot already
                     host.saveInt("met", 1);
                     host.saveInt("slot0", 1);
@@ -147,12 +136,7 @@ final class World {
         flashOut = Math.max(0f, flashOut - dt);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
-        if (!down) {
-            // let go, the eye drifts back to rest
-            lookVel += -look * 6f * dt;
-            lookVel *= (float) Math.exp(-4f * dt);
-            look += lookVel * dt;
-        }
+        if (bridge == null) game.update(dt);
     }
 
     /** Whether the back key means something here, rather than leaving the game. */
@@ -165,12 +149,10 @@ final class World {
         return intro != null;
     }
 
-    private final float[] turn = new float[9];
 
     void draw(DrawList d) {
         if (!built) {
             Street.build(still);
-            plinth(still);
             built = true;
         }
         d.begin(W, h);
@@ -184,8 +166,9 @@ final class World {
             intro.flat(f, d);
             return;
         }
-        float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z) + look;
+        float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, 0.0f, W * 1.9f, 0.1f, 500f);
+        game.frame(d);
         d.flash = flashOut / FLASH_OUT;
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
         if (bridge != null) {
@@ -202,7 +185,7 @@ final class World {
         }
         d.append(still);
         traffic.draw(d);
-        stack(d);
+        game.draw(d);
         // the red button on the call box: a slow glow, bright for a moment when pressed
         float since = time - pressedAt;
         float glow = since < 0.35f ? 1f : 0.45f + 0.25f * (float) Math.sin(time * 3.1f);
@@ -211,7 +194,8 @@ final class World {
         d.box(Street.CALL_X + in, Street.CALL_Y + 0.06f, Street.CALL_Z, 0.025f, 0.075f, 0.075f, null, red, DrawList.GLOW);
         if (!d.project(Street.CALL_X, Street.CALL_Y + 0.06f, Street.CALL_Z, button)) button[0] = button[1] = -99f;
 
-        // the flat layer: the version in the corner, and the cost of a frame while the engine is young
+        // the flat layer: the aim, the version in the corner, and the cost of a frame while the engine is young
+        game.flat(f);
         PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
         if (frameMs > 0f) {
             String ms = String.valueOf(Math.round(frameMs));
@@ -253,7 +237,7 @@ final class World {
     }
 
     void openBridge() {
-        down = false;
+        game.cancel();
         bridge = new Bridge(this, host);
         host.sound(Synth.DOOR, 1f, 0.8f);
     }
@@ -315,26 +299,6 @@ final class World {
                 if (rows[j].charAt(i) == 'X') f.rect(x0 + i * s, y0 + j * s, x0 + (i + 1) * s, y0 + (j + 1) * s, c);
     }
 
-
-    /** The plinth in the middle of the road. */
-    private static void plinth(DrawList d) {
-        d.box(0f, PLINTH_TOP * 0.5f, PLINTH_Z, PLINTH_HX, PLINTH_TOP * 0.5f, PLINTH_HZ, null, 0xE6D8BC, DrawList.STONE);
-    }
-
-    /** A little stack on the plinth, the golden cube turning slowly on top. */
-    private void stack(DrawList d) {
-        float top = PLINTH_TOP;
-        d.box(-1.2f, top + 0.45f, PLINTH_Z, 0.3f, 0.45f, 0.3f, null, 0xC0603E, DrawList.GRAIN);
-        d.box(1.2f, top + 0.45f, PLINTH_Z, 0.3f, 0.45f, 0.3f, null, 0xC0603E, DrawList.GRAIN);
-        d.box(0f, top + 0.98f, PLINTH_Z, 1.6f, 0.08f, 0.42f, null, 0x4F8F86, DrawList.WOOD);
-        d.box(-0.6f, top + 1.36f, PLINTH_Z, 0.3f, 0.3f, 0.3f, null, 0xBDB3A2, DrawList.STONE);
-        d.box(0.6f, top + 1.36f, PLINTH_Z, 0.3f, 0.3f, 0.3f, null, 0xD9A83A, DrawList.GRAIN);
-        float a = time * 0.8f, c = (float) Math.cos(a), s = (float) Math.sin(a);
-        turn[0] = c; turn[1] = 0; turn[2] = s;
-        turn[3] = 0; turn[4] = 1; turn[5] = 0;
-        turn[6] = -s; turn[7] = 0; turn[8] = c;
-        d.box(0f, top + 1.98f, PLINTH_Z, 0.22f, 0.22f, 0.22f, turn, 0xF2C230, DrawList.GOLD);
-    }
 
     private Px flatPx;
 

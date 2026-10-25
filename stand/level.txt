@@ -1,0 +1,27 @@
+# The first level: the building comes down onto the plinth, the hammer is wound up and
+# thrown at it, and the first building flies to pieces at the first touch; once all is still,
+# what is left goes in a puff and the building rises again.
+screen 1096 2560
+skip
+wait 0.6
+shot l0_build
+wait 1.6
+shot l1_built
+down 200 520
+wait 0.5
+shot l2_aim
+wait 0.6
+shot l3_full
+up 200 520
+wait 0.12
+shot l4_fly
+wait 0.12
+shot l5_blow
+wait 0.4
+shot l6_pieces
+wait 1.4
+shot l7_lying
+wait 3.6
+shot l8_puff
+wait 1.4
+shot l9_again

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.8
+- The first level: the building comes down onto the plinth block by block, the same first
+  building as in the game this one grows from, wooden posts and boards and two bottles of
+  water. The wooden hammer is in hand, low on the right.
+- Put a finger down anywhere and a ring comes up on the building; move it and the ring
+  moves along, never under the finger; hold still and the hammer draws back, a band fills
+  round the ring and the throw gathers strength; hold too long and the ring shakes. The
+  dotted arc shows the flight. Let go and it flies: a quick release lobs, a full one flies
+  flat, spinning about the upright, and comes back to the hand.
+- The first building flies to pieces at the first touch of the hammer, with thunder.
+  Pieces knock with the voices of wood and stone, chips and dust fly, bottles burst into
+  spray and leave puddles that dry up. Parked cars stand in the way.
+- Three quarters of the building off the plinth, and once all is still what is left goes
+  in a puff and the building comes down again. Stars and further levels are next.
+- Freedie opens every game again; her heart, the golden cube, rises only at the first
+  meeting. The name on the square is gone.
+- The hammer thrown at the call box in the first game of the bridge flies the same way as
+  on the street, flat and spinning, in an arc under the ground's pull.
+- Round things in the engine: bottles and puddles are twelve-sided, out of plain boxes.
+
 ## 0.7.1
 - In the first game of the bridge the hammer is in hand: the wooden one from the street,
   low on the right, its head across the view, swaying with every hop.

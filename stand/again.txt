@@ -1,0 +1,8 @@
+# Every start after the first: Freedie again, the blow and the name, but no heart rises.
+screen 1096 2560
+keep met 1
+restart
+wait 4.9
+shot a0_after_blow
+wait 0.8
+shot a1_name

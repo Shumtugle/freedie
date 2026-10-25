@@ -1,17 +1,8 @@
-# The street: a touch through the opening; at rest; the eye turned to the houses, back,
-# turned to the sea; cars come down the road and turn round short of the plinth; the red
-# button on the lamp post pressed.
+# The street: the building on the plinth, cars coming and going, and the red button pressed.
 screen 1096 2560
 skip
-wait 1.0
+wait 2.5
 shot s0_rest
-drag 200 300 60 300 0.4
-shot s1_houses
-wait 3.0
-drag 60 300 200 300 0.4
-shot s2_sea
-wait 3.0
-shot s3_back
 wait 5.0
 shot s4a_coming
 wait 4.0

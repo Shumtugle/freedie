@@ -139,10 +139,10 @@ final class Mesh {
             if (w.cut) sawnDrop(w, out, first, v);
         }
         if (w.throwAge >= 0f) {
-            // the wooden hammer in flight, end over end, or lying where it fell
+            // the wooden hammer in flight, spinning flat, or lying where it fell
             float[] head = new float[3];
-            float turns = w.thrown(head);
-            v = flying(out, v, head, turns, w.throwFrom);
+            float turn = w.thrown(head);
+            v = flying(out, v, head, turn, w.throwFrom);
         }
         if (w.boss != null && !w.boss.away) {
             // the black drop
@@ -618,21 +618,21 @@ final class Mesh {
     }
 
     /**
-     * The hammer thrown: its head at head, turning end over end about the line across its
-     * flight, by turns of a whole circle; the handle trails behind as it leaves the hand.
+     * The hammer thrown, as it flies on the street: its head at head, flat, the handle across
+     * the flight as it left the hand and spinning about the upright by turn radians.
      */
-    private static int flying(float[] out, int v, float[] head, float turns, float[] from) {
+    private static int flying(float[] out, int v, float[] head, float turn, float[] from) {
         float dx = head[0] - from[0], dz = head[2] - from[2];
         float l = (float) Math.sqrt(dx * dx + dz * dz);
         if (l < 1e-4f) { dx = 0f; dz = -1f; l = 1f; }
         dx /= l;
         dz /= l;
-        // the tumble: the handle along the flight, turning in the upright plane of the flight
-        double a = turns * Math.PI * 2;
-        float c = (float) Math.cos(a), s = (float) Math.sin(a);
-        float[] hx = {dx * c, s, dz * c};
-        float[] hz = {-dz, 0f, dx};
-        float[] hy = {hz[1] * hx[2] - hz[2] * hx[1], hz[2] * hx[0] - hz[0] * hx[2], hz[0] * hx[1] - hz[1] * hx[0]};
+        // across the flight at the start, then round
+        float c = (float) Math.cos(turn), s = (float) Math.sin(turn);
+        float ax = -dz, az = dx;
+        float[] hx = {ax * c - dx * s, 0f, az * c - dz * s};
+        float[] hy = {0f, 1f, 0f};
+        float[] hz = {hx[1] * hy[2] - hx[2] * hy[1], hx[2] * hy[0] - hx[0] * hy[2], hx[0] * hy[1] - hx[1] * hy[0]};
         float[] pose = new float[12];
         for (int k = 0; k < 3; k++) {
             pose[k] = head[k] - hx[k] * HEAD_AT * HAMMER_SIZE;

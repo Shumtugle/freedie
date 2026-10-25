@@ -4,7 +4,7 @@ A game for Android about knocking down buildings with a hammer, on a summer stre
 seaside town. Freedie, a giant heaped together from stone, brick and planks and dressed
 as a maid, is its mascot.
 
-Early days: the engine, the street and the opening stand, the game is still to come.
+Early days: the engine, the street, the opening and the first level stand; the levels after it are still to come.
 
 ## How it is made
 
@@ -15,6 +15,8 @@ Early days: the engine, the street and the opening stand, the game is still to c
   boxes into a small frame 274 pixels across, then the small frame onto the screen with
   hard square pixels and a flat layer of figures over it. The shaders are in
   `assets/shaders`.
+- Round things are made of boxes: six thin plates about one axis make a twelve-sided prism,
+  which the coarse pixels read as round.
 - The desktop stand (`stand/`) plays scenes against the same Java and writes each frame's
   draw list; `stand/web/index.html` draws it with the same shaders in a browser.
 - The first game of the bridge, the hopscotch over the quicksilver, is a game of its own

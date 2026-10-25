@@ -7,9 +7,10 @@ import java.util.Random;
  * the eye flies in an arc over the seaside town down onto a square, cars going by, people
  * walking, and stops before Freedie, who looks up; the town goes dark, light left on her alone; she swings her golden
  * hammer straight at the eye, the glass cracks, and she herself breaks and falls apart;
- * out of what is left of her rises her heart, a golden cube, her gift: the first of the cubes
- * the game is played for; on the black the name burns in gold; a flash, and the game. Played
- * once, at the first meeting. A touch at any moment goes straight to the flash.
+ * on the black the name burns in gold; a flash, and the game. Played at every start. At the
+ * first meeting only, out of what is left of her rises her heart, a golden cube, her gift:
+ * the first of the cubes the game is played for. A touch at any moment goes straight to the
+ * flash.
  */
 final class Intro implements Prelude {
     static final float FLY_END = 2.5f, LOOK_END = 3.0f, DARK_END = 3.6f, RAISE_END = 3.95f, HIT = 4.25f;
@@ -25,6 +26,8 @@ final class Intro implements Prelude {
     private static final float NAME_Z = FZ + 9.4f, NAME_Y = 5.0f, DOT = 0.22f;
 
     private final World.Host host;
+    /** The first meeting: her heart is given. */
+    final boolean gift;
     private final Frida frida = new Frida();
     private final Square square = new Square();
     private final Random rnd = new Random(23);
@@ -41,8 +44,9 @@ final class Intro implements Prelude {
     private final float[] dotX = new float[300], dotY = new float[300], dotAt = new float[300];
     private int dots;
 
-    Intro(World.Host host) {
+    Intro(World.Host host, boolean gift) {
         this.host = host;
+        this.gift = gift;
         frida.x = FX;
         frida.z = FZ;
         int col = 0;
@@ -100,7 +104,7 @@ final class Intro implements Prelude {
             sound(Synth.GROUND, 1f, 0.7f);
             sound(Synth.GLASS, 0.9f, 0.8f);
         }
-        if (crossed(was, HIT + 0.6f)) sound(Synth.CHIME, 0.5f, 1.5f);
+        if (gift && crossed(was, HIT + 0.6f)) sound(Synth.CHIME, 0.5f, 1.5f);
         if (crossed(was, NAME)) sound(Synth.CHIME, 0.9f, 1f);
         if (crossed(was, FLASH)) sound(Synth.WHOOSH, 0.5f, 1.5f);
         if (t >= PEAK) peaked = true;
@@ -218,7 +222,7 @@ final class Intro implements Prelude {
      * pieces, turning slowly, glowing on its own in the dark, and comes to rest under her name.
      */
     private void heart(DrawList d) {
-        if (t < HIT) return;
+        if (!gift || t < HIT) return;
         float u = ease(span(t, HIT + 0.15f, NAME + 0.4f));
         bezier(HEART0, HEART1, HEART2, u, heartAt);
         heartAt[1] += 0.04f * (float) Math.sin(t * 3f);
