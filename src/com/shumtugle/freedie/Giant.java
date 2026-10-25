@@ -234,6 +234,8 @@ final class Giant {
         f.kneeOutB = kneeL == 0;
         f.head = head;
         f.hurt = hurt;
+        // the weak points throb, so the eye finds them through the fire
+        f.flare = 0.3f + 0.25f * (float) Math.sin(time * 7f);
         f.pose();
     }
 

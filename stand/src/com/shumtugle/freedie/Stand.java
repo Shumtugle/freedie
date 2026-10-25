@@ -31,6 +31,7 @@ public final class Stand implements World.Host {
     private final DrawList list = new DrawList();
     private final File out;
     private float time;
+    private String shotDown;
 
     private Stand(File out) {
         this.out = out;
@@ -215,12 +216,26 @@ public final class Stand implements World.Host {
                 wait -= DT;
                 if (wait > 0f) continue;
                 float[] at = world.standFightPick();
-                if (at == null) continue;
+                if (at == null || !world.standHandFree()) continue;
                 float off = r.nextFloat() < skill ? 0f : 18f;
-                world.standFightThrow(at[0] + (r.nextFloat() - 0.5f) * 2f * off, at[1] + (r.nextFloat() - 0.5f) * 2f * off);
+                // a finger as a player's: put down under the ring's spot, held a moment, lifted
+                float fx = at[0] + (r.nextFloat() - 0.5f) * 2f * off, fy = at[1] + (r.nextFloat() - 0.5f) * 2f * off + Fight.FINGER;
+                world.touch(World.DOWN, fx, fy);
+                for (int k = 0; k < 6; k++) {
+                    step();
+                    i++;
+                }
+                if (shotDown != null) {
+                    shot(shotDown);
+                    shotDown = null;
+                }
+                world.touch(World.UP, fx, fy);
                 wait = 0.5f + r.nextFloat() * 0.4f;
             }
             System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
+        } else if (c.equals("botshot")) {
+            // botshot NAME: the next throw of the bot is shot with the finger down
+            shotDown = p[1];
         } else if (c.equals("fightstate")) {
             System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
         } else if (c.equals("shot")) {

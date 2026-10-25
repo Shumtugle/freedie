@@ -62,7 +62,9 @@ final class Hammer {
             float cx = pose[0] + T[0] * ox + T[1] * oy + T[2] * oz;
             float cy = pose[1] + T[3] * ox + T[4] * oy + T[5] * oz;
             float cz = pose[2] + T[6] * ox + T[7] * oy + T[8] * oz;
-            d.box(cx, cy, cz, p[3] * scale, p[4] * scale, p[5] * scale, T, col[i], mat[i]);
+            // the diamond keeps its own colours, however the world is seen
+            float m = kind == DIAMOND ? DrawList.material(mat[i], DrawList.KEEP) : mat[i];
+            d.box(cx, cy, cz, p[3] * scale, p[4] * scale, p[5] * scale, T, col[i], m);
         }
     }
 

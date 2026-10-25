@@ -20,6 +20,8 @@ import java.util.Random;
 final class Fight {
     static final int ARMOR = 3, FLY_MAX = 4;
     static final float LIFT_T = 0.9f, SPEED = 26f;
+    /** How far above the finger the ring sits, frame pixels; and how near it a car in the air is taken. */
+    static final float FINGER = 30f, SNAP = 30f;
 
     private final Game g;
     private final World.Host host;
@@ -65,6 +67,8 @@ final class Fight {
         giant.update(dt, progress());
         if (giant.down) giant.body.fall(dt);
         flash = Math.max(0f, flash - dt * 2.2f);
+        for (int i = 0; i < POPS; i++) if (popT[i] >= 0f && (popT[i] += dt) > 0.45f) popT[i] = -1f;
+        for (int i = 0; i < broke.length; i++) if (broke[i] >= 0f && (broke[i] += dt) > 1.2f) broke[i] = -1f;
         shake = Math.max(0f, shake - dt * 2.5f);
         // she comes down: the street shakes, dust flies
         if (giant.landings != landingsSeen) {
@@ -249,6 +253,7 @@ final class Fight {
             c.wx = (fx.nextFloat() - 0.5f) * 9f;
             c.wz = (fx.nextFloat() - 0.5f) * 9f;
             flyState[i] = 3;
+            pop(hx, hy, hz, CAR_POP);
             host.sound(Synth.CRASH, 1f, 1.1f);
             host.sound(Synth.GLASS, 0.6f, 1.2f);
             host.buzz(70);
@@ -265,6 +270,7 @@ final class Fight {
             if (near(tmp, hx, hy, hz, Giant.KNEE_HIT + 0.25f)) {
                 if (right) gi.kneeR = 0;
                 else gi.kneeL = 0;
+                broke[right ? 1 : 0] = 0f;
                 weakHit(hx, hy, hz, 1.1f);
                 return;
             }
@@ -272,6 +278,7 @@ final class Fight {
         gi.headCenter(tmp);
         if (near(tmp, hx, hy, hz, Giant.HEAD_HIT + 0.3f)) {
             gi.head--;
+            broke[2 + gi.head] = 0f;
             weakHit(hx, hy, hz, 0.9f);
             if (gi.head == 0) topple(hx, hy, hz);
             return;
@@ -280,6 +287,7 @@ final class Fight {
             // a blow to the bulk: a brick knocked out, a moment's pause
             gi.stagger = Math.max(gi.stagger, 0.5f);
             gi.hurt = 0.6f;
+            pop(hx, hy, hz, BODY_POP);
             Body b = new Body(0.22f, 0.1f, 0.22f, Body.STONE, 0xB5553A);
             b.setPose(hx, hy, hz, 1, 0, 0, 0);
             b.vx = (fx.nextFloat() - 0.5f) * 3f;
@@ -303,6 +311,7 @@ final class Fight {
     }
 
     private void weakHit(float x, float y, float z, float stun) {
+        pop(x, y, z, WEAK_POP);
         giant.stagger = Math.max(giant.stagger, stun);
         giant.hurt = 1f;
         giant.pose();
@@ -351,7 +360,7 @@ final class Fight {
         g.handPoint(tmp);
         float sx = tmp[0], sy = tmp[1], sz = tmp[2];
         int car = -1;
-        float bd = 15f;
+        float bd = SNAP;
         for (int i = 0; i < FLY_MAX; i++) {
             if (flyState[i] != 1 && flyState[i] != 2) continue;
             if (!g.project(fly[i].px, fly[i].py, fly[i].pz, scr)) continue;
@@ -464,12 +473,16 @@ final class Fight {
     void hud(Px f) {
         int x = 6, y = 8;
         for (int i = 0; i < ARMOR; i++) shield(f, x + i * 15, y, i < armor);
-        int bx = g.fw - 7 - 5 * 11;
+        int bx = g.fw - 7 - 5 * 13;
         for (int i = 0; i < 5; i++) {
             boolean whole = i < 2 ? (i == 0 ? giant.kneeL : giant.kneeR) > 0 : giant.head > i - 2;
-            int cx = bx + i * 11;
-            f.rect(cx, y + 1, cx + 9, y + 10, 0xFF5A3A0E);
-            f.rect(cx + 1, y + 2, cx + 8, y + 9, whole ? (i < 2 ? 0xFFFFB13A : 0xFFFFE07A) : 0xFF3A3236);
+            int cx = bx + i * 13;
+            // a point just broken flares white and shrinks to dark
+            float b = broke[i];
+            int in = whole ? (i < 2 ? 0xFFFFB13A : 0xFFFFE07A) : b >= 0f ? Px.mix(0xFFFFFFFF, 0xFF3A3236, b / 1.2f) : 0xFF3A3236;
+            int grow = b >= 0f ? Math.round(3f * (1f - b / 1.2f)) : 0;
+            f.rect(cx - grow, y - grow, cx + 11 + grow, y + 11 + grow, 0xFF5A3A0E);
+            f.rect(cx + 1 - grow, y + 1 - grow, cx + 10 + grow, y + 10 + grow, in);
         }
     }
 
@@ -502,6 +515,149 @@ final class Fight {
         int a = Math.round(shake * 5f);
         out[0] = a == 0 ? 0f : (int) ((fx.nextFloat() - 0.5f) * 2f * a);
         out[1] = a == 0 ? 0f : (int) ((fx.nextFloat() - 0.5f) * 2f * a);
+    }
+
+    // ---- the marks over the frame ----
+    // Through the red and the fire the eye needs help: brackets round her weak points that
+    // are still whole, brackets round each car in her hand or in the air (red when the ring
+    // has it), the ring itself in the diamond's colours, and a burst where a blow lands.
+
+    private static final int POPS = 6, CAR_POP = 0, WEAK_POP = 1, BODY_POP = 2;
+    private final float[] popX = new float[POPS], popY = new float[POPS], popZ = new float[POPS];
+    private final float[] popT = {-1f, -1f, -1f, -1f, -1f, -1f};
+    private final int[] popKind = new int[POPS];
+    // seconds since each weak point broke: two knees, then the head's three
+    private final float[] broke = {-1f, -1f, -1f, -1f, -1f};
+    private final float[] p0 = new float[2], p1 = new float[2], w3 = new float[3];
+
+    private void pop(float x, float y, float z, int kind) {
+        int k = 0;
+        for (int i = 1; i < POPS; i++) if (popT[i] < 0f || popT[k] >= 0f && popT[i] > popT[k]) k = i;
+        popX[k] = x;
+        popY[k] = y;
+        popZ[k] = z;
+        popT[k] = 0f;
+        popKind[k] = kind;
+    }
+
+    /** The car the ring has now, if any: the one in the air nearest it on screen, within reach. */
+    private int locked(float ax, float ay) {
+        int car = -1;
+        float bd = SNAP;
+        for (int i = 0; i < FLY_MAX; i++) {
+            if (flyState[i] != 1 && flyState[i] != 2) continue;
+            if (!g.project(fly[i].px, fly[i].py, fly[i].pz, scr)) continue;
+            float d = (float) Math.hypot(scr[0] - ax, scr[1] - ay);
+            if (d < bd) {
+                bd = d;
+                car = i;
+            }
+        }
+        return car;
+    }
+
+    void marks(Px f, boolean aiming, float ax, float ay) {
+        if (end >= 0f) {
+            pops(f);
+            return;
+        }
+        float beat = 0.5f + 0.5f * (float) Math.sin(giant.time * 7f);
+        int cyan = Px.mix(0xFF7FE6FF, 0xFFFFFFFF, beat);
+        // her weak points, while whole
+        if (!giant.down) {
+            if (giant.kneeL > 0) {
+                giant.knee(false, w3);
+                bracket(f, w3, Giant.KNEE_HIT * 0.7f, cyan, 1);
+            }
+            if (giant.kneeR > 0) {
+                giant.knee(true, w3);
+                bracket(f, w3, Giant.KNEE_HIT * 0.7f, cyan, 1);
+            }
+            if (giant.head > 0) {
+                giant.headCenter(w3);
+                bracket(f, w3, Giant.HEAD_HIT * 0.8f, cyan, 1);
+            }
+        }
+        // the cars: white, red when the ring has one
+        int lock = aiming ? locked(ax, ay) : -1;
+        for (int i = 0; i < FLY_MAX; i++) {
+            if (flyState[i] != 1 && flyState[i] != 2) continue;
+            w3[0] = fly[i].px;
+            w3[1] = fly[i].py;
+            w3[2] = fly[i].pz;
+            bracket(f, w3, 1.6f, i == lock ? 0xFFFF4A2A : 0xFFFFFFFF, i == lock ? 2 : 1);
+        }
+        pops(f);
+        if (!aiming) return;
+        // the ring, in the diamond's colours, red when it has a car
+        int cx = Math.round(ax), cy = Math.round(ay);
+        int c = lock >= 0 ? 0xFFFF4A2A : 0xFFBFF4FF;
+        circle(f, cx, cy, 10, 0xFF1A1A22);
+        circle(f, cx, cy, 9, c);
+        circle(f, cx, cy, 8, 0xFFFFFFFF);
+        circle(f, cx, cy, 7, 0xFF1A1A22);
+        f.rect(cx - 1, cy - 1, cx + 1, cy + 1, c);
+        // a thin line down to the finger, so the eye ties the ring to the hand
+        for (int y = cy + 12; y < cy + (int) FINGER - 4; y += 3) f.set(cx, y, 0xAAFFFFFF);
+    }
+
+    /** Corner brackets round a point of the world, so many meters across. */
+    private void bracket(Px f, float[] p, float r, int c, int thick) {
+        if (!g.project(p[0], p[1], p[2], p0) || !g.project(p[0], p[1] + r, p[2], p1)) return;
+        int s = Math.max(4, Math.min(34, Math.round(Math.abs(p0[1] - p1[1]))));
+        int x = Math.round(p0[0]), y = Math.round(p0[1]), arm = Math.max(2, s / 2);
+        for (int sx = -1; sx <= 1; sx += 2)
+            for (int sy = -1; sy <= 1; sy += 2) {
+                int ox = x + sx * s, oy = y + sy * s;
+                // a dark edge outside, then the colour, one line or two
+                for (int t = -1; t < thick; t++) {
+                    int col = t < 0 ? 0xFF1A1A22 : c;
+                    int ex = ox + sx * -t, ey = oy + sy * -t;
+                    if (t < 0) {
+                        ex = ox + sx;
+                        ey = oy + sy;
+                    }
+                    for (int k = 0; k <= arm; k++) {
+                        f.set(ex - sx * k, ey, col);
+                        f.set(ex, ey - sy * k, col);
+                    }
+                }
+            }
+    }
+
+    /** Bursts where blows landed: a wide white-blue one on a weak point, orange off a car, grey on her bulk. */
+    private void pops(Px f) {
+        for (int i = 0; i < POPS; i++) {
+            if (popT[i] < 0f) continue;
+            w3[0] = popX[i];
+            w3[1] = popY[i];
+            w3[2] = popZ[i];
+            if (!g.project(w3[0], w3[1], w3[2], p0)) continue;
+            float k = popT[i] / 0.45f;
+            int kind = popKind[i];
+            int r = Math.round((kind == WEAK_POP ? 6f : 4f) + k * (kind == WEAK_POP ? 26f : kind == CAR_POP ? 18f : 10f));
+            int c = kind == WEAK_POP ? 0xFFE8FAFF : kind == CAR_POP ? 0xFFFFB13A : 0xFFB8B0A8;
+            int a = (int) (255f * (1f - k));
+            c = (a << 24) | (c & 0xFFFFFF);
+            int x = Math.round(p0[0]), y = Math.round(p0[1]);
+            circle(f, x, y, r, c);
+            if (kind == WEAK_POP) {
+                circle(f, x, y, r - 3, c);
+                for (int ray = 0; ray < 8; ray++) {
+                    double ang = ray * Math.PI / 4 + 0.39;
+                    for (int q = r + 2; q < r + 7; q++)
+                        f.set(x + (int) Math.round(Math.cos(ang) * q), y + (int) Math.round(Math.sin(ang) * q), c);
+                }
+            }
+        }
+    }
+
+    private static void circle(Px f, int cx, int cy, int r, int c) {
+        int n = Math.max(24, r * 7);
+        for (int a = 0; a < n; a++) {
+            double t = a * Math.PI * 2 / n;
+            f.set(cx + (int) Math.round(Math.cos(t) * r), cy + (int) Math.round(Math.sin(t) * r), c);
+        }
     }
 
     // ---- for the desktop stand ----

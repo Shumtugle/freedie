@@ -1,6 +1,7 @@
 # The fight with Freedie, from the console: she comes up the red street in leaps, lifts a
-# parked car and throws it; a player knocks the cars away and goes for the knees, then the
-# eyes, until she falls apart; then the gold, and up into the sky where the gods cheer.
+# parked car and throws it; a player, finger by finger, knocks the cars away and goes for
+# the knees, then the eyes, until she falls apart; then the gold, and up into the sky where
+# the gods cheer. Brackets mark her weak points and the cars; the ring rides over the finger.
 screen 1096 2560
 keep level 4
 restart
@@ -11,9 +12,15 @@ wait 0.9
 shot f0
 wait 2.0
 shot f1
-wait 2.2
-shot f2
-bot 6
+down 137 420
+wait 0.1
+shot f1aim
+up 137 420
+wait 1.6
+botshot f2
+bot 1.2
+shot f2b
+bot 4
 shot f3
 bot 30
 shot f4

@@ -246,7 +246,8 @@ void main() {
     if (mat == GLOW) {
         // lit from inside: no sun, no shade, only the haze
         vec3 c = mix(base * 1.7, lin(uFog) * (1.0 - uDark), haze);
-        outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
+        // marked, it keeps its own colour when the world is seen red
+        outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), seed == 255 ? 0.25 : 1.0);
         return;
     }
     if (mat == GRAIN) {
@@ -358,5 +359,7 @@ void main() {
     c *= mix(1.0, pool, uDark);
     // what burns in the golden fire, when the world is seen red, is marked in the alpha
     bool fire = seed == 255 && (mat == PLAIN || mat == GRAIN || mat == STONE || mat == WOOD || mat == GOLD || mat == RAIL);
-    outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), fire ? 0.5 : 1.0);
+    // and what keeps its own colours, in the alpha too
+    bool keep = seed == 254 && (mat == PLAIN || mat == WOOD || mat == GLASS);
+    outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), keep ? 0.25 : fire ? 0.5 : 1.0);
 }

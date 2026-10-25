@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.16.1
+- The fight reads now. The ring comes up right over the finger and follows it, in the
+  diamond's colours with a dark edge, and turns red when it has a car in the air; a car
+  within reach of it is taken and led by its flight. No wind-up: the diamond hammer always
+  flies hard and flat.
+- A finger may aim while the hammer is still on its way back: lifted early, the throw goes
+  the moment the hammer is in hand.
+- Brackets round her weak points still whole, two knees and the head, and round every car
+  in her hand or in the air. A blow that lands bursts where it lands: wide and white-blue
+  on a weak point, orange off a car, grey on her bulk; a weak point broken flares white in
+  the corner. Her eyes and knees throb and keep their own colours through the red.
+- The diamond hammer keeps its pale blue through the red world.
+
 ## 0.16
 - The fight with Freedie. Once the golden hammer has been given, the next ten buildings lost
   in a row bring her instead: the gods frown and drop a diamond hammer from the thunderer's

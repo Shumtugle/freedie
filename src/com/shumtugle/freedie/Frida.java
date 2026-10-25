@@ -55,6 +55,7 @@ final class Frida {
     // and whether she burns in the golden fire the red world shows her in
     float hurt;
     boolean kneeOutA, kneeOutB, fire;
+    float flare;                             // how far her lit weak points go toward white, 0 to 1
     int head = 3;
 
     // each joint's place in the world: a turn (row by row) and an offset
@@ -214,7 +215,8 @@ final class Frida {
     private float drawn(int i) {
         float m = look[i];
         if (m == DrawList.GLOW && out(i)) m = DrawList.PLAIN;
-        return fire && m != DrawList.GLOW ? DrawList.material((int) m, DrawList.FIRE) : m;
+        // the burning parts are marked; so are the lit eyes and knees, which keep their own colours
+        return fire ? DrawList.material((int) m, DrawList.FIRE) : m;
     }
 
     /** Whether a part is a knee's glow that has been put out. */
@@ -230,9 +232,10 @@ final class Frida {
     private int shade(int i) {
         int c = color[i];
         if (i >= eyeFrom && i < eyeTo)
-            c = Street.mix(0x3A1A08, head >= 3 ? c : head == 2 ? 0xFFA02A : 0xE0502A, eyes);
+            c = Street.mix(Street.mix(0x3A1A08, head >= 3 ? c : head == 2 ? 0xFFA02A : 0xE0502A, eyes), 0xFFFFFF, flare);
         else if (out(i)) c = 0x2E2628;
-        else if (i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW) c = Street.mix(0x3A1A08, c, 0.5f + 0.5f * eyes);
+        else if (i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW)
+            c = Street.mix(Street.mix(0x3A1A08, c, 0.5f + 0.5f * eyes), 0xFFFFFF, flare);
         return hurt > 0f ? Street.mix(c, 0xFFE0B0, Math.min(1f, hurt) * 0.6f) : c;
     }
 

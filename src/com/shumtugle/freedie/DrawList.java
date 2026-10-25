@@ -16,6 +16,8 @@ final class DrawList {
     // a number a material that reads none of its own may carry: it burns in the golden fire
     // when the world is seen red (see the frame's grade)
     static final int FIRE = 255;
+    // and another: it keeps its own colours however the world is seen (the diamond hammer)
+    static final int KEEP = 254;
     // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one
     static final int POLISHED = 20, RUBBER = 21;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)

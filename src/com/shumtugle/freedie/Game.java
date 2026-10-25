@@ -73,7 +73,8 @@ final class Game implements Physics.Listener {
     // the fight with Freedie: on now, or due after the sky; the diamond hammer the gods give
     // for it; the world going gold after a fight won, the eyes opening after one lost
     Fight fight;
-    private boolean fightNext, diamondGift, afterFight;
+    private boolean fightNext, diamondGift, afterFight, throwDue;
+    private float dueX, dueY;
     private float winSky = -1f, wake = -1f;
     // between episodes: a light that rises over the sky and clears onto the next one
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
@@ -281,6 +282,7 @@ final class Game implements Physics.Listener {
      */
     void startFight(boolean fromAbove) {
         fightNext = false;
+        throwDue = false;
         phys.clear();
         pieces.clear();
         hammer.ghost = true;
@@ -404,13 +406,19 @@ final class Game implements Physics.Listener {
             tapFar = 0f;
         } else tapFar = Math.max(tapFar, (float) Math.hypot(x - tapX, y - tapY));
         if (type == DOWN) {
-            if (!ready() || !seen) return;
+            // in the fight a finger may aim while the hammer is still on its way back
+            boolean can = fight != null ? state == FIGHT && fight.live() : ready();
+            if (!can || !seen) return;
             aiming = true;
             downAt = clock;
             tapOnHammer = fight == null && heavyLeft > 0 && onHammer(x, y);
             lastX = x;
             lastY = y;
-            if (!aimedBefore) buildingCenter();
+            if (fight != null) {
+                // the diamond hammer is quick: the ring comes up right over the finger
+                aimX = Math.max(2f, Math.min(fw - 3f, x));
+                aimY = Math.max(2f, Math.min(fh - 3f, y - Fight.FINGER));
+            } else if (!aimedBefore) buildingCenter();
             anchorX = x;
             anchorY = y;
             movedAt = clock;
@@ -420,8 +428,13 @@ final class Game implements Physics.Listener {
             return;
         }
         if (!aiming) return;
-        aimX = Math.max(2f, Math.min(fw - 3f, aimX + x - lastX));
-        aimY = Math.max(2f, Math.min(fh - 3f, aimY + y - lastY));
+        if (fight != null) {
+            aimX = Math.max(2f, Math.min(fw - 3f, x));
+            aimY = Math.max(2f, Math.min(fh - 3f, y - Fight.FINGER));
+        } else {
+            aimX = Math.max(2f, Math.min(fw - 3f, aimX + x - lastX));
+            aimY = Math.max(2f, Math.min(fh - 3f, aimY + y - lastY));
+        }
         lastX = x;
         lastY = y;
         // a finger never lies quite still: only a real move breaks the wind-up
@@ -442,8 +455,15 @@ final class Game implements Physics.Listener {
                 return;
             }
             aimedBefore = true;
-            if (fight != null) fight.throwAt(aimX + tremX, aimY + tremY);
-            else throwHammer();
+            if (fight != null) {
+                if (hs == HAND) fight.throwAt(aimX, aimY);
+                else {
+                    // the hammer is not back yet: it goes the moment it is
+                    throwDue = true;
+                    dueX = aimX;
+                    dueY = aimY;
+                }
+            } else throwHammer();
         }
     }
 
@@ -495,7 +515,9 @@ final class Game implements Physics.Listener {
     }
 
     private void windUp(float dt) {
-        if (!aiming) {
+        if (!aiming || fight != null) {
+            // the diamond hammer needs no wind-up: it always flies hard and flat
+            if (fight != null) power = 0f;
             tremX = tremY = 0f;
             return;
         }
@@ -799,6 +821,10 @@ final class Game implements Physics.Listener {
                 hsTime = 0f;
                 // the last star spent waits for the hammer back, and then for things to settle
                 if (state == PLAY) stateTime = 0f;
+                if (throwDue) {
+                    throwDue = false;
+                    if (fight != null && state == FIGHT && fight.live()) fight.throwAt(dueX, dueY);
+                }
             }
         }
     }
@@ -1655,10 +1681,13 @@ final class Game implements Physics.Listener {
         // the corner, while the street is in sight
         if (fight != null && state == FIGHT) {
             // the corner once the street is in sight, as the view comes down into it
-            if (k * fh < fh / 8f) fight.hud(f);
+            boolean seen = k * fh < fh / 8f;
             fight.veil(f);
+            if (seen) {
+                fight.marks(f, aiming, aimX, aimY);
+                fight.hud(f);
+            }
             if (!fight.won && fight.end >= 0f) shade(f, Math.min(1f, fight.end / 0.9f));
-            if (aiming) ringAt(f);
             return;
         }
         if (k * fh < fh / 8f) hud(f);

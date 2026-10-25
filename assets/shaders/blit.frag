@@ -29,7 +29,8 @@ void main() {
     }
     vec4 sc = texture(uScene, uv);
     vec3 scene = sc.rgb;
-    if (uRed > 0.0 || uGold > 0.0) {
+    // what glows of her own (her eyes, her knees), and the diamond hammer, keep their colours through it all
+    if ((uRed > 0.0 || uGold > 0.0) && sc.a > 0.375) {
         float l = dot(scene, vec3(0.3, 0.55, 0.15));
         vec3 o = scene;
         if (sc.a < 0.75 && uRed > 0.0) {

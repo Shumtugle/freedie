@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.16";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.16.1";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -177,14 +177,19 @@ final class World {
         game.standFightThrow(x, y);
     }
 
-    /** For the desktop stand: whether a fight has come to its end, won or lost. */
+    /** For the desktop stand: whether the hammer is in hand. */
+    boolean standHandFree() {
+        return game.hs == Game.HAND;
+    }
+
+        /** For the desktop stand: whether a fight has come to its end, won or lost. */
     boolean standFightOver() {
         return game.fight != null && !game.fight.live();
     }
 
     /** For the desktop stand: how the fight stands, in words. */
     String standFightState() {
-        return game.fight == null ? "no fight, level " + (level + 1) : game.fight.standState();
+        return game.fight == null ? "no fight, level " + (level + 1) : game.fight.standState() + (game.aiming ? " aiming" : "") + " hs " + game.hs;
     }
 
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
