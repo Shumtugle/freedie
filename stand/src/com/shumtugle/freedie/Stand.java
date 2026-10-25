@@ -61,6 +61,16 @@ public final class Stand implements World.Host {
     public void buzz(int ms) {
     }
 
+    /** The games on the screens cannot run here: they are written down, and come straight back. */
+    int played = -1;
+
+    @Override
+    public void play(int game) {
+        played = game;
+        System.out.println(String.format("%7.2fs  plays game %d", time, game));
+        world.touch(World.RETURN, 0f, 0f);
+    }
+
     @Override
     public void saveInt(String key, int value) {
         kept.put(key, value);

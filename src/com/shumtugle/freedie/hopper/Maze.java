@@ -1,0 +1,463 @@
+package com.shumtugle.freedie.hopper;
+
+import java.util.ArrayList;
+import java.util.Random;
+
+/**
+ * Grows a level from its number, so the levels never run out and the same number always gives
+ * the same level.
+ *
+ * A level is grown path first: a random walk of hops through a stack of floors, every hop obeying
+ * the rules, becomes the way through, so every level can be won. Each hop keeps the air it needs:
+ * a leap or a throw keeps the cells over it empty, a drop keeps its column empty down to where it
+ * lands. Shards, the bead and its hot plate and glass are laid along the way; then islands that
+ * lead nowhere, and mirages, are scattered round it, never into the air the way needs.
+ *
+ * The climb: difficulty rises one step every three levels, and each step brings one thing in a
+ * fixed order until it meets a ceiling, and stays there. After that clamp, not before it, every
+ * twentieth level is one step easier and every thirtieth two: a breath, not a setback. Within a
+ * step the length of the way still wavers a little either side.
+ *
+ * Some levels shift: from the sixteenth on, about one in four comes in acts. Each act is grown
+ * from the cell the drop stands on when the ground shifts, with the same seed every time for the
+ * same level, act and cell, so it is checked by the solver like any level. Only the last act has
+ * the gate; shards not taken in time move on to the next act.
+ *
+ * Some levels have an order: from the twentieth on, about one in seven. Their shards must be
+ * taken from the lowest note to the highest, which is the order the way through meets them. A
+ * shard taken out of turn turns its island into a funnel that pours the drop into a level
+ * already played; won, that level pours it back.
+ */
+final class Maze {
+    private Maze() {}
+
+    private static final int[][] HOPS = {{0, -1}, {1, 0}, {0, 1}, {-1, 0}, {1, -1}, {1, 1}, {-1, 1}, {-1, -1}};
+    private static final int[][] LEAPS = {{0, -2}, {2, 0}, {0, 2}, {-2, 0}};
+
+    /** The highest step: what fits a phone screen and the map in its corner. */
+    static final int CEILING = 9;
+
+    // the step at which each thing first appears
+    private static final int GLASS = 2, MIRAGES = 3, THIRD_FLOOR = 4, PLATES = 5, SHARDS = 6, WIDE = 7;
+
+    /** The difficulty step of level n (counted from 0), 1 to CEILING. */
+    static int step(int n) {
+        int k = n - Level.drawn();
+        int base = 1 + Math.max(0, k) / 3;
+        int step = Math.min(CEILING, base);
+        int shown = n + 1;
+        if (shown % 30 == 0) step -= 2;
+        else if (shown % 20 == 0) step -= 1;
+        return Math.max(1, step);
+    }
+
+    /** The hundredth level: the black drop. */
+    static final int BOSS = 99;
+
+    static boolean boss(int n) {
+        return n == BOSS;
+    }
+
+    /** True if level n is one of the scheduled breathers. */
+    static boolean breather(int n) {
+        int shown = n + 1;
+        return n >= Level.drawn() && (shown % 30 == 0 || shown % 20 == 0);
+    }
+
+    /** True if level n comes in acts that replace one another as the drop goes. */
+    static boolean staged(int n) {
+        if (n < 15 || n < Level.drawn() || breather(n)) return false;
+        return (int) ((seed(n) >>> 33) % 4) == 0;
+    }
+
+    /** True if level n's shards must be taken in an order. */
+    static boolean ordered(int n) {
+        if (n < 19 || n < Level.drawn() || breather(n) || staged(n)) return false;
+        return (int) ((seed(n) >>> 29) % 7) == 0;
+    }
+
+    /** The first level, counted from 0, where the difficulty stands at its ceiling for good. */
+    static final int PLATEAU = 35;
+
+    /**
+     * How many lilac drops race the player to the gate in level n: none before the plateau, and
+     * none in a breather, a shifting level or a level with an order; one in about four of the
+     * rest, two from the sixtieth level on.
+     */
+    static int rivals(int n) {
+        if (n < PLATEAU || n < Level.drawn() || breather(n) || staged(n) || ordered(n)) return 0;
+        if ((int) ((seed(n) >>> 25) % 4) != 0) return 0;
+        return n >= 59 ? 2 : 1;
+    }
+
+    /**
+     * The level a funnel pours the drop into, the attempt-th time it falls in level n: one of the
+     * last twenty played, the recent more often than the old; never a drawn level, never a level
+     * with an order, never avoid (the one it came from last time). -1 if there is none.
+     */
+    static int detour(int n, int attempt, int reached, int avoid) {
+        int lo = Math.max(Level.drawn(), reached - 20), hi = reached - 1;
+        int total = 0;
+        for (int k = lo; k <= hi; k++) if (k != n && k != avoid && !ordered(k)) total += k - lo + 1;
+        if (total == 0) return -1;
+        Random r = new Random(seed(n) ^ (attempt * 0x5851F42D4C957F2DL));
+        int pick = r.nextInt(total);
+        for (int k = lo; k <= hi; k++) {
+            if (k == n || k == avoid || ordered(k)) continue;
+            pick -= k - lo + 1;
+            if (pick < 0) return k;
+        }
+        return -1;
+    }
+
+    static int acts(int n) {
+        return staged(n) ? (step(n) >= SHARDS ? 3 : 2) : 1;
+    }
+
+    /** Shards for a level of this step, all acts together. */
+    static int shardsFor(int step) {
+        return Math.min(5, 2 + (step >= SHARDS ? 1 + (step - SHARDS) / 2 : step / 3));
+    }
+
+    /** The shards each act of level n brings, earlier acts taking the remainder. */
+    static int[] actShards(int n) {
+        int acts = acts(n), total = Math.max(acts, shardsFor(step(n)));
+        int[] out = new int[acts];
+        for (int k = 0; k < acts; k++) out[k] = total / acts + (k < total % acts ? 1 : 0);
+        return out;
+    }
+
+    /** The fewest hops one act should take. */
+    static int actTarget(int n) {
+        return Math.max(5, target(step(n)) / acts(n) + 2);
+    }
+
+    /** What to grow: a board of given size from a given cell, or, with cols 0, a board of its own. */
+    static final class Shape {
+        int cols, rows, floors, x, z, f;
+        int shards;
+        boolean gate = true;
+        /** The shards must be taken in the order the way meets them. */
+        boolean ordered;
+    }
+
+    /** The fewest hops a level of this step should take. */
+    static int target(int step) {
+        return 8 + Math.round(step * 1.3f);
+    }
+
+    /**
+     * Grows a few candidates and keeps the one whose shortest win is nearest the target: islands
+     * that lead nowhere can still open shortcuts, so a level is judged by solving it, not by how
+     * it was grown.
+     */
+    static Level make(int n) {
+        Random r = new Random(seed(n));
+        int step = step(n);
+        Shape shape = new Shape();
+        // the way wavers a little round its step, now shorter, now longer
+        int want;
+        String hint;
+        if (staged(n)) {
+            want = actTarget(n) + r.nextInt(3) - 1;
+            shape.shards = actShards(n)[0];
+            shape.gate = false;
+            hint = "the ground shifts as you go";
+        } else {
+            want = target(step) + r.nextInt(5) - 2;
+            shape.shards = shardsFor(step);
+            shape.ordered = ordered(n);
+            hint = shape.ordered ? "the shards sing: take them from the lowest note up"
+                    : boss(n) ? "the black drop: come down on it from above"
+                    : breather(n) ? "a breather"
+                    : rivals(n) == 1 ? "a lilac drop races you to the gate"
+                    : rivals(n) > 1 ? "two lilac drops race you to the gate" : "";
+        }
+        Level best = pick(r, step, want, hint, shape, 40);
+        // never needed in practice; a plain line keeps the game going if it ever is
+        return best != null ? best : new Level("", "E", "#", "*", "#", "S");
+    }
+
+    /**
+     * Act k (from 1) of level n, grown from the cell the drop stands on, on a board the size of
+     * the level's. carried is how many shards the drop left behind in the act before.
+     */
+    static Level act(int n, int k, int x, int z, int f, int carried, int cols, int rows, int floors) {
+        long mix = seed(n) ^ (k * 0x632BE59BD9B4E019L) ^ (((long) x * 131 + z) * 17 + f) * 0x9E3779B97F4A7C15L;
+        Random r = new Random(mix);
+        Shape shape = new Shape();
+        shape.cols = cols;
+        shape.rows = rows;
+        shape.floors = floors;
+        shape.x = x;
+        shape.z = z;
+        shape.f = f;
+        shape.shards = actShards(n)[k] + carried;
+        shape.gate = k == acts(n) - 1;
+        Level best = pick(r, step(n), actTarget(n) + r.nextInt(3) - 1, "", shape, 120);
+        if (best != null) return best;
+        // a last resort that is always there: the gate, or a shard, right beside the drop
+        String[][] map = new String[floors][rows];
+        for (int ff = 0; ff < floors; ff++)
+            for (int zz = 0; zz < rows; zz++) {
+                StringBuilder s = new StringBuilder();
+                for (int xx = 0; xx < cols; xx++) s.append(xx == x && zz == z && ff == f ? 'S' : '.');
+                map[ff][zz] = s.toString();
+            }
+        int nx = x > 0 ? x - 1 : x + 1;
+        char[] row = map[f][z].toCharArray();
+        row[nx] = shape.gate && shape.shards == 0 ? 'E' : '*';
+        map[f][z] = new String(row);
+        Level l = new Level("", map);
+        l.hops = 1;
+        return l;
+    }
+
+    /** Grows up to tries candidates and keeps the one whose shortest win is nearest want. */
+    private static Level pick(Random r, int step, int want, String hint, Shape shape, int tries) {
+        Level best = null;
+        int bestGap = Integer.MAX_VALUE;
+        for (int attempt = 0; attempt < tries && bestGap > 1; attempt++) {
+            Level l = grow(r, step, want, hint, shape);
+            if (l == null) continue;
+            int hops = Solver.hops(l, 40000);
+            if (hops < 0) continue;
+            int gap = Math.abs(hops - want);
+            if (gap < bestGap) {
+                bestGap = gap;
+                best = l;
+                l.hops = hops;
+            }
+        }
+        return best;
+    }
+
+    private static long seed(int n) {
+        return n * 0x9E3779B97F4A7C15L + 0x5DEECE66DL;
+    }
+
+    // what the grower knows about each cell of the stack
+    private static int cols, rows, floors;
+    private static char[] cell;
+    /** Cells the way needs empty: the air over a leap or a throw, the fall of a drop. */
+    private static boolean[] keep;
+    /** Columns a leap passes over, on floors at or below the leap: no hot plate may go there. */
+    private static boolean[] overLeap;
+
+    private static int at(int x, int z, int f) {
+        return (f * rows + z) * cols + x;
+    }
+
+    private static boolean inside(int x, int z) {
+        return x >= 0 && z >= 0 && x < cols && z < rows;
+    }
+
+    private static boolean free(int x, int z, int f) {
+        return f >= 0 && f < floors && inside(x, z) && cell[at(x, z, f)] == '.' && !keep[at(x, z, f)];
+    }
+
+    private static boolean empty(int x, int z, int f) {
+        return f >= floors || !inside(x, z) || cell[at(x, z, f)] == '.';
+    }
+
+    private static synchronized Level grow(Random r, int step, int target, String hint, Shape shape) {
+        boolean given = shape.cols > 0;
+        if (given) {
+            floors = shape.floors;
+            cols = shape.cols;
+            rows = shape.rows;
+        } else {
+            floors = step >= THIRD_FLOOR ? 3 : 2;
+            cols = 5 + r.nextInt(2) + (step >= WIDE ? 2 : step >= PLATES ? 1 : 0);
+            rows = cols + r.nextInt(3) - 1;
+        }
+        int want = target + 2 + r.nextInt(4);
+        int n = cols * rows * floors;
+        cell = new char[n];
+        keep = new boolean[n];
+        overLeap = new boolean[cols * rows * floors];
+        java.util.Arrays.fill(cell, '.');
+
+        ArrayList<Integer> path = new ArrayList<Integer>();
+        int x = given ? shape.x : 1 + r.nextInt(cols - 2), z = given ? shape.z : rows - 1, f = given ? shape.f : 0;
+        cell[at(x, z, f)] = '#';
+        path.add(at(x, z, f));
+        int climbs = 0;
+
+        while (path.size() < want) {
+            int[] next = null;
+            // a throw needs a spring under the drop, so it is chosen only off a plain island
+            boolean canThrow = f < floors - 1 && path.size() > 1 && cell[at(x, z, f)] == '#';
+            float roll = r.nextFloat();
+            float throwChance = canThrow ? (climbs < floors - 1 ? 0.45f : 0.18f) : 0f;
+            float dropChance = f > 0 ? 0.22f : 0f;
+            float leapChance = 0.14f + step * 0.02f;
+            if (roll < throwChance) next = tryThrow(r, x, z, f);
+            else if (roll < throwChance + dropChance) next = tryDrop(r, x, z, f);
+            else if (roll < throwChance + dropChance + leapChance) next = tryLeap(r, x, z, f);
+            if (next == null) next = tryHop(r, x, z, f);
+            if (next == null) next = tryDrop(r, x, z, f);
+            if (next == null) break;
+            if (next[3] == World.THROW) {
+                // the spring points the way it throws
+                int dx = next[0] - x, dz = next[1] - z;
+                cell[at(x, z, f)] = dz < 0 ? '^' : dx > 0 ? '>' : dz > 0 ? 'v' : '<';
+                climbs++;
+            }
+            x = next[0];
+            z = next[1];
+            f = next[2];
+            cell[at(x, z, f)] = '#';
+            path.add(at(x, z, f));
+        }
+        if (path.size() < Math.max(given ? 4 : 6, want * 2 / 3)) return null;
+        int last = path.size() - 1;
+        cell[path.get(0)] = 'S';
+        // an act without the gate ends on a shard, so its way leads somewhere
+        cell[path.get(last)] = shape.gate ? 'E' : '*';
+
+        // a bead and the hot plate it is for, the bead always first along the way
+        if (step >= PLATES && last >= 6 && r.nextFloat() < 0.8f) {
+            for (int tries = 0; tries < 12; tries++) {
+                int hot = 3 + r.nextInt(last - 3);
+                int bead = 1 + r.nextInt(hot - 1);
+                int hc = path.get(hot), bc = path.get(bead);
+                if (cell[hc] != '#' || cell[bc] != '#' || overLeap[hc]) continue;
+                cell[hc] = 'x';
+                cell[bc] = 'b';
+                break;
+            }
+        }
+        // glass on the way: safe, because the way never comes back to a cell
+        float glassChance = step >= GLASS ? Math.min(0.4f, 0.15f + step * 0.03f) : 0f;
+        for (int i = 0; i < last; i++) {
+            int c = path.get(i);
+            if (cell[c] == '#' && r.nextFloat() < glassChance) cell[c] = 'o';
+        }
+        // shards along the way, spread out: never two in a row
+        int shards = shape.shards;
+        int placed = shape.gate ? 0 : 1;
+        for (int tries = 0; placed < shards && tries < 80; tries++) {
+            int k = 1 + r.nextInt(last - 1);
+            int c = path.get(k);
+            if (cell[c] != '#' && cell[c] != 'o') continue;
+            if (cell[path.get(k - 1)] == '*' || cell[path.get(k + 1)] == '*') continue;
+            cell[c] = '*';
+            placed++;
+        }
+        if (placed < shards) return null;
+
+        // islands that lead nowhere: walkways on the floors above, dead ends, a few ceilings
+        float decoy = Math.min(0.24f, 0.1f + step * 0.015f);
+        float mirage = step >= MIRAGES ? Math.min(0.5f, 0.25f + (step - MIRAGES) * 0.05f) : 0f;
+        for (int ff = 0; ff < floors; ff++)
+            for (int zz = 0; zz < rows; zz++)
+                for (int xx = 0; xx < cols; xx++) {
+                    int c = at(xx, zz, ff);
+                    if (!free(xx, zz, ff)) continue;
+                    // an island only where something stands next to it on the same floor
+                    if (!neighbour(xx, zz, ff)) continue;
+                    if (r.nextFloat() > decoy * (ff == 0 ? 1f : 1.6f)) continue;
+                    float k = r.nextFloat();
+                    if (k < mirage) cell[c] = 'm';
+                    else if (k < mirage + 0.15f && step >= GLASS) cell[c] = 'o';
+                    else if (k < mirage + 0.22f && step >= PLATES && !overLeap[c]) cell[c] = 'x';
+                    else cell[c] = '#';
+                }
+
+        String[][] map = new String[floors][rows];
+        for (int ff = 0; ff < floors; ff++)
+            for (int zz = 0; zz < rows; zz++) {
+                StringBuilder s = new StringBuilder();
+                for (int xx = 0; xx < cols; xx++) s.append(cell[at(xx, zz, ff)]);
+                map[ff][zz] = s.toString();
+            }
+        Level made = new Level(hint, map);
+        if (shape.ordered) {
+            // the order is the way's: the first shard it meets is the lowest note
+            made.order = new int[n];
+            java.util.Arrays.fill(made.order, -1);
+            int rank = 0;
+            for (int i = 0; i <= last; i++) if (cell[path.get(i)] == '*') made.order[path.get(i)] = rank++;
+        }
+        return made;
+    }
+
+    private static boolean neighbour(int x, int z, int f) {
+        for (int[] m : HOPS) {
+            int nx = x + m[0], nz = z + m[1];
+            if (inside(nx, nz) && cell[at(nx, nz, f)] != '.') return true;
+        }
+        return false;
+    }
+
+    /** A hop to a neighbouring cell on the same floor. */
+    private static int[] tryHop(Random r, int x, int z, int f) {
+        int off = r.nextInt(HOPS.length);
+        for (int k = 0; k < HOPS.length; k++) {
+            int[] m = HOPS[(k + off) % HOPS.length];
+            int tx = x + m[0], tz = z + m[1];
+            if (free(tx, tz, f)) return new int[] {tx, tz, f, World.HOP};
+        }
+        return null;
+    }
+
+    /** A hop off the edge of a floor down to a lower one; the column between stays empty. */
+    private static int[] tryDrop(Random r, int x, int z, int f) {
+        if (f == 0) return null;
+        int off = r.nextInt(HOPS.length);
+        for (int k = 0; k < HOPS.length; k++) {
+            int[] m = HOPS[(k + off) % HOPS.length];
+            int tx = x + m[0], tz = z + m[1];
+            if (!inside(tx, tz)) continue;
+            int g = r.nextInt(f);
+            boolean clear = free(tx, tz, g);
+            for (int h = g + 1; h <= f && clear; h++) clear = empty(tx, tz, h);
+            if (!clear) continue;
+            for (int h = g + 1; h <= f; h++) keep[at(tx, tz, h)] = true;
+            return new int[] {tx, tz, g, World.HOP};
+        }
+        return null;
+    }
+
+    /** A leap of two cells on the same floor, with open air over its start, middle and end. */
+    private static int[] tryLeap(Random r, int x, int z, int f) {
+        int off = r.nextInt(LEAPS.length);
+        for (int k = 0; k < LEAPS.length; k++) {
+            int[] m = LEAPS[(k + off) % LEAPS.length];
+            int tx = x + m[0], tz = z + m[1], mx = x + m[0] / 2, mz = z + m[1] / 2;
+            if (!free(tx, tz, f)) continue;
+            if (!airAbove(x, z, f) || !airAbove(mx, mz, f) || !airAbove(tx, tz, f)) continue;
+            reserveAbove(x, z, f);
+            reserveAbove(mx, mz, f);
+            reserveAbove(tx, tz, f);
+            for (int h = 0; h <= f; h++) overLeap[at(mx, mz, h)] = true;
+            return new int[] {tx, tz, f, World.LEAP};
+        }
+        return null;
+    }
+
+    /** A spring's throw two cells ahead and one floor up, with open air over its start and middle. */
+    private static int[] tryThrow(Random r, int x, int z, int f) {
+        int off = r.nextInt(LEAPS.length);
+        for (int k = 0; k < LEAPS.length; k++) {
+            int[] m = LEAPS[(k + off) % LEAPS.length];
+            int tx = x + m[0], tz = z + m[1], mx = x + m[0] / 2, mz = z + m[1] / 2;
+            if (!free(tx, tz, f + 1)) continue;
+            if (!airAbove(x, z, f) || !airAbove(mx, mz, f)) continue;
+            reserveAbove(x, z, f);
+            reserveAbove(mx, mz, f);
+            for (int h = 0; h <= f; h++) overLeap[at(mx, mz, h)] = true;
+            return new int[] {tx, tz, f + 1, World.THROW};
+        }
+        return null;
+    }
+
+    private static boolean airAbove(int x, int z, int f) {
+        return empty(x, z, f + 1);
+    }
+
+    private static void reserveAbove(int x, int z, int f) {
+        if (f + 1 < floors && inside(x, z)) keep[at(x, z, f + 1)] = true;
+    }
+}

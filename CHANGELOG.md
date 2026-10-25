@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7
+- The first game of the bridge is played: its screen is lit from the start, showing islands
+  going away over the dark and a cube turning over the far one, and a poke at it goes into
+  the hopscotch over the quicksilver, whole, with its own levels, sound and settings.
+- There the player is a diamond hammer, not a drop: clear and cold, with darker bands where
+  the head is set; the mirages show the hammer too.
+- In some levels one of the shards is a golden cube, turning and glowing. Taken, it goes
+  home to the rack on the bridge; each such level gives its cube once.
+- Every level has an island with a call box on it, a red button on a post. Bounce on it
+  three times, a ring each time, and the dispatcher takes you back to the bridge, with the
+  cubes found there.
+- The rivals and the black drop are still drops.
+
 ## 0.6
 - The first game opens with Freedie, once: out of what is left of her after the blow rises
   her heart, a golden cube, turning and glowing in the dark, and comes to rest under her

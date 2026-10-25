@@ -17,6 +17,9 @@ Early days: the engine, the street and the opening stand, the game is still to c
   `assets/shaders`.
 - The desktop stand (`stand/`) plays scenes against the same Java and writes each frame's
   draw list; `stand/web/index.html` draws it with the same shaders in a browser.
+- The first game of the bridge, the hopscotch over the quicksilver, is a game of its own
+  with its own renderer, in `src/com/shumtugle/freedie/hopper` and `assets/hopper`; the
+  activity hands the screen to it and takes it back.
 
 ## The page
 

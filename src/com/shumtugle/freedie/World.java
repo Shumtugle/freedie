@@ -14,8 +14,8 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.6";     // shown on screen; keep in step with versionName
-    static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
+    static final String VERSION = "0.7";     // shown on screen; keep in step with versionName
+    static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
     interface Host {
@@ -28,6 +28,8 @@ final class World {
         int loadInt(String key);
         /** A file shipped with the game, or null. */
         byte[] asset(String name);
+        /** One of the games on the bridge's screens, played until it hands back: 0 the first. */
+        void play(int game);
     }
 
     // the eye, where it stands in the game it comes from: left of the plinth, eyes at a person's height
@@ -76,6 +78,11 @@ final class World {
     }
 
     void touch(int type, float x, float y) {
+        if (type == RETURN) {
+            // not a touch: back from a game on a screen
+            back(0);
+            return;
+        }
         if (intro != null) {
             if (type == DOWN) {
                 intro.skip();
@@ -270,6 +277,17 @@ final class World {
     void bridgeEnter(int which) {
         bridge = null;
         flashOut = FLASH_OUT;
+    }
+
+    /** A game's screen, poked: the game is played over the bridge, which waits behind it. */
+    void bridgeGame(int which) {
+        host.play(which == Bridge.GAME_A ? 0 : 1);
+    }
+
+    /** Back from a game on a screen: the cubes found there, and the room coming on again like a set. */
+    void back(int found) {
+        cubes = host.loadInt("cubes");
+        tvOn = 0f;
     }
 
     /** A golden cube from the row, gone into a slot for good. */

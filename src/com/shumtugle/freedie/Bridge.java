@@ -162,11 +162,13 @@ final class Bridge {
     boolean reached(int i) {
         if (i < Episode.COUNT) return Episode.FIRST[i] <= w.best();
         if (i == HUB) return alleyDone;
+        // the first game is open from the start: its golden cubes are the ones to be found
+        if (i == GAME_A) return true;
         return finale;
     }
 
     boolean open(int i) {
-        return slot[i];
+        return slot[i] || i == GAME_A;
     }
 
     private static int style(int i) {
@@ -298,8 +300,15 @@ final class Bridge {
             } else thud(which);
             return;
         }
-        if (which == GAME_A || which == GAME_B) {
-            // the games are not wired in yet: the screen only snows
+        if (which == GAME_A) {
+            flash[which] = 1f;
+            host.sound(Synth.CLANG, 0.7f, 1f);
+            host.buzz(30);
+            w.bridgeGame(which);
+            return;
+        }
+        if (which == GAME_B) {
+            // the second game is not wired in yet: the screen only snows
             snow[which] = 1f;
             host.sound(Synth.BUSY, 0.7f, 1f);
             return;
@@ -775,7 +784,7 @@ final class Bridge {
             gy1 = CH - 18;
         }
         int gw = gx1 - gx0, gh = gy1 - gy0;
-        boolean lit = reached(i) && !((i == GAME_A || i == GAME_B) && !finale);
+        boolean lit = reached(i) && !(i == GAME_B && !finale);
         boolean cur = i < Episode.COUNT && i == current();
         float bright = !lit ? 0f : open(i) ? 1f : 0.72f;
         if (cur) bright *= 0.94f + 0.06f * (float) Math.sin(t * 47f) * (float) Math.sin(t * 3.1f);
@@ -890,12 +899,37 @@ final class Bridge {
             boolean on = box(x, y, 0, 0, q) || box(x, y, 0, -0.27f, q) || box(x, y, 0, 0.27f, q) || box(x, y, -0.27f, 0, q) || box(x, y, 0.27f, 0, q);
             return on ? 0xFFE6ECEE : 0xFF23282C;
         }
+        if (i == GAME_A) return hopsPixel(x, y);
         // the test card: a grid, a circle, a ramp of greys
         float r = (float) Math.sqrt(x * x + y * y);
         if (Math.abs(r - 0.32f) < 0.02f) return 0xFFE6ECEE;
         if (y > 0.08f && y < 0.2f && Math.abs(x) < 0.3f) return Px.mix(0xFF101214, 0xFFE6ECEE, (x + 0.3f) / 0.6f);
         boolean line = Math.abs(((x + 2f) * 10f) % 1f) < 0.08f || Math.abs(((y + 2f) * 10f) % 1f) < 0.08f;
         return line ? 0xFF8A9298 : 0xFF2C3236;
+    }
+
+    /** The first game: islands going away over the dark, and on the far one a cube, the only colour. */
+    private int hopsPixel(float x, float y) {
+        float hy = -0.34f;
+        int c = y < hy ? 0xFF15181B : Px.mix(0xFF1D2125, 0xFF2E3338, Math.min(1f, (y - hy) * 2.2f));
+        // a cube turning slowly over the far middle island
+        float cy = hy + 0.8f / 3.2f - 0.1f, a = t * 1.3f;
+        float rx = (x * (float) Math.cos(a) - (y - cy) * (float) Math.sin(a)), ry = (x * (float) Math.sin(a) + (y - cy) * (float) Math.cos(a));
+        float q = 0.045f + 0.005f * (float) Math.sin(t * 2.4f);
+        if (Math.abs(rx) < q && Math.abs(ry) < q) return Px.mix(0xFFE09A2A, 0xFFFFE2A0, Math.max(0f, -ry / q) * 0.6f);
+        for (int k = 3; k >= 0; k--) {
+            float d = 1.2f + k;
+            float sy = hy + 0.8f / d, hw = 0.22f / d, hh = 0.07f / d, sx = 0.95f / d;
+            for (int col = -1; col <= 1; col++) {
+                // a hopscotch: one, two, one, two
+                if ((k & 1) == 0 && col != 0) continue;
+                if ((k & 1) == 1 && col == 0) continue;
+                float ox = x - col * sx * 0.7f, oy = y - sy;
+                if (Math.abs(ox) < hw && Math.abs(oy) < hh) return oy < -hh * 0.3f ? 0xFFDCE2E6 : 0xFF9AA2A8;
+                if (Math.abs(ox) < hw * 0.8f && oy >= hh && oy < hh + 0.3f / d) return 0xFF41474D;
+            }
+        }
+        return c;
     }
 
     private static boolean box(float x, float y, float cx, float cy, float q) {
