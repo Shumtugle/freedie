@@ -17,7 +17,7 @@ final class Square {
     static final float RIGHT_X0 = SQ_X, RIGHT_X1 = 20f, RIGHT_HOUSES = 23f;
     static final float FRONT_HOUSES = Z - 18f;
     static final float PROM_X = -14f, PARAPET_X = -24f;
-    static final float NEAREST = 18f;          // people come no nearer to the eye than this
+    static final float NEAREST = 8f;           // people come no nearer to the eye than this
 
     private static final float[][] PALMS = {{-17f, Z - 12f, 8.6f, 0.6f}, {-21f, Z - 6f, 9.4f, -0.5f}, {-17f, Z + 1f, 8.2f, 0.4f},
             {-21f, Z + 8f, 9.8f, 0.7f}, {-17f, Z + 15f, 8.8f, -0.4f}, {-21f, Z + 22f, 9f, 0.5f}, {11.5f, Z - 11f, 7.6f, 0.5f},
@@ -29,15 +29,8 @@ final class Square {
     private final float[] carAt = new float[CARS], carV = new float[CARS];
     private static final int[] CAR_COLORS = {0xE8C04A, 0xB8443A, 0x4F8C8A, 0xEDE4CE, 0x2F4A6E, 0x8A9A5A, 0xD87A3A, 0x6E3A5A};
 
-    // people: a walk from a to b and back, a pace, colors
-    private static final int PEOPLE = 16;
-    private final float[] pAx = new float[PEOPLE], pAz = new float[PEOPLE], pBx = new float[PEOPLE], pBz = new float[PEOPLE];
-    private final float[] pV = new float[PEOPLE], pPh = new float[PEOPLE];
-    private final int[] pShirt = new int[PEOPLE], pLegs = new int[PEOPLE], pSkin = new int[PEOPLE], pHair = new int[PEOPLE];
-    private static final int[] SHIRTS = {0xF2EEE2, 0x5A86B8, 0xD9654E, 0xE8C860, 0x6EA87A, 0xE59AB0, 0x3A3A40};
-    private static final int[] LEGS = {0x2E3446, 0x4A4038, 0xD8CCB0, 0x5A6E8A};
-    private static final int[] SKINS = {0xE8BC98, 0xC8946E, 0x8C5E40, 0xF0CDB0};
-    private static final int[] HAIR = {0x2A211C, 0x5A3E28, 0xC9A060, 0x8A8680};
+    // people on the far pavements, on the promenade, and crossing the square round her
+    private final People people = new People(40, 0x70A11L, NEAREST);
 
     private final Traffic cars = new Traffic(Z);
 
@@ -49,31 +42,31 @@ final class Square {
             carV[i] = 7f + r.nextFloat() * 5f;
             carCol[i] = CAR_COLORS[r.nextInt(CAR_COLORS.length)];
         }
-        for (int i = 0; i < PEOPLE; i++) {
-            // the far pavements: past the road behind the square, past the road on its right,
-            // and along the promenade's far end
-            if (i < 7) {
-                pAx[i] = -12f + r.nextFloat() * 24f;
-                pAz[i] = BACK_Z1 + 0.8f + r.nextFloat() * 1.6f;
-                pBx[i] = pAx[i] + (r.nextBoolean() ? 1f : -1f) * (6f + r.nextFloat() * 10f);
-                pBz[i] = pAz[i] + (r.nextFloat() - 0.5f) * 0.8f;
-            } else if (i < 11) {
-                pAx[i] = RIGHT_X1 + 0.8f + r.nextFloat() * 1.4f;
-                pAz[i] = Z - 20f + r.nextFloat() * 20f;
-                pBx[i] = pAx[i] + (r.nextFloat() - 0.5f) * 0.6f;
-                pBz[i] = pAz[i] + 8f + r.nextFloat() * 14f;
-            } else {
-                pAx[i] = -19f + (r.nextFloat() - 0.5f) * 2f;
-                pAz[i] = Z + 5f + r.nextFloat() * 8f;
-                pBx[i] = pAx[i];
-                pBz[i] = pAz[i] + 12f + r.nextFloat() * 8f;
-            }
-            pV[i] = 1.1f + r.nextFloat() * 0.5f;
-            pPh[i] = r.nextFloat() * 60f;
-            pShirt[i] = SHIRTS[r.nextInt(SHIRTS.length)];
-            pLegs[i] = LEGS[r.nextInt(LEGS.length)];
-            pSkin[i] = SKINS[r.nextInt(SKINS.length)];
-            pHair[i] = HAIR[r.nextInt(HAIR.length)];
+        Random p = people.random();
+        for (int i = 0; i < 7; i++) {
+            // past the road behind the square
+            float x = -12f + p.nextFloat() * 24f, z = BACK_Z1 + 0.8f + p.nextFloat() * 1.6f;
+            people.walk(x, z, x + (p.nextBoolean() ? 1f : -1f) * (6f + p.nextFloat() * 10f), z + (p.nextFloat() - 0.5f) * 0.8f, 0f);
+        }
+        for (int i = 0; i < 4; i++) {
+            // past the road on its right
+            float x = RIGHT_X1 + 0.8f + p.nextFloat() * 1.4f, z = Z - 20f + p.nextFloat() * 20f;
+            people.walk(x, z, x + (p.nextFloat() - 0.5f) * 0.6f, z + 8f + p.nextFloat() * 14f, 0f);
+        }
+        for (int i = 0; i < 9; i++) {
+            // up and down the promenade
+            float x = -19f + (p.nextFloat() - 0.5f) * 3f, z = Z - 12f + p.nextFloat() * 24f;
+            people.walk(x, z, x + (p.nextFloat() - 0.5f) * 1f, z + (p.nextBoolean() ? 1f : -1f) * (8f + p.nextFloat() * 10f), Street.WALK_TOP);
+        }
+        for (int i = 0; i < 12; i++) {
+            // across the square behind her, never through where she stands
+            float z = Z + 3.5f + p.nextFloat() * 6.5f, x = -12f + p.nextFloat() * 6f;
+            people.walk(x, z, x + 10f + p.nextFloat() * 12f, z + (p.nextFloat() - 0.5f) * 3f, 0f);
+        }
+        for (int i = 0; i < 8; i++) {
+            // along its sides, to and from the far corners
+            float side = i % 2 == 0 ? -1f : 1f, x = side * (7.5f + p.nextFloat() * 5f), z = Z - 10f + p.nextFloat() * 6f;
+            people.walk(x, z, x + (p.nextFloat() - 0.5f) * 3f, z + 9f + p.nextFloat() * 8f, 0f);
         }
     }
 
@@ -215,43 +208,6 @@ final class Square {
             if ((lane < 2 && x < PROM_X + 2f) || (lane >= 2 && z > BACK_Z1)) continue;
             cars.car(d, x, z, yaw, carCol[i]);
         }
-        for (int i = 0; i < PEOPLE; i++) {
-            float dx = pBx[i] - pAx[i], dz = pBz[i] - pAz[i], len = (float) Math.sqrt(dx * dx + dz * dz) + 0.01f;
-            float w = (pPh[i] + t * pV[i]) % (2f * len);
-            float k = w < len ? w / len : 2f - w / len;
-            float yaw = (float) Math.atan2(dx, dz) + (w < len ? 0f : (float) Math.PI);
-            float px = pAx[i] + dx * k, pz = pAz[i] + dz * k;
-            float qx = px - ex, qy = 1f - ey, qz = pz - ez;
-            if (qx * qx + qy * qy + qz * qz < NEAREST * NEAREST) continue;
-            float y = pAx[i] < PROM_X ? Street.WALK_TOP : 0f;
-            person(d, px, y, pz, yaw, t * pV[i] * 3.2f + i, i);
-        }
-    }
-
-    private final float[] turn = new float[9];
-    private float bx, by, bz, c, sn;
-
-    /** A person of blocks: legs, a shirt with arms, a head with hair, walking. */
-    private void person(DrawList d, float x, float y, float z, float yaw, float phase, int i) {
-        bx = x;
-        by = y;
-        bz = z;
-        c = (float) Math.cos(yaw);
-        sn = (float) Math.sin(yaw);
-        float swing = (float) Math.sin(phase) * 0.16f;
-        part(d, -0.1f, 0.44f, swing, 0.075f, 0.44f, 0.08f, pLegs[i]);
-        part(d, 0.1f, 0.44f, -swing, 0.075f, 0.44f, 0.08f, pLegs[i]);
-        part(d, 0f, 1.17f, 0f, 0.2f, 0.3f, 0.12f, pShirt[i]);
-        part(d, -0.26f, 1.15f, -swing * 0.8f, 0.055f, 0.27f, 0.06f, pShirt[i]);
-        part(d, 0.26f, 1.15f, swing * 0.8f, 0.055f, 0.27f, 0.06f, pShirt[i]);
-        part(d, 0f, 1.6f, 0f, 0.1f, 0.12f, 0.11f, pSkin[i]);
-        part(d, 0f, 1.73f, 0.01f, 0.11f, 0.03f, 0.12f, pHair[i]);
-    }
-
-    private void part(DrawList d, float ox, float oy, float oz, float hx, float hy, float hz, int rgb) {
-        turn[0] = c; turn[1] = 0f; turn[2] = sn;
-        turn[3] = 0f; turn[4] = 1f; turn[5] = 0f;
-        turn[6] = -sn; turn[7] = 0f; turn[8] = c;
-        d.box(bx + c * ox + sn * oz, by + oy, bz - sn * ox + c * oz, hx, hy, hz, turn, rgb, DrawList.PLAIN);
+        people.draw(d, t, ex, ey, ez);
     }
 }

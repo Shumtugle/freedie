@@ -12,21 +12,33 @@ import java.util.Random;
  * the game's own physics, then comes back to the hand.
  *
  * The first building flies to pieces at the first touch of the hammer. Knock three quarters
- * of a building's weight off the plinth and, once things are still, what is left goes in a
- * puff and the building rises again, block by block.
+ * of a building's weight off the plinth and, once things are still, the view tips up into the
+ * sky, where the gods gather and judge the fall (see Sky); then the next building falls out of
+ * the sky onto the plinth as the view comes back down. For now the levels go as far as the
+ * end of the first run of them, and the last comes round again.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
  * where the eye is with frame() before any of them needs it.
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3;
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5;
+    /** The last level there is yet: the end of the first run, until the stars come. */
+    static final int LAST = 8;
+    static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
     static final int DOWN = World.DOWN, MOVE = World.MOVE, UP = World.UP;
 
     private final World.Host host;
     final Physics phys = new Physics();
+    // the gods' sky, made once the frame's size is known
+    private Sky sky;
+    private int throwsMade, boltsHeard;
+    private float holdFor, backT;
+    private boolean fromSky, buildFromSky;
+    private final float[] thunderIn = {-1f, -1f, -1f, -1f}, thunderGain = new float[4], thunderRate = new float[4];
+    private final int[] thunderId = new int[4];
     private Body plinth;
     final ArrayList<Body> pieces = new ArrayList<Body>();
     private float totalMass;
@@ -67,10 +79,10 @@ final class Game implements Physics.Listener {
 
     Game(World.Host host, int level) {
         this.host = host;
-        this.level = level;
+        this.level = Math.max(0, Math.min(LAST, level));
         phys.listener = this;
         hammer = new Body(0.42f, 0.08f, 0.17f, Body.HAMMER, 0xD9A066);
-        start(level);
+        start(this.level, false);
     }
 
     // ---- the level ----
@@ -79,9 +91,15 @@ final class Game implements Physics.Listener {
         return level * 2654435761L ^ 0x2545F4914F6CDD1DL;
     }
 
-    /** Raises the building for a level: tested for standing still, asleep, ready to fall. */
-    void start(int lv) {
+    /**
+     * Raises the building for a level: tested for standing still, asleep, ready to fall. From
+     * the sky, its pieces are thrown down by the gods; else they come down just above the plinth.
+     */
+    void start(int lv, boolean thrown) {
         level = lv;
+        buildFromSky = thrown;
+        host.saveInt("level", lv);
+        if (host.loadInt("best") < lv + 1) host.saveInt("best", lv + 1);
         Builder.CZ = Builder.BASE_CZ;
         Builder.CX = 0f;
         Builder.PHZ = Builder.PHZ1;
@@ -111,11 +129,13 @@ final class Game implements Physics.Listener {
         hs = HAND;
         aiming = false;
         aimedBefore = false;
+        throwsMade = 0;
         blasted = blastNow = false;
         toBurst.clear();
         pN = 0;
         dropN = 0;
         lastLanded = -1;
+        lastBuildTime = 0f;
         setState(BUILD);
     }
 
@@ -299,6 +319,7 @@ final class Game implements Physics.Listener {
         hammer.wx = 0.6f;
         hammer.savePrev();
         flightTime = t;
+        throwsMade++;
         hs = FLY;
         hsTime = 0f;
         power = 0f;
@@ -318,6 +339,20 @@ final class Game implements Physics.Listener {
         fw = d.w;
         fh = d.h;
         seen = true;
+        if (sky == null) {
+            sky = new Sky();
+            sky.build(fw, fh, host.asset("gods.bin"), host.asset("clouds.bin"));
+        }
+    }
+
+    /** How far the view is tipped up into the sky, 0 on the street to 1 among the gods, eased. */
+    float tilt() {
+        float k;
+        if (state == SKY_UP) k = Math.min(1f, stateTime / TILT);
+        else if (state == SKY_HOLD) k = 1f;
+        else if (fromSky) k = 1f - Math.min(1f, backT / TILT);
+        else return 0f;
+        return k * k * (3f - 2f * k);
     }
 
     private boolean project(float x, float y, float z, float[] out) {
@@ -411,6 +446,18 @@ final class Game implements Physics.Listener {
         drops(dt);
         windUp(dt);
         hammerMoves(dt);
+        thunderStep(dt);
+        if (sky != null && (state == SKY_UP || state == SKY_HOLD || fromSky)) {
+            sky.update(dt);
+            if (sky.bolts != boltsHeard) {
+                boltsHeard = sky.bolts;
+                strikeHeard(sky.boltNear);
+            }
+        }
+        if (fromSky) {
+            backT += dt;
+            if (backT >= TILT + 0.2f) fromSky = false;
+        }
         switch (state) {
             case BUILD:
                 buildSounds();
@@ -423,10 +470,24 @@ final class Game implements Physics.Listener {
                 }
                 break;
             case CLEARED:
-                if (stateTime > 2.2f && hs == HAND && (phys.settled() || stateTime > 4.5f)) vanish();
+                if (stateTime > 2.2f && hs == HAND && (phys.settled() || stateTime > 4.5f)) {
+                    if (sky != null) lookUp();
+                    else vanish();
+                }
                 break;
             case VANISH:
-                if (stateTime > 0.5f) start(level);
+                if (stateTime > 0.5f) start(level, false);
+                break;
+            case SKY_UP:
+                if (stateTime >= TILT) setState(SKY_HOLD);
+                break;
+            case SKY_HOLD:
+                if (stateTime >= holdFor) {
+                    // the gods have thrown the blocks: the next building falls into place as the eye comes down
+                    start(Math.min(LAST, level + 1), true);
+                    fromSky = true;
+                    backT = 0f;
+                }
                 break;
             default:
         }
@@ -466,6 +527,46 @@ final class Game implements Physics.Listener {
         host.sound(Synth.WHOOSH, 0.45f, 1.25f);
     }
 
+    /**
+     * Up into the sky, where the gods judge the fall: laughter and lightning for a building
+     * felled at one throw, smiles for a few, a sceptic look for many. The first building is
+     * their welcome: they all laugh aloud.
+     */
+    private void lookUp() {
+        int verdict = throwsMade <= 1 ? Sky.OVATION : throwsMade <= 3 ? Sky.CHEER : Sky.POLITE;
+        sky.begin(verdict, level == 0 && verdict == Sky.OVATION);
+        boltsHeard = sky.bolts;
+        holdFor = verdict == Sky.OVATION ? 3.2f : 2.4f;
+        aiming = false;
+        host.sound(Synth.WHOOSH, 0.5f, 0.6f);
+        setState(SKY_UP);
+    }
+
+    /** A strike of lightning: its thunder comes the later, the farther off it struck. */
+    private void strikeHeard(float near) {
+        int id;
+        if (near > 0.8f) id = Synth.thunder(fx.nextBoolean() ? 1 : 4);
+        else if (near > 0.55f) id = Synth.thunder(fx.nextInt(3) == 0 ? 0 : fx.nextBoolean() ? 2 : 5);
+        else id = Synth.thunder(3);
+        host.buzz((int) (40 + 60 * near));
+        for (int i = 0; i < thunderIn.length; i++)
+            if (thunderIn[i] < 0f) {
+                thunderIn[i] = (1f - near) * 0.9f;
+                thunderId[i] = id;
+                thunderGain[i] = 0.6f + 0.5f * near;
+                thunderRate[i] = 0.88f + 0.14f * near + fx.nextFloat() * 0.08f;
+                break;
+            }
+    }
+
+    private void thunderStep(float dt) {
+        for (int i = 0; i < thunderIn.length; i++) {
+            if (thunderIn[i] < 0f) continue;
+            thunderIn[i] -= dt;
+            if (thunderIn[i] < 0f) host.sound(thunderId[i], thunderGain[i], thunderRate[i]);
+        }
+    }
+
     /** What is left goes in a puff, and the building rises again. */
     private void vanish() {
         for (Body b : pieces) {
@@ -483,12 +584,43 @@ final class Game implements Physics.Listener {
     }
 
     private float buildDuration() {
+        if (buildFromSky) {
+            float end = 0f;
+            for (int i = 0; i < pieces.size(); i++) end = Math.max(end, skyAppear(i) + skyFall(i));
+            return end;
+        }
         return stagger() * pieces.size() + 0.4f;
     }
 
+    // pieces thrown down by the gods: they appear 15, 10 or 5 meters up and fall under a brisk pull
+    private static final float SKY_G = 26f;
+    private static final float[] SKY_H = {15f, 10f, 5f};
+
+    private float skyHeight(int i) {
+        return SKY_H[i % 3];
+    }
+
+    private float skyFall(int i) {
+        return (float) Math.sqrt(2f * skyHeight(i) / SKY_G);
+    }
+
+    private float skyAppear(int i) {
+        return 0.25f + i * Math.min(0.07f, 1.6f / Math.max(1, pieces.size()));
+    }
+
     private int lastLanded = -1;
+    private float lastBuildTime;
 
     private void buildSounds() {
+        if (buildFromSky) {
+            for (int i = 0; i < pieces.size(); i++) {
+                float land = skyAppear(i) + skyFall(i);
+                if (land > lastBuildTime && land <= stateTime)
+                    host.sound(Synth.TOCK, 0.18f + skyHeight(i) * 0.02f, 0.75f + fx.nextFloat() * 0.5f);
+            }
+            lastBuildTime = stateTime;
+            return;
+        }
         int landed = stateTime < 0.4f ? -1 : Math.min(pieces.size() - 1, (int) ((stateTime - 0.4f) / stagger()));
         for (int i = lastLanded + 1; i <= landed; i++)
             if (i >= 0 && (i & 1) == 0) host.sound(Synth.TOCK, 0.22f, 0.8f + fx.nextFloat() * 0.5f);
@@ -705,7 +837,16 @@ final class Game implements Physics.Listener {
             Body b = pieces.get(i);
             if (b.gone) continue;
             float scale = 1f, drop = 0f;
-            if (state == BUILD) {
+            if (state == BUILD && buildFromSky) {
+                // out of nothing, high above, and down into place
+                float t = stateTime - skyAppear(i);
+                if (t < 0f) continue;
+                float fall = skyFall(i);
+                if (t < fall) {
+                    drop = skyHeight(i) - 0.5f * SKY_G * t * t;
+                    scale = Math.min(1f, t / 0.12f);
+                }
+            } else if (state == BUILD) {
                 // block after block, down into place out of the air just above
                 float t = stateTime - 0.4f - i * st;
                 if (t < -0.35f) continue;
@@ -752,7 +893,8 @@ final class Game implements Physics.Listener {
         if (hs == HAND) {
             float bob = (float) Math.sin(clock * 1.7f) * 0.008f;
             // held upright, head up and to the left, tilted toward the street
-            Hammer.held(d, 0.3f, -0.7f + bob, 1.35f, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
+            // looking up into the sky, the hand drops out of sight
+            Hammer.held(d, 0.3f, -0.7f + bob - 0.9f * tilt(), 1.35f, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
             if (aiming) pose[1] += 0.06f;
             // the handle runs down off the screen: move the hammer along its own axis
             pose[0] -= pose[3] * 0.05f;
@@ -772,6 +914,13 @@ final class Game implements Physics.Listener {
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {
+        float k = tilt();
+        if (k > 0f && sky != null) {
+            // the gods' strip comes down from above as the eye goes up
+            float shift = k * fh - fh;
+            sky.drawFar(f, shift);
+            sky.drawClouds(f, shift);
+        }
         if (!aiming) return;
         float speed = throwSpeed();
         target(aimX + tremX, aimY + tremY, tmp);

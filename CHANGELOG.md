@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.9
+- The sky with the gods: a building down, and once all is still the eye tips up into the
+  evening sky. Far clouds hang there and the old gods of the place sail in, each in a cloud
+  of his own; their faces come out of the vapour, a wisp of haze passes, and they judge:
+  laughter and the thunderer's lightning, with thunder rolling in after, for a building felled
+  at one throw; smiles for a few throws; a sceptic look for many. The first building is their
+  welcome: they all laugh aloud.
+- Then the next building falls out of the sky onto the plinth, block by block from high up,
+  as the eye comes back down. The levels go on to the ninth, the end of the first run; the
+  ninth comes round again until the stars come. The game keeps the level it is on.
+- People: up and down the pavement under the houses, along the promenade, across the road
+  far off; and in the opening, crossing the square behind Freedie and along its sides. Close
+  up a person of blocks reads as a toy, so nobody comes nearer to the eye than a few meters.
+
 ## 0.8.1
 - The hammer is never left behind: thrown at the call box in the first game of the
   bridge, it strikes the button and comes back to the hand like a boomerang, as it does

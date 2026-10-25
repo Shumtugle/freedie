@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.8.1";   // shown on screen; keep in step with versionName
+    static final String VERSION = "0.9";     // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -42,6 +42,7 @@ final class World {
     float time;
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
+    private final People people = new People(26, 0x5EE7L, 9f);   // up and down the street
 
     private final DrawList still = new DrawList();   // the street, built once
     private boolean built;
@@ -69,7 +70,22 @@ final class World {
         // she opens every game; her heart is given at the first meeting only
         intro = new Intro(host, host.loadInt("met") != 1);
         cubes = host.loadInt("cubes");
-        game = new Game(host, 0);
+        game = new Game(host, host.loadInt("level"));
+        level = game.level;
+        // along the pavement under the houses, along the promenade, and across the road far off
+        java.util.Random r = people.random();
+        for (int i = 0; i < 11; i++) {
+            float x = 6.3f + r.nextFloat() * 5.4f, z = 13f + r.nextFloat() * 50f;
+            people.walk(x, z, x + (r.nextFloat() - 0.5f) * 1.2f, z + (r.nextBoolean() ? 1f : -1f) * (8f + r.nextFloat() * 14f), Street.WALK_TOP);
+        }
+        for (int i = 0; i < 11; i++) {
+            float x = -13.5f + r.nextFloat() * 7f, z = 12f + r.nextFloat() * 50f;
+            people.walk(x, z, x + (r.nextFloat() - 0.5f) * 1.2f, z + (r.nextBoolean() ? 1f : -1f) * (8f + r.nextFloat() * 14f), Street.WALK_TOP);
+        }
+        for (int i = 0; i < 4; i++) {
+            float z = 46f + r.nextFloat() * 22f;
+            people.walk(-4.6f, z, 4.6f, z + (r.nextFloat() - 0.5f) * 1.5f, 0f);
+        }
     }
 
     void resize(int screenW, int screenH) {
@@ -136,7 +152,10 @@ final class World {
         flashOut = Math.max(0f, flashOut - dt);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
-        if (bridge == null) game.update(dt);
+        if (bridge == null) {
+            game.update(dt);
+            level = game.level;
+        }
     }
 
     /** Whether the back key means something here, rather than leaving the game. */
@@ -167,7 +186,9 @@ final class World {
             return;
         }
         float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
-        d.camera(CAM_X, CAM_Y, CAM_Z, yaw, 0.0f, W * 1.9f, 0.1f, 500f);
+        // up into the gods' sky: the street slides down as far as the frame is tall
+        float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
+        d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f, 0.1f, 500f);
         game.frame(d);
         d.flash = flashOut / FLASH_OUT;
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
@@ -185,6 +206,7 @@ final class World {
         }
         d.append(still);
         traffic.draw(d);
+        people.draw(d, time, CAM_X, CAM_Y, CAM_Z);
         game.draw(d);
         // the red button on the call box: a slow glow, bright for a moment when pressed
         float since = time - pressedAt;

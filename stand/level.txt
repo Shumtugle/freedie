@@ -1,6 +1,6 @@
 # The first level: the building comes down onto the plinth, the hammer is wound up and
-# thrown at it, and the first building flies to pieces at the first touch; once all is still,
-# what is left goes in a puff and the building rises again.
+# thrown at it, and the first building flies to pieces at the first touch;
+# the eye goes up to the gods (see sky.txt).
 screen 1096 2560
 skip
 wait 0.6
@@ -21,7 +21,3 @@ wait 0.4
 shot l6_pieces
 wait 1.4
 shot l7_lying
-wait 3.6
-shot l8_puff
-wait 1.4
-shot l9_again
