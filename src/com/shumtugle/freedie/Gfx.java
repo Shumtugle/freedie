@@ -202,6 +202,7 @@ final class Gfx {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, flatTex);
         GLES30.glUniform1i(u(blitP, "uFlat"), 1);
         GLES30.glUniform1f(u(blitP, "uFlash"), d.flash);
+        GLES30.glUniform1f(u(blitP, "uTube"), d.tube);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);

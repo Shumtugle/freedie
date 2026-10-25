@@ -34,6 +34,7 @@ final class DrawList {
     float spotRadius = 4f;
     float goldGlow = 1f;                       // gold keeps this much of its own light in the dark
     float flash;                               // the frame drawn in to its middle and gone white, 0 to 1
+    float tube = -1f;                          // the picture coming on like a set, 0 to 1; below 0 it is on
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -190,7 +191,7 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
-        s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow);
+        s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
         s.append(",\"count\":").append(count).append(",\"boxes\":[");
         for (int i = 0; i < count * STRIDE; i++) {

@@ -184,6 +184,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.bindTexture(gl.TEXTURE_2D, flatTex);
   gl.uniform1i(u(blitP, 'uFlat'), 1);
   gl.uniform1f(u(blitP, 'uFlash'), frame.flash || 0);
+  gl.uniform1f(u(blitP, 'uTube'), frame.tube === undefined ? -1 : frame.tube);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

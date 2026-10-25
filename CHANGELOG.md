@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5
+- The red button calls the dispatcher: each press rings, and three in a row open the
+  bridge, the same room as in the game this one grows from: a ring of old sets, one for
+  each episode, turned by a swipe and settling with a click; a slot under each, where a
+  golden cube goes in for good; the console with its monitors, the dial and the HOME
+  lever. A throw at an open screen goes through the light back to the street, as there are
+  no levels yet; the monitors of the alley, the golem and the stones stay dark for now.
+  The lever, or the back key, switches the room off like a set, and the street comes back
+  on from a bright line.
+- The sets show stills from the game this one grows from, until this one has its own.
+- Golden cubes and the farthest level are kept between games.
+
 ## 0.4
 - The opening comes down onto a square now, another corner of the same town: paving laid in
   rings round Freedie, a darker band at the rim; a road across behind it and another along

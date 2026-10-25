@@ -3,13 +3,19 @@ package com.shumtugle.freedie;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-/** The window: full screen, no bars, the screen kept on; the stage fills it; the sound plays while it is shown. */
-public final class MainActivity extends Activity {
+/**
+ * The window: full screen, no bars, the screen kept on; the stage fills it; the sound plays
+ * while it is shown. Answers the world's requests to the phone.
+ */
+public final class MainActivity extends Activity implements World.Host {
     private Stage stage;
+    private Vibrator vibrator;
     private final Sound sound = new Sound();
 
     @Override
@@ -23,12 +29,8 @@ public final class MainActivity extends Activity {
             lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             getWindow().setAttributes(lp);
         }
-        stage = new Stage(this, new World.Host() {
-            @Override
-            public void sound(int id, float gain, float rate) {
-                sound.synth.play(id, gain, rate);
-            }
-        });
+        vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        stage = new Stage(this, this);
         setContentView(stage);
     }
 
@@ -62,5 +64,45 @@ public final class MainActivity extends Activity {
                         | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                         | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+    }
+
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        if (!stage.back()) super.onBackPressed();
+    }
+
+    @Override
+    public void sound(int id, float gain, float rate) {
+        sound.synth.play(id, gain, rate);
+    }
+
+    @Override
+    public void buzz(int ms) {
+        if (vibrator != null && vibrator.hasVibrator() && ms > 0)
+            vibrator.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE));
+    }
+
+    @Override
+    public void saveInt(String key, int value) {
+        getSharedPreferences("game", MODE_PRIVATE).edit().putInt(key, value).apply();
+    }
+
+    @Override
+    public int loadInt(String key) {
+        return getSharedPreferences("game", MODE_PRIVATE).getInt(key, 0);
+    }
+
+    @Override
+    public byte[] asset(String name) {
+        try (java.io.InputStream in = getAssets().open(name)) {
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int k;
+            while ((k = in.read(buf)) > 0) out.write(buf, 0, k);
+            return out.toByteArray();
+        } catch (java.io.IOException e) {
+            return null;
+        }
     }
 }

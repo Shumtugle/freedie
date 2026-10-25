@@ -235,6 +235,7 @@
       gl.bindTexture(gl.TEXTURE_2D, flatTex);
       gl.uniform1i(u(blitP, 'uFlat'), 1);
       gl.uniform1f(u(blitP, 'uFlash'), 0);
+      gl.uniform1f(u(blitP, 'uTube'), -1);
       gl.bindVertexArray(empty);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.activeTexture(gl.TEXTURE0);

@@ -16,13 +16,15 @@ import javax.imageio.ImageIO;
  *
  * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
  * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays) ·
- * sounds (every sound of the synthesizer in turn, each after the last has died away).
+ * sounds (every sound of the synthesizer in turn, each after the last has died away) ·
+ * keep KEY VALUE (as kept by an earlier game) · back (the phone's back key).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
 public final class Stand implements World.Host {
     private static final float DT = 1f / 60f;
     private final java.util.ArrayList<float[]> sounds = new java.util.ArrayList<float[]>();
+    private final java.util.HashMap<String, Integer> kept = new java.util.HashMap<String, Integer>();
     private final World world = new World(this);
     private final DrawList list = new DrawList();
     private final File out;
@@ -51,6 +53,31 @@ public final class Stand implements World.Host {
     @Override
     public void sound(int id, float gain, float rate) {
         sounds.add(new float[]{time, id, gain, rate});
+    }
+
+
+    @Override
+    public void buzz(int ms) {
+    }
+
+    @Override
+    public void saveInt(String key, int value) {
+        kept.put(key, value);
+    }
+
+    @Override
+    public int loadInt(String key) {
+        Integer v = kept.get(key);
+        return v == null ? 0 : v;
+    }
+
+    @Override
+    public byte[] asset(String name) {
+        try {
+            return Files.readAllBytes(new File("assets", name).toPath());
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     /** All the sounds of the scene, mixed as the phone would, into sound.wav. */
@@ -90,6 +117,8 @@ public final class Stand implements World.Host {
 
     private void step() {
         world.update(DT);
+        // drawn every step, as the phone does: the world learns from it where things are on screen
+        world.draw(list);
         time += DT;
     }
 
@@ -136,6 +165,13 @@ public final class Stand implements World.Host {
                 System.out.println(String.format("%7.2fs  sound %d", time, id));
                 run(syn.bank[id].length / (float) Synth.RATE + 0.45f);
             }
+        } else if (c.equals("keep")) {
+            // keep KEY VALUE: as if a game before had kept it
+            saveInt(p[1], Integer.parseInt(p[2]));
+            if (p[1].equals("cubes")) world.cubes = Integer.parseInt(p[2]);
+        } else if (c.equals("back")) {
+            world.touch(World.BACK, 0f, 0f);
+            step();
         } else if (c.equals("skip")) {
             if (world.opening()) {
                 world.touch(World.DOWN, World.W * 0.5f, 300f);

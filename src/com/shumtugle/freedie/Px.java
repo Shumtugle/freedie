@@ -91,4 +91,21 @@ final class Px {
                 if ((c >>> 24) != 0) set(x + i, y + j, c);
             }
     }
+
+    /** Two colors mixed, t of the way from a to b; opaque. */
+    static int mix(int a, int b, float t) {
+        if (t <= 0f) return a;
+        if (t >= 1f) return b;
+        int ar = (a >> 16) & 0xFF, ag = (a >> 8) & 0xFF, ab = a & 0xFF;
+        int br = (b >> 16) & 0xFF, bg = (b >> 8) & 0xFF, bb = b & 0xFF;
+        return 0xFF000000 | ((int) (ar + (br - ar) * t) << 16) | ((int) (ag + (bg - ag) * t) << 8) | (int) (ab + (bb - ab) * t);
+    }
+
+    /** A color made lighter or darker by k; opaque. */
+    static int scale(int c, float k) {
+        int r = Math.min(255, Math.max(0, (int) (((c >> 16) & 0xFF) * k)));
+        int g = Math.min(255, Math.max(0, (int) (((c >> 8) & 0xFF) * k)));
+        int b = Math.min(255, Math.max(0, (int) ((c & 0xFF) * k)));
+        return 0xFF000000 | (r << 16) | (g << 8) | b;
+    }
 }
