@@ -1,0 +1,25 @@
+# The close view on far plinths: the 39th building, nine meters farther than the first ones.
+# At rest the view is the street's own; a finger down and held, the view closes in on the
+# building in a third of a second, the ring staying on the same spot of it; the throw flies
+# in the close view; the hammer back in hand, the view opens out again.
+screen 1096 2560
+keep level 38
+keep gifts 0
+restart
+skip
+wait 2.6
+shot z0_rest
+down 137 400
+wait 0.12
+shot z1_closing
+wait 0.6
+shot z2_close
+move 150 390
+wait 0.4
+up 150 390
+wait 0.35
+shot z3_flight
+wait 2.0
+shot z4_coming
+wait 2.5
+shot z5_open

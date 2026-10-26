@@ -27,6 +27,10 @@ import java.util.Random;
  * that scatters the building whatever it hits, as the very first one did. Once that has been
  * given, the next ten lost in a row bring Freedie herself, and the fight (see Fight).
  *
+ * From the 21st on the plinth stands farther down the street; then, while a throw is aimed
+ * and in flight, the view closes in on the building, the farther the more, and opens out
+ * again once the hammer is back.
+ *
  * For now the levels go as far as the end of the third episode, and the last comes round
  * again.
  *
@@ -587,6 +591,10 @@ final class Game implements Physics.Listener {
 
     /** The eye as the world has just set it: kept, so a finger can be turned into a ray. */
     void frame(DrawList d) {
+        // the view closing in or opening out under an aim: the ring stays on the same spot of
+        // the building, wherever that spot now is in the frame
+        boolean keep = seen && aiming && fight == null && zoomK > 0f && zoomK < 1f || seen && aiming && zoomMoved;
+        if (keep) target(aimX, aimY, held);
         System.arraycopy(d.eye, 0, eye, 0, 3);
         System.arraycopy(d.right, 0, right, 0, 3);
         System.arraycopy(d.up, 0, up, 0, 3);
@@ -595,10 +603,70 @@ final class Game implements Physics.Listener {
         fw = d.w;
         fh = d.h;
         seen = true;
+        zoomMoved = false;
+        if (keep && project(held[0], held[1], held[2], scr)) {
+            aimX = Math.max(2f, Math.min(fw - 3f, scr[0]));
+            aimY = Math.max(2f, Math.min(fh - 3f, scr[1]));
+        }
         if (sky == null) {
             sky = new Sky();
             sky.build(fw, fh, host.asset("gods.bin"), host.asset("clouds.bin"));
         }
+    }
+
+    // ---- the close view ----
+
+    static final float ZOOM_T = 0.3f;          // seconds to close in, and to open out again
+    private float zoomK;                       // how far closed in, 0 to 1
+    private boolean zoomMoved;
+    private final float[] held = new float[3];
+
+    /**
+     * How much narrower the close view is for the plinth where it stands now: none for the
+     * near ones; for a far one by the ratio of distances, a little less, from 1.25 to 4.6.
+     */
+    static float zoomFor(float cz) {
+        if (cz - Builder.BASE_CZ < 2.5f) return 1f;
+        return Math.max(1.25f, Math.min(4.6f, cz / Builder.BASE_CZ * 0.92f));
+    }
+
+    /** Closes in while a throw is aimed or in flight, opens out once the hammer is back. */
+    private void zoomStep(float dt) {
+        boolean want = zoomFor(Builder.CZ) > 1f && state == PLAY && fight == null && (aiming || hs != HAND);
+        float was = zoomK;
+        zoomK = Math.max(0f, Math.min(1f, zoomK + (want ? dt : -dt) / ZOOM_T));
+        if (zoomK != was) zoomMoved = true;
+    }
+
+    private float zoomEase() {
+        float k = zoomK;
+        return k * k * (3f - 2f * k);
+    }
+
+    /** How much narrower the view is now, 1 when open. */
+    float zoomMul() {
+        return 1f + (zoomFor(Builder.CZ) - 1f) * zoomEase();
+    }
+
+    /**
+     * The eye's turn and pitch, and how much narrower it sees, as the close view has them now:
+     * from the street's own (given) toward one looking straight at the building, a little over
+     * the plinth's top.
+     */
+    void view(float yaw, float pitch, float[] out) {
+        float e = zoomEase();
+        if (e <= 0f || fight != null) {
+            out[0] = yaw;
+            out[1] = pitch;
+            out[2] = 1f;
+            return;
+        }
+        float dx = Builder.CX - World.CAM_X, dz = Builder.CZ - World.CAM_Z;
+        float zy = (float) Math.atan2(dx, dz);
+        float zp = (float) Math.atan2(Builder.TOP + 1.4f - World.CAM_Y, (float) Math.sqrt(dx * dx + dz * dz));
+        out[0] = yaw + (zy - yaw) * e;
+        out[1] = pitch + (zp - pitch) * e;
+        out[2] = zoomMul();
     }
 
     /** How far the view is tipped up into the sky, 0 on the street to 1 among the gods, eased. */
@@ -686,7 +754,8 @@ final class Game implements Physics.Listener {
 
     /** Where the hand holds the hammer, in the world. */
     void handPoint(float[] out) {
-        float vx = 0.3f, vy = -0.7f + (float) Math.sin(clock * 1.7f) * 0.008f, vz = 1.35f;
+        // closed in, the hand is as far again as the view is narrower: it stays where it is in the frame
+        float vx = 0.3f, vy = -0.7f + (float) Math.sin(clock * 1.7f) * 0.008f, vz = 1.35f * zoomMul();
         for (int k = 0; k < 3; k++) out[k] = eye[k] + right[k] * vx + up[k] * vy + ahead[k] * vz;
     }
 
@@ -716,6 +785,7 @@ final class Game implements Physics.Listener {
         drops(dt);
         rolling();
         windUp(dt);
+        zoomStep(dt);
         hammerMoves(dt);
         thunderStep(dt);
         marksStep(dt);
@@ -1643,16 +1713,18 @@ final class Game implements Physics.Listener {
             float bob = (float) Math.sin(clock * 1.7f) * 0.008f;
             // held upright, head up and to the left, tilted toward the street
             // looking up into the sky, the hand drops out of sight
-            Hammer.held(d, 0.3f, -0.7f + bob - 0.9f * tilt(), 1.35f, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
-            if (aiming) pose[1] += 0.06f;
+            // closed in, it is held as far again as the view is narrower, and so looks the same
+            float m = zoomMul();
+            Hammer.held(d, 0.3f, -0.7f + bob - 0.9f * tilt(), 1.35f * m, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
+            if (aiming) pose[1] += 0.06f * m;
             // the handle runs down off the screen: move the hammer along its own axis
-            pose[0] -= pose[3] * 0.05f;
-            pose[1] -= pose[6] * 0.05f;
-            pose[2] -= pose[9] * 0.05f;
+            pose[0] -= pose[3] * 0.05f * m;
+            pose[1] -= pose[6] * 0.05f * m;
+            pose[2] -= pose[9] * 0.05f * m;
             if (aiming) {
                 // the wind-up draws it back and down toward the shoulder; a tired arm shakes it
-                float k = power * power * (3f - 2f * power);
-                float vx = 0.06f * k + tremX * 0.002f, vy = -0.06f * k + tremY * 0.002f, vz = -0.07f * k;
+                float k = power * power * (3f - 2f * power) * m;
+                float vx = 0.06f * k + tremX * 0.002f * m, vy = -0.06f * k + tremY * 0.002f * m, vz = -0.07f * k;
                 for (int j = 0; j < 3; j++) pose[j] += d.right[j] * vx + d.up[j] * vy + d.ahead[j] * vz;
             }
         } else {
@@ -1667,7 +1739,7 @@ final class Game implements Physics.Listener {
         Hammer.draw(d, pose, gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN, 1f);
         // the other hammer waits at the lower left, in sight and in reach of a tap
         if (heavyLeft > 0 || heavy) {
-            Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f, 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
+            Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f * zoomMul(), 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
             Hammer.draw(d, other, !heavy, 0.62f);
         }
     }

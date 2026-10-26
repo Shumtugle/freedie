@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.19
+- The close view for far plinths. From the 21st building on the plinth stands farther down
+  the street; now, while a throw is aimed and while it flies, the view turns straight onto
+  the building and closes in on it in a third of a second, the farther the plinth the more
+  (by the ratio of the distances, a little less, from one and a quarter to four and a half
+  times), and opens out again once the hammer is back in hand.
+- The ring stays on the same spot of the building as the view closes in; a finger moved in
+  the close view moves the aim finely. The hammer in hand keeps its place and size in the
+  frame, and the throw and the catch go from the hand where it is seen.
+
 ## 0.18
 - The third episode, whole: the game goes on to the thirty-ninth building, as the street
   game it grows from has it, by the same seeds. Its buildings put everything of the second
