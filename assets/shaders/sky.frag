@@ -55,6 +55,15 @@ void main() {
     float cl = smoothstep(0.55, 0.85, fbm(uv * 1.3 + vec2(3.0, 1.0))) * smoothstep(0.03, 0.1, d.y) * (1.0 - smoothstep(0.3, 0.55, d.y));
     vec3 cloud = mix(vec3(0.94, 0.66, 0.56), vec3(1.0, 0.85, 0.72), toSun * 0.7);
     cloud = mix(cloud, vec3(0.76, 0.64, 0.71), smoothstep(0.45, 0.75, fbm(uv * 3.1 + 11.0)) * 0.5);
+    // overhead, where the eye looks up: heaped clouds, lit as the hour lights them
+    if (d.y > 0.3 && uOvercast < 0.5) {
+        vec2 q = d.xz / d.y * 1.3 + vec2(uTime * 0.012, 0.0);
+        float heap = smoothstep(0.5, 0.78, fbm(q + 7.0)) * smoothstep(0.3, 0.55, d.y);
+        float dim = clamp(length(uHorizon) / 1.49, 0.1, 1.0);
+        vec3 lit = mix(vec3(1.0, 0.99, 0.97), uGlow, 0.35) * dim;
+        vec3 under = mix(uTop, lit, 0.5);
+        c = mix(c, mix(under, lit, smoothstep(0.35, 0.75, fbm(q * 2.3 + 3.0))), heap * 0.9);
+    }
     // the clouds go dark with the sky
     cloud *= clamp(length(uHorizon) / 1.49, 0.15, 1.0);
     c = mix(c, cloud, cl * 0.8);
@@ -64,8 +73,10 @@ void main() {
         // the moon, a hard pale disc; the stars, fixed in the sky, out once it is dark enough
         float dark = smoothstep(0.3, 0.75, uNight);
         if (s > 0.99985) c = mix(c, vec3(0.92, 0.93, 0.98), dark);
-        vec2 g = floor(vec2(atan(d.z, d.x) * 180.0, d.y * 170.0));
-        float st = h(g);
+        // cells of a grid in space, not of latitude and longitude, so they keep their shape
+        // overhead, where the view goes when it looks up
+        vec3 g3 = floor(d * 160.0);
+        float st = h(g3.xy + g3.z * vec2(0.37, 0.71));
         if (st > 0.993 && d.y > 0.06) c = mix(c, vec3(0.9, 0.92, 1.0), dark * smoothstep(0.06, 0.25, d.y) * (0.4 + 0.6 * (st - 0.993) / 0.007));
     }
     if (uOvercast > 0.0) {

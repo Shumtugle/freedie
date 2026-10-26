@@ -254,6 +254,7 @@ final class Gfx {
         GLES30.glUniform1f(u(p, "uGoldGlow"), d.goldGlow);
         GLES30.glUniform1f(u(p, "uTime"), d.time);
         GLES30.glUniform1f(u(p, "uNight"), d.night);
+        GLES30.glUniform1f(u(p, "uOvercast"), d.overcast);
     }
 
     // ---- helpers ----

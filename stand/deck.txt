@@ -1,0 +1,43 @@
+# Who watches: the view tips up to the glass floor among the clouds. First with the stone one
+# alone, a building felled at one throw (laughter, the heavy hammer down through the hatch);
+# then all three at night, the stars run out and then a nod; then at sea, under the winter sky.
+screen 1096 2560
+keep level 4
+keep fails 10
+restart
+skip
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 6.0
+shot k1_up
+wait 0.5
+shot k2_laugh
+wait 0.4
+shot k3_gift
+wait 0.4
+shot k4_gift
+keep level 89
+keep fails 0
+keep goldSeen 1
+keep fought 1
+restart
+skip
+wait 2.6
+deck 3
+wait 1.8
+shot k5_night
+deck 1
+wait 1.8
+shot k6_nod
+keep level 104
+keep fails 10
+restart
+skip
+wait 2.8
+down 137 420
+wait 1.0
+up 137 420
+wait 7.0
+shot k7_sea

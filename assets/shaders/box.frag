@@ -31,6 +31,7 @@ uniform float uSpotRadius;
 uniform float uGoldGlow;      // how much gold keeps its own light in the dark
 uniform float uTime;          // seconds, for what moves on its own: the swell
 uniform float uNight;         // how far into the night: windows lit, glass showing a dark sky
+uniform float uOvercast;      // out at sea: the low grey winter sky
 
 out vec4 outColor;
 
@@ -249,7 +250,8 @@ void main() {
     vec3 emit = vec3(0.0);
     vec3 v = normalize(uEye - vWorld);
     float dist = length(vWorld - uEye);
-    float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
+    // up in the sky, above the haze of the street: no haze at all
+    float haze = seed == 252 ? 0.0 : 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
 
     if (mat == GLOW) {
         // lit from inside: no sun, no shade, only the haze
@@ -365,6 +367,14 @@ void main() {
     // leaves let the light through: lit from either side, never quite dark
     float lit = leaf > 0.0 ? (0.35 + 0.65 * abs(ndl)) * sh : max(ndl, 0.0) * sh;
     vec3 amb = mix(uAmbGround, uAmbSky, n.y * 0.5 + 0.5);
+    // up in the watchers' room, what faces down through the glass is lit by the room's own
+    // lamps round the hoop, warm, as well as by the sky's light from below; in winter the lamps
+    // burn cold and the grey sky gives little
+    if (seed == 252) {
+        vec3 lamps = mix(vec3(0.42, 0.33, 0.2), vec3(0.2, 0.24, 0.29), uOvercast);
+        amb = mix(uAmbSky * mix(1.5, 1.1, uOvercast) + lamps, uAmbSky, n.y * 0.5 + 0.5);
+        lit *= 0.5;
+    }
     vec3 c = albedo * (amb + uSunColor * lit);
     if (gloss > 0.0) {
         float spec = pow(max(dot(reflect(-uSun, n), v), 0.0), 18.0) * sh;

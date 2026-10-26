@@ -48,6 +48,10 @@ final class Frida {
     // the pose per joint: angles about x (forward and back), z (out to the side), y (across)
     final float[] ax = new float[JOINTS], az = new float[JOINTS], ay = new float[JOINTS];
     float x, z;                              // where she stands; she faces -z
+    float y;                                 // the floor she stands on, if not the ground
+    // which of her she is: of stone, as in town; of fire, embers in her brick; of old ice
+    static final int STONE_KIND = 0, FIRE_KIND = 1, ICE_KIND = 2;
+    int kind;
     float lift;                              // how far her hips are raised (or, below 0, sunk), her units
     float size = 1f;                         // meters to her unit
     float eyes = 0.4f;                       // how bright her eyes burn, 0 to 1
@@ -176,7 +180,7 @@ final class Frida {
             if (p < 0) {
                 System.arraycopy(r, 0, jr, 0, 9);
                 jt[0] = tx + x;
-                jt[1] = ty + lift * size;
+                jt[1] = ty + lift * size + y;
                 jt[2] = tz + z;
             } else {
                 // world = parent (local)
@@ -201,9 +205,13 @@ final class Frida {
 
     private final float[] at = new float[3], turn = new float[9];
 
+    /** Whether she holds her golden hammer: not up among the watchers, where her hands are free. */
+    boolean holding = true;
+
     void draw(DrawList d) {
         for (int i = 0; i < n; i++) {
             int j = joint[i];
+            if (j == HAMMER && !holding) continue;
             place(j, mid[i * 3], mid[i * 3 + 1], mid[i * 3 + 2], at);
             System.arraycopy(jr, j * 9, turn, 0, 9);
             float s = size;
@@ -215,6 +223,9 @@ final class Frida {
     private float drawn(int i) {
         float m = look[i];
         if (m == DrawList.GLOW && out(i)) m = DrawList.PLAIN;
+        // the fiery one: her brick is embers; the icy one: her stone and brick are old ice
+        if (kind == FIRE_KIND && m == DrawList.GRAIN) m = DrawList.GLOW;
+        if (kind == ICE_KIND && (m == DrawList.STONE || m == DrawList.GRAIN)) m = DrawList.ICE;
         // the burning parts are marked; so are the lit eyes and knees, which keep their own colours
         return fire ? DrawList.material((int) m, DrawList.FIRE) : m;
     }
@@ -231,12 +242,31 @@ final class Frida {
      */
     private int shade(int i) {
         int c = color[i];
+        if (kind != STONE_KIND) c = kindColor(i, c);
         if (i >= eyeFrom && i < eyeTo)
             c = Street.mix(Street.mix(0x3A1A08, head >= 3 ? c : head == 2 ? 0xFFA02A : 0xE0502A, eyes), 0xFFFFFF, flare);
         else if (out(i)) c = 0x2E2628;
         else if (i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW)
             c = Street.mix(Street.mix(0x3A1A08, c, 0.5f + 0.5f * eyes), 0xFFFFFF, flare);
         return hurt > 0f ? Street.mix(c, 0xFFE0B0, Math.min(1f, hurt) * 0.6f) : c;
+    }
+
+    /** Her colours as the fiery one or the icy one. */
+    private int kindColor(int i, int c) {
+        boolean eye = i >= eyeFrom && i < eyeTo, knee = i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW;
+        if (kind == FIRE_KIND) {
+            if (eye || knee) return 0xFFF0B0;
+            if (look[i] == DrawList.GRAIN) return c == BRICK ? 0xFF6A1C : 0xE8501A;
+            if (look[i] == DrawList.STONE) return 0x3A2C28;
+            if (c == DRESS) return 0x2A0E0A;
+            if (c == WHITE || c == LACE) return 0xF2C890;
+            return c;
+        }
+        if (eye || knee) return 0x9FF4FF;
+        if (look[i] == DrawList.GRAIN) return 0x8FBFD8;
+        if (look[i] == DrawList.STONE) return 0xCBE4F0;
+        if (c == DRESS) return 0x1C2A46;
+        return c;
     }
 
     // ---- what the fight needs to know: where the weak points are ----

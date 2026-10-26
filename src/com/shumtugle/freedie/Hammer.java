@@ -16,7 +16,7 @@ final class Hammer {
     };
     private static final int[] COL = {0x9A6638, 0x6E3F27, 0xDFA868, 0x55524F, 0x55524F};
     private static final int[] MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.WOOD, DrawList.PLAIN, DrawList.PLAIN};
-    // the gift of the gods: a dark wrought head, broader and deeper, bound in bronze, on a stout handle
+    // the gift from above: a dark wrought head, broader and deeper, bound in bronze, on a stout handle
     static final float[][] HEAVY = {
             {-0.1f, 0f, 0f, 0.31f, 0.038f, 0.038f},
             {-0.36f, 0f, 0f, 0.07f, 0.044f, 0.044f},
@@ -29,7 +29,7 @@ final class Hammer {
     // the golden hammer: the plain one's shape, its head and hoops of gold
     private static final int[] GOLD_COL = {0x8A5A32, 0x5A3418, 0xF2C64A, 0xFFF0B0, 0xFFF0B0};
     private static final int[] GOLD_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.GOLD, DrawList.GOLD, DrawList.GOLD};
-    // the gods' hammer for the fight: the heavy one's shape, its head of pale blue diamond
+    // the watchers' hammer for the fight: the heavy one's shape, its head of pale blue diamond
     private static final int[] DIAMOND_COL = {0x7A5A3A, 0x3E2618, 0x6CC8EC, 0xE8FAFF, 0xE8FAFF};
     private static final int[] DIAMOND_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.GLASS, DrawList.GLASS, DrawList.GLASS};
     static final int PLAIN = 0, HEAVY_KIND = 1, GOLDEN = 2, DIAMOND = 3;

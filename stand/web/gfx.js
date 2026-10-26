@@ -194,6 +194,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.uniform1f(u(p, 'uGoldGlow'), frame.goldGlow);
     gl.uniform1f(u(p, 'uTime'), frame.time || 0);
     gl.uniform1f(u(p, 'uNight'), frame.night || 0);
+    gl.uniform1f(u(p, 'uOvercast'), frame.overcast || 0);
   };
   lit(boxP);
   gl.bindVertexArray(vao);

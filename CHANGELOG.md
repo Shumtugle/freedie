@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.25
+- Who watches from the sky is no longer a row of old gods in the clouds. High over the
+  street hangs an iron hoop, and in it a round room with a glass floor: the eye goes up and
+  sees them from below, lying on the glass, heads to the middle, looking straight down. The
+  stone one, the fire one, the ice one, each a Freedie of her own; a fourth place on the
+  glass is left empty. Only those already met are there: the stone one from the start, the
+  fire one once the golden hammer has come, the ice one after the first fight or out at sea.
+- They judge the fall each in her own way, by pose and eyes: laughter, drumming on the
+  glass, with lightning from the fire one's fist, for a building felled at one throw; a nod
+  and a wave for a good fall; arms crossed for a poor one; and when the stars ran out, a
+  fist and red eyes, a head shaken, or one who has fallen asleep.
+- A gift comes from the one it belongs to: the heavy hammer from the stone one, the golden
+  from the fire one, the diamond from the ice one. Her arm reaches out, the hatch in the
+  middle of the floor opens, and the hammer falls through it down to the street.
+- The room takes the time of day and the season: its lamps warm over the evening street,
+  its glass dark under the night sky; over the winter sea the lamps burn cold and the grey
+  sky lights it little.
+- At night the stars keep their shape overhead, where the view now goes when it looks up.
+
 ## 0.24
 - The time of day runs with the game: one long evening from the first level to the portal.
   The first episodes are as before, the sun already low and the shadows long. Then the sun

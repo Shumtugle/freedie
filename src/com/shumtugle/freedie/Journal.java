@@ -7,7 +7,7 @@ import java.util.Locale;
 /**
  * A round written down as it went, for the author to read afterwards and to point at: when
  * the finger went down and where, where the ring was, how far the view had closed in, what
- * the throw was and what the hammer met, how much came off, what the gods said. One plain
+ * the throw was and what the hammer met, how much came off, what the watchers said. One plain
  * text a round; the phone keeps it in a folder of its own.
  *
  * Places are given in frame pixels (the game's own coarse pixels, the frame being so many

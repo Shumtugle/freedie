@@ -7,14 +7,14 @@ import java.util.Random;
  * It comes when the golden hammer has been given once and a building will not fall ten
  * times again; or from the bridge's console. The street is seen red and black, the plinth
  * is gone, and she comes up the road from far off in leaps (see Giant), tearing parked cars
- * from the curb and throwing them. The gods have given a diamond hammer: it flies hard and
+ * from the curb and throwing them. The watchers have given a diamond hammer: it flies hard and
  * flat, and comes back at once.
  *
  * A thrown car knocked out of the air goes up and over to the curb; one that gets through
  * breaks a shield, and with no shield left the next one ends the fight. Her weak points are
  * the knees and the eyes: a knee struck goes out, and she leaps short; both out, she drags
  * herself on; three blows to the head and she falls apart. If she reaches the player, a
- * sweep of her arm ends it too. Won, the world goes gold and up into the sky, where the gods
+ * sweep of her arm ends it too. Won, the world goes gold and up into the sky, where the watchers
  * cheer; lost, it goes dark, and the player wakes on the street before the same building.
  */
 final class Fight {

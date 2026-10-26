@@ -13,17 +13,18 @@ import java.util.Random;
  *
  * Every throw burns one of five stars in the corner. Knock three quarters of a building's
  * weight off the plinth before the stars run out and, once things are still, the view tips up
- * into the sky, where the gods gather and judge the fall (see Sky); then the next building
+ * to the glass floor among the clouds where his other selves look down and judge the fall
+ * (see Deck); then the next building
  * falls out of the sky onto the plinth as the view comes back down. Run out of stars, and the
- * gods frown, and the same building comes down again for another try.
+ * watchers frown, and the same building comes down again for another try.
  *
- * The first building is the gods' welcome: it stands close, flies to pieces at the first touch
+ * The first building is the watchers' welcome: it stands close, flies to pieces at the first touch
  * of the hammer, and they all laugh and give the heavy hammer. From the second on the plinth
  * stands a little further off, and the game is played fair. A building felled at one throw
  * always brings the heavy hammer: a few heavy throws, marked under the stars; a tap on the
  * hammer in hand, or the one waiting low on the left, swaps one for the other.
  *
- * Lose the same building ten times running and the gods give the golden hammer: one throw
+ * Lose the same building ten times running and the watchers give the golden hammer: one throw
  * that scatters the building whatever it hits, as the very first one did. Once that has been
  * given, the next ten lost in a row bring Freedie herself, and the fight (see Fight).
  *
@@ -62,7 +63,7 @@ final class Game implements Physics.Listener {
     int cubes;
     private int nextLevel;
 
-    // the heavy hammer: the gods give a few heavy throws for a building felled at one throw
+    // the heavy hammer: the watchers give a few heavy throws for a building felled at one throw
     static final int HEAVY_GIFT = 3, HEAVY_MAX = 9;
     static final float HEAVY_MASS = 2.5f;
     int heavyLeft;
@@ -76,14 +77,14 @@ final class Game implements Physics.Listener {
     private float markT = -1f;
     private static final float MARK_FALL = Crest.MARK_FALL, MARK_GAP = Crest.MARK_GAP;
     private boolean giftShown;
-    // the golden hammer: lose the same building ten times running and the gods give one throw
+    // the golden hammer: lose the same building ten times running and the watchers give one throw
     // that scatters it whatever it hits
     static final int GOLD_AFTER = 10;
     int fails;
     boolean goldOn, goldSeen;
     private boolean goldThrow, goldGift;
     final Crest crest = new Crest();
-    // the fight with Freedie: on now, or due after the sky; the diamond hammer the gods give
+    // the fight with Freedie: on now, or due after the sky; the diamond hammer the watchers give
     // for it; the world going gold after a fight won, the eyes opening after one lost
     Fight fight;
     private boolean fightNext, diamondGift, afterFight, throwDue;
@@ -98,8 +99,8 @@ final class Game implements Physics.Listener {
     Crane crane;
     private boolean craneOut;
     boolean cubeGift;
-    // the gods' sky, made once the frame's size is known
-    private Sky sky;
+    // who watches from the glass floor among the clouds
+    private final Deck deck = new Deck();
     private int throwsMade, boltsHeard;
     private float holdFor, backT;
     private boolean fromSky, buildFromSky;
@@ -182,7 +183,7 @@ final class Game implements Physics.Listener {
 
     /**
      * Raises the building for a level: tested for standing still, asleep, ready to fall. From
-     * the sky, its pieces are thrown down by the gods; else they come down just above the plinth.
+     * the sky, its pieces are thrown down by the watchers; else they come down just above the plinth.
      */
     void start(int lv, boolean thrown) {
         if (lv != level) {
@@ -371,11 +372,11 @@ final class Game implements Physics.Listener {
         startFight(false);
     }
 
-    /** The fight is won: the world goes gold and up into the sky, where the gods cheer. */
+    /** The fight is won: the world goes gold and up into the sky, where the watchers cheer. */
     private void fightWon() {
         afterFight = true;
         winSky = 0f;
-        lookUp(Sky.OVATION, level + 1);
+        lookUp(Deck.OVATION, level + 1);
     }
 
     /** The fight is lost: the player wakes on the street, before the same building, as from a dream. */
@@ -767,10 +768,6 @@ final class Game implements Physics.Listener {
             aimX = Math.max(2f, Math.min(fw - 3f, scr[0]));
             aimY = Math.max(2f, Math.min(fh - 3f, scr[1]));
         }
-        if (sky == null) {
-            sky = new Sky();
-            sky.build(fw, fh, host.asset("gods.bin"), host.asset("clouds.bin"));
-        }
     }
 
     /**
@@ -858,7 +855,7 @@ final class Game implements Physics.Listener {
         out[2] = zoomMul();
     }
 
-    /** How far the view is tipped up into the sky, 0 on the street to 1 among the gods, eased. */
+    /** How far the view is tipped up into the sky, 0 on the street to 1 among the watchers, eased. */
     float tilt() {
         float k;
         if (state == SKY_UP) k = Math.min(1f, stateTime / TILT);
@@ -983,11 +980,11 @@ final class Game implements Physics.Listener {
         crest.update(dt);
         // a lost try shows on the ring once the street is back in sight
         if (tilt() * fh < fh / 8f && state != SKY_UP && state != SKY_HOLD) crest.attempts(fails);
-        if (sky != null && (state == SKY_UP || state == SKY_HOLD || fromSky)) {
-            sky.update(dt);
-            if (sky.bolts != boltsHeard) {
-                boltsHeard = sky.bolts;
-                strikeHeard(sky.boltNear);
+        if (state == SKY_UP || state == SKY_HOLD || fromSky) {
+            deck.update(dt);
+            if (deck.bolts != boltsHeard) {
+                boltsHeard = deck.bolts;
+                strikeHeard(deck.boltNear);
             }
         }
         if (chapterT >= 0f) {
@@ -1014,14 +1011,12 @@ final class Game implements Physics.Listener {
                 break;
             case CLEARED:
                 if (stateTime > 2.2f && hs == HAND && (phys.settled() || stateTime > 4.5f)) {
-                    if (sky != null) lookUp(throwsMade <= 1 ? Sky.OVATION : throwsMade <= 3 ? Sky.CHEER : Sky.POLITE, level + 1);
-                    else vanish();
+                    lookUp(throwsMade <= 1 ? Deck.OVATION : throwsMade <= 3 ? Deck.CHEER : Deck.POLITE, level + 1);
                 }
                 break;
             case LOST:
                 if (stateTime > 0.7f) {
-                    if (sky != null) lookUp(Sky.GLOOM, level);
-                    else vanish();
+                    lookUp(Deck.GLOOM, level);
                 }
                 break;
             case VANISH:
@@ -1078,7 +1073,7 @@ final class Game implements Physics.Listener {
                         backT = 0f;
                         break;
                     }
-                    // the gods have thrown the blocks: the next building falls into place as the eye comes down
+                    // the watchers have thrown the blocks: the next building falls into place as the eye comes down
                     start(Math.min(LAST, nextLevel), true);
                     fromSky = true;
                     backT = 0f;
@@ -1141,61 +1136,64 @@ final class Game implements Physics.Listener {
     }
 
     /**
-     * Up into the sky, where the gods judge the fall: laughter and lightning for a building
+     * Up into the sky, where the watchers judge the fall: laughter and lightning for a building
      * felled at one throw, and the heavy hammer; smiles for a few; a sceptic look for many;
      * anger, sleep and scepticism when the stars ran out. The first building is their
      * welcome: they all laugh aloud. Then the building for the level next.
      */
     private void lookUp(int verdict, int next) {
         nextLevel = next;
-        String[] page = journal.end(clock, String.format(java.util.Locale.ROOT, "%s after %d throws: %.0f%% off the plinth; the gods: %s",
-                verdict == Sky.GLOOM ? "lost" : "felled", throwsMade, (1f - onPlinth()) * 100f,
-                verdict == Sky.OVATION ? "laughter" : verdict == Sky.CHEER ? "smiles" : verdict == Sky.POLITE ? "a polite look" : "anger"));
+        String[] page = journal.end(clock, String.format(java.util.Locale.ROOT, "%s after %d throws: %.0f%% off the plinth; the watchers: %s",
+                verdict == Deck.GLOOM ? "lost" : "felled", throwsMade, (1f - onPlinth()) * 100f,
+                verdict == Deck.OVATION ? "laughter" : verdict == Deck.CHEER ? "smiles" : verdict == Deck.POLITE ? "a polite look" : "anger"));
         if (page != null) host.journal(page[0], page[1]);
         boolean fought = afterFight;
         afterFight = false;
-        // after a fight won they all laugh aloud, as at the first building
-        sky.begin(verdict, (level == 0 || fought) && verdict == Sky.OVATION);
-        boltsHeard = sky.bolts;
-        holdFor = verdict == Sky.GLOOM ? 2.2f : verdict == Sky.OVATION ? 3.2f : 2.4f;
+        holdFor = verdict == Deck.GLOOM ? 2.2f : verdict == Deck.OVATION ? 3.2f : 2.4f;
         giftShown = false;
         goldGift = false;
         diamondGift = false;
         if (fought) {
             // the fight is over: nothing counted, and no fight again at once
-        } else if (verdict == Sky.GLOOM) {
+        } else if (verdict == Deck.GLOOM) {
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
                 // out at sea she does not come yet: the golden hammer again instead
                 if (!goldSeen || atSea) {
-                    // the tenth time the same building would not fall: the gods give the golden hammer
+                    // the tenth time the same building would not fall: the watchers give the golden hammer
                     goldGift = true;
                     goldSeen = true;
                     host.saveInt("goldSeen", 1);
                 } else {
-                    // ever after, she comes instead, and the gods give the diamond hammer for her
+                    // ever after, she comes instead, and the watchers give the diamond hammer for her
                     fightNext = true;
                     diamondGift = true;
                     fails = 0;
                     host.saveInt("fails", 0);
                 }
                 giftShown = true;
-                giftT0 = -1f;
             }
         } else if (fails > 0) {
             fails = 0;
             host.saveInt("fails", 0);
         }
-        if (verdict == Sky.OVATION) {
-            // the gods give the heavy hammer: it comes down to the player from the sky, and is in
+        if (verdict == Deck.OVATION) {
+            // the watchers give the heavy hammer: it comes down to the player from the sky, and is in
             // the hand only once it has come, when its marks have dropped into the corner
             heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
             heavyDue = true;
             host.saveInt("gifts", heavyLeft);
             giftShown = true;
-            giftT0 = -1f;
         }
+        // who is up there: the fiery one once she has given her golden hammer, the icy one once
+        // she has armed him against her sister, or out on the ice; the giver, if a gift comes
+        deck.here[Deck.FIRE] = goldSeen;
+        deck.here[Deck.ICE] = atSea || host.loadInt("fought") == 1 || diamondGift;
+        int gift = diamondGift ? Hammer.DIAMOND : goldGift ? Hammer.GOLDEN : verdict == Deck.OVATION ? Hammer.HEAVY_KIND : -1;
+        // after a fight won they all laugh aloud, as at the first building
+        deck.begin(verdict, (level == 0 || fought) && verdict == Deck.OVATION, gift);
+        boltsHeard = deck.bolts;
         aiming = false;
         host.sound(Synth.WHOOSH, 0.5f, 0.6f);
         setState(SKY_UP);
@@ -1285,6 +1283,16 @@ final class Game implements Physics.Listener {
         setState(INSERT);
     }
 
+    /** For the desktop stand: up among the watchers at once, all three there, with a verdict, and held there. */
+    void standDeck(int verdict) {
+        deck.here[Deck.FIRE] = true;
+        deck.here[Deck.ICE] = true;
+        deck.begin(verdict, false, verdict == Deck.OVATION ? Hammer.HEAVY_KIND : -1);
+        nextLevel = level;
+        holdFor = 600f;
+        setState(SKY_HOLD);
+    }
+
     /** For the desktop stand: the crane's film at once, as if the third episode had just been won. */
     void standCrane() {
         level = Episode.LAST[2] - 1;
@@ -1336,7 +1344,7 @@ final class Game implements Physics.Listener {
         return stagger() * pieces.size() + 0.4f;
     }
 
-    // pieces thrown down by the gods: they appear 15, 10 or 5 meters up and fall under a brisk pull
+    // pieces thrown down by the watchers: they appear 15, 10 or 5 meters up and fall under a brisk pull
     private static final float SKY_G = 26f;
     private static final float[] SKY_H = {15f, 10f, 5f};
 
@@ -1877,6 +1885,8 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
+        // up among the clouds, who watches
+        if (state == SKY_UP || state == SKY_HOLD || fromSky) deck.draw(d);
         if (crane != null) crane.draw(d);
         else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
         else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
@@ -2044,13 +2054,6 @@ final class Game implements Physics.Listener {
             return;
         }
         float k = tilt();
-        if (k > 0f && sky != null) {
-            // the gods' strip comes down from above as the eye goes up
-            float shift = k * fh - fh;
-            sky.drawFar(f, shift);
-            sky.drawClouds(f, shift);
-            if (giftShown && state == SKY_HOLD && stateTime > 0.9f) drawGift(f, stateTime - 0.9f);
-        }
         // the corner, while the street is in sight
         if (fight != null && state == FIGHT) {
             // the corner once the street is in sight, as the view comes down into it
@@ -2205,70 +2208,8 @@ final class Game implements Physics.Listener {
         c.draw(f);
     }
 
-    // ---- the gift in the sky ----
-    // The heavy hammer drops from the thunderer's cloud and tumbles down past the gods toward
-    // the street, a glint on its head. Its fall is new each time.
-
-    private float giftT0 = -1f, giftX, giftY, giftVx, giftVy, giftG, giftS, giftAng, giftSpin, giftSway, giftPhase;
-    private final Random giftRnd = new Random(0x61F7L);
-    private final float[] godAt = new float[2];
-
-    private void planGift() {
-        Random r = giftRnd;
-        giftT0 = 0f;
-        sky.godAt(Sky.THUNDERER, 0f, godAt);
-        int gw = Math.max(40, sky.godW(Sky.THUNDERER)), gh = Math.max(30, sky.godH(Sky.THUNDERER));
-        giftX = godAt[0] + (r.nextFloat() - 0.5f) * gw * 0.6f;
-        giftY = godAt[1] + gh * (0.1f + r.nextFloat() * 0.25f);
-        // a near one is bigger and falls faster across the screen
-        float near = r.nextFloat();
-        giftS = 17f + near * 15f;
-        giftG = 300f + near * 260f + r.nextFloat() * 80f;
-        // tossed toward the middle of the sky more often than away from it, sometimes up first
-        float toMid = Math.signum(fw * 0.5f - giftX);
-        giftVx = (r.nextFloat() < 0.75f ? toMid : -toMid) * (15f + r.nextFloat() * 70f);
-        giftVy = -60f + r.nextFloat() * 110f;
-        giftAng = r.nextFloat() * 6.28f;
-        giftSpin = (r.nextBoolean() ? 1f : -1f) * (3f + r.nextFloat() * 5f);
-        giftSway = r.nextFloat() * 9f;
-        giftPhase = r.nextFloat() * 6.28f;
-    }
-
-    private void drawGift(Px f, float t) {
-        if (giftT0 < 0f) planGift();
-        float cx = giftX + giftVx * t + giftSway * (float) Math.sin(t * 2.3f + giftPhase);
-        float cy = giftY + giftVy * t + 0.5f * giftG * t * t;
-        if (cy > fh + 40 || cx < -40 || cx > fw + 40) return;
-        float ang = giftAng + t * giftSpin, s = giftS;
-        float ca = (float) Math.cos(ang), sa = (float) Math.sin(ang);
-        int r = (int) (s * 1.1f) + 2;
-        for (int y = -r; y <= r; y++)
-            for (int x = -r; x <= r; x++) {
-                // into the hammer's own frame: u along the handle, v across
-                float u = (x * ca + y * sa) / s, v = (-x * sa + y * ca) / s;
-                int c = 0;
-                if (u > 0.2f && u < 0.62f && Math.abs(v) < 0.34f) {
-                    c = (u > 0.27f && u < 0.32f) || (u > 0.5f && u < 0.55f)
-                            ? (diamondGift ? 0xFFFFFFFF : goldGift ? 0xFFFFF0B0 : 0xFFC08A3C)
-                            : diamondGift ? 0xFFBFEFFF : goldGift ? 0xFFE8B83A : 0xFF4A484E;
-                    if (v < -0.2f) c = Px.scale(c, 1.35f);
-                } else if (u > -0.75f && u <= 0.2f && Math.abs(v) < 0.08f) {
-                    c = v < 0f ? 0xFF8A5A32 : 0xFF6A4226;
-                }
-                if (c != 0) f.set(Math.round(cx) + x, Math.round(cy) + y, c);
-            }
-        if (((int) (t * 10f) & 3) == 0) {
-            int gx = Math.round(cx + ca * s * 0.45f), gy = Math.round(cy + sa * s * 0.45f);
-            f.set(gx, gy, 0xFFFFFFFF);
-            f.set(gx - 1, gy, 0xFFFFF0C0);
-            f.set(gx + 1, gy, 0xFFFFF0C0);
-            f.set(gx, gy - 1, 0xFFFFF0C0);
-            f.set(gx, gy + 1, 0xFFFFF0C0);
-        }
-    }
-
     // ---- the portal ----
-    // When the 101st building is down and the gods have looked, no new building comes: a ring
+    // When the 101st building is down and the watchers have looked, no new building comes: a ring
     // of glowing cloud gathers over the plinth, and through it shows raw winter, grey sky and
     // a dark sea in a blizzard, snow streaming out of it. Throws cost nothing now. A hammer
     // through the ring pulls the view in after it, the light rises, and the next level is out

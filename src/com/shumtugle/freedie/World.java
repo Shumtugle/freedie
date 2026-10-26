@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.24";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.25";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -222,6 +222,11 @@ final class World {
         else fliers.standPlane(seconds);
     }
 
+    /** For the desktop stand: up among the watchers at once, with a verdict. */
+    void standDeck(int verdict) {
+        game.standDeck(verdict);
+    }
+
     /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */
     void standCrane() {
         game.standCrane();
@@ -264,8 +269,8 @@ final class World {
             view[2] = 1f;
         } else {
             float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
-            // up into the gods' sky: the street slides down as far as the frame is tall
-            float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
+            // up, almost straight up, to the glass floor among the clouds where they watch
+            float pitch = game.tilt() * Deck.PITCH;
             // far plinths: under an aim the view closes in on the building
             game.view(yaw, pitch, view);
             yaw = view[0];
@@ -274,7 +279,9 @@ final class World {
             game.jolt(jolt);
             yaw += jolt[0] / (W * 1.9f);
             pitch += jolt[1] / (W * 1.9f);
-            d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2], 0.1f, 500f);
+            // looking up at them the lens widens, to take the whole hoop in, close
+            float wide = 1f - 0.45f * game.tilt();
+            d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
         }
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];

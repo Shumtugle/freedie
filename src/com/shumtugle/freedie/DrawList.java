@@ -23,6 +23,10 @@ final class DrawList {
     // and a third: it goes into the dark with the world, the pool of light left there never
     // lights it (the people: seen close on the black, they are too plainly a few boxes)
     static final int CROWD = 253;
+    // and a fourth: high in the sky, above the street's haze, it takes none (the watchers' room)
+    static final int ALOFT = 252;
+    /** While true, every box added is marked ALOFT, unless it carries a number of its own. */
+    boolean aloft;
     // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one
     static final int POLISHED = 20, RUBBER = 21;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
@@ -165,7 +169,7 @@ final class DrawList {
         b[o + 15] = ((rgb >> 16) & 0xFF) / 255f;
         b[o + 16] = ((rgb >> 8) & 0xFF) / 255f;
         b[o + 17] = (rgb & 0xFF) / 255f;
-        b[o + 18] = material;
+        b[o + 18] = aloft && material == (float) Math.floor(material) ? material + ALOFT / 256f : material;
         count++;
     }
 

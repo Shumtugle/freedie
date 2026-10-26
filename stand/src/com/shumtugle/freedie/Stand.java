@@ -217,6 +217,10 @@ public final class Stand implements World.Host {
             // plane SECONDS: a plane high up that has flown so long, its trail behind it
             world.standFliers(2, f(p[1]));
             step();
+        } else if (c.equals("deck")) {
+            // deck VERDICT: up among the watchers at once (0 laughter, 1 nods, 2 unimpressed, 3 the stars ran out)
+            world.standDeck(Integer.parseInt(p[1]));
+            step();
         } else if (c.equals("crane")) {
             // the crane's film between the third episode and the fourth, at once
             world.standCrane();
