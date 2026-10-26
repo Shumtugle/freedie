@@ -19,9 +19,9 @@ final class Mirror {
     static final int OVATION = 0, CHEER = 1, POLITE = 2, GLOOM = 3;
     /** How far up the eye looks at it, radians from level. */
     static final float PITCH = 1.36f;
-    static final float DIST = 21f, R = 7f;
+    static final float DIST = 21f, R = 10.5f;
     /** How far out the wreath goes, in mirror widths from its middle. */
-    static final float WREATH = 1.45f;
+    static final float WREATH = 1.35f;
 
     float cx, cy, cz;
     private final float yaw;

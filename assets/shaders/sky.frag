@@ -95,25 +95,46 @@ void main() {
         c = mix(c, w, uOvercast);
     }
     if (uHalo.w > 0.0) {
-        // the wreath: torn, churning slowly, black at heart, the hour's light on its outer edge
+        // the wreath: black round the mirror, and the sky's own blue heaped in over its edge in
+        // round billows, drifting slowly, their rims lit; the blue lies on the black, not the
+        // black on the blue
         float a = acos(clamp(dot(d, uHalo.xyz), -1.0, 1.0)) / uHalo.w;
         vec3 ax = normalize(cross(uHalo.xyz, abs(uHalo.y) > 0.9 ? vec3(1.0, 0.0, 0.0) : vec3(0.0, 1.0, 0.0)));
         vec3 ay = cross(uHalo.xyz, ax);
-        vec2 round2 = vec2(dot(d, ax), dot(d, ay));
-        round2 /= max(length(round2), 1e-4);
-        float churn = fbm(round2 * 2.2 + vec2(uTime * 0.03, -uTime * 0.02) + a * 0.9);
-        float fine = fbm(round2 * 7.0 + vec2(a * 3.0 - uTime * 0.08, uTime * 0.05));
-        float outer = uHaloK.x * (0.82 + 0.42 * churn) + 0.12 * (fine - 0.5);
-        float cover = 1.0 - smoothstep(outer - 0.16, outer + 0.02, a);
-        float edge = smoothstep(outer - 0.45, outer - 0.02, a);
-        vec3 heart = mix(vec3(0.03, 0.03, 0.045), vec3(0.09, 0.1, 0.12), uOvercast);
-        heart = mix(heart, heart * 0.4, uHaloK.y);
-        // the outer edge takes the sky's own light, a lit fringe even at night
-        vec3 rim = mix(uTop, uHorizon, 0.5) * 0.55 + vec3(0.06, 0.06, 0.08) * uNight;
-        vec3 w = mix(heart, rim, edge * (0.45 + 0.55 * fine) * (1.0 - 0.6 * uHaloK.y));
-        // lightning inside it lights it from within
-        w += uHaloK.z * vec3(0.5, 0.5, 0.7) * smoothstep(0.5, 0.75, fine) * (1.0 - edge * 0.5);
-        c = mix(c, w, cover);
+        vec2 q = vec2(dot(d, ax), dot(d, ay));
+        q *= a / max(length(q), 1e-4);                         // in mirror radii from its middle
+        float ro = uHaloK.x;
+        float sky = a - ro;                                    // below 0: the black
+        for (int i = 0; i < 18; i++) {
+            float fi = float(i);
+            float ang = (fi + 0.6 * h(vec2(fi, 3.0))) * 0.349 + uTime * (mod(fi, 2.0) < 0.5 ? 0.012 : -0.009);
+            float r = (0.16 + 0.15 * h(vec2(fi, 7.0))) * ro / 1.4;
+            float at = ro + r * (0.05 + 0.45 * h(vec2(fi, 11.0))) + 0.025 * sin(uTime * 0.5 + fi * 1.7);
+            sky = max(sky, r - length(q - vec2(cos(ang), sin(ang)) * at));
+        }
+        // smaller heaps on their edges, so the line is a cloud's and not a scalloped frame's
+        for (int i = 0; i < 26; i++) {
+            float fi = float(i) + 40.0;
+            float ang = (fi + 0.8 * h(vec2(fi, 5.0))) * 0.2417 + uTime * (mod(fi, 2.0) < 0.5 ? 0.016 : -0.013);
+            float r = (0.045 + 0.06 * h(vec2(fi, 9.0))) * ro / 1.4;
+            float at = ro - 0.02 - 0.12 * h(vec2(fi, 13.0)) + 0.02 * sin(uTime * 0.7 + fi);
+            sky = max(sky, r - length(q - vec2(cos(ang), sin(ang)) * at));
+        }
+        if (sky < 0.0) {
+            vec3 heart = mix(vec3(0.03, 0.03, 0.045), vec3(0.09, 0.1, 0.12), uOvercast);
+            heart = mix(heart, heart * 0.4, uHaloK.y);
+            float swirl = fbm(q * 2.6 + vec2(uTime * 0.04, -uTime * 0.03));
+            vec3 w = heart * (0.75 + 0.5 * swirl);
+            // lightning inside it lights it from within, in patches
+            w += uHaloK.z * vec3(0.5, 0.5, 0.7) * smoothstep(0.55, 0.8, swirl);
+            c = w;
+        } else if (sky < 0.06 * ro) {
+            // the edge of a billow over the black: lit as the hour lights a cloud, brighter
+            // right at the edge and here and there, fading into the blue
+            float dim = clamp(length(uHorizon) / 1.49, 0.15, 1.0);
+            float k = (1.0 - sky / (0.06 * ro)) * (0.45 + 0.55 * fbm(q * 5.0 + uTime * 0.05));
+            c = mix(c, mix(vec3(1.0, 0.99, 0.97), uGlow, 0.35) * dim, 0.3 * k * k * (1.0 - uNight * 0.6));
+        }
     }
     // what flies: each stroke covers the pixels near its line, hard-edged like everything else
     vec2 p = vec2(gl_FragCoord.x, uFrame.y - gl_FragCoord.y);

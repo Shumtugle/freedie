@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.26.1
+- The mirror is bigger, wider than the screen, cut off at its sides.
+- The wreath round it no longer bristles out into the sky: the sky's blue is heaped in over
+  the black in round billows of cloud, big and small, drifting slowly, their edges lit as
+  the hour lights a cloud.
+
 ## 0.26
 - The sky has a mirror now instead of the room with the glass floor. High over the street
   hangs a great ball of polished steel in a wreath of black storm cloud. Seen from below it
