@@ -165,6 +165,8 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform3fv(u(skyP, 'uSun'), frame.sun);
   gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
   gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
+  gl.uniform1i(u(skyP, 'uFlyN'), frame.flyN || 0);
+  if (frame.flyN > 0) gl.uniform4fv(u(skyP, 'uFly'), new Float32Array(frame.fly));
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.enable(gl.DEPTH_TEST);

@@ -199,6 +199,14 @@ public final class Stand implements World.Host {
         } else if (c.equals("tear")) {
             // every mattress torn, every suitcase burst open
             world.standTear();
+        } else if (c.equals("birds")) {
+            // a flock across the far end of the street now
+            world.standFliers(1, 0f);
+            step();
+        } else if (c.equals("plane")) {
+            // plane SECONDS: a plane high up that has flown so long, its trail behind it
+            world.standFliers(2, f(p[1]));
+            step();
         } else if (c.equals("crane")) {
             // the crane's film between the third episode and the fourth, at once
             world.standCrane();

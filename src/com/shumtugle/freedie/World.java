@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.21";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.21.1";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -43,6 +43,7 @@ final class World {
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
     private final People people = new People(26, 0x5EE7L, 9f);   // up and down the street
+    private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
     private final DrawList still = new DrawList();   // the street, built once
     private boolean built;
@@ -152,6 +153,8 @@ final class World {
             return;
         }
         flashOut = Math.max(0f, flashOut - dt);
+        // birds and planes keep their own time, counted only while the street is in sight
+        fliers.update(dt, bridge == null && game.fight == null && game.tilt() == 0f);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
@@ -205,6 +208,12 @@ final class World {
     /** For the desktop stand: how the fight stands, in words. */
     String standFightState() {
         return game.fight == null ? "no fight, level " + (level + 1) : game.fight.standState() + (game.aiming ? " aiming" : "") + " hs " + game.hs;
+    }
+
+    /** For the desktop stand: a flock over the street now (1), or a plane that has flown so many seconds. */
+    void standFliers(int what, float seconds) {
+        if (what == 1) fliers.standFlock();
+        else fliers.standPlane(seconds);
     }
 
     /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */
@@ -261,6 +270,7 @@ final class World {
         d.fogStart *= view[2];
         d.fogScale *= view[2];
         game.frame(d);
+        if (game.fight == null) fliers.strokes(d);
         d.red = game.red();
         d.gold = game.gold();
         d.blur = game.blur();

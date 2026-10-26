@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.21.1
+- Things cross the sky again, as seldom as they did in the street game this one grows from:
+  now and then a small flock of birds far off over the end of the street, wings beating and
+  now and then gliding, and more seldom still an airliner high up, a bright dot drawing a
+  white trail that spreads and fades over half a minute. The sky draws them as part of
+  itself, so they show over open sky only, behind the palms and the houses.
+
 ## 0.21
 - The first film between two episodes, after the 39th building: out of the light the street
   is seen from low by the curb, a tower crane on the promenade lowers its hook, the slings

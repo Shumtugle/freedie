@@ -1,0 +1,19 @@
+# What crosses the sky far off, seldom: a flock of birds over the far end of the street, then
+# a plane high up with its trail spreading and fading behind it. Over open sky only.
+screen 1096 2560
+keep level 4
+restart
+skip
+wait 2.6
+birds
+wait 4
+shot b1
+wait 0.2
+shot b2
+wait 5
+shot b3
+plane 18
+wait 0.5
+shot p1
+wait 12
+shot p2

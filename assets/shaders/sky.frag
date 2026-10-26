@@ -1,6 +1,7 @@
 #version 300 es
 // The evening sky behind everything: deep blue overhead, warm low down toward the sun with
-// a halo round it, thin streaks of pink cloud drifting along the horizon.
+// a halo round it, thin streaks of pink cloud drifting along the horizon; and far off in it,
+// now and then, birds or a plane's white trail, laid out by the world as strokes.
 precision highp float;
 
 in vec2 vNdc;
@@ -16,6 +17,9 @@ uniform vec3 uGlow;
 uniform vec3 uSun;
 uniform float uTime;
 uniform float uDark;     // how far the world has gone into the dark
+// strokes: ends in frame pixels, then widths and covers at the ends (a negative first width: dark)
+uniform vec4 uFly[64];
+uniform int uFlyN;
 
 out vec4 outColor;
 
@@ -52,5 +56,18 @@ void main() {
     c = mix(c, cloud, cl * 0.8);
     float s = max(dot(d, uSun), 0.0);
     c += vec3(1.0, 0.85, 0.6) * (pow(s, 64.0) * 0.6 + pow(s, 8.0) * 0.08);
+    // what flies: each stroke covers the pixels near its line, hard-edged like everything else
+    vec2 p = vec2(gl_FragCoord.x, uFrame.y - gl_FragCoord.y);
+    for (int i = 0; i < 32; i++) {
+        if (i >= uFlyN) break;
+        vec4 e = uFly[2 * i], m = uFly[2 * i + 1];
+        vec2 a = e.xy, ab = e.zw - e.xy;
+        float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
+        float dist = length(p - a - ab * t);
+        float w = mix(abs(m.x), m.y, t);
+        float cover = clamp((w * 0.5 + 0.35 - dist) * 2.5, 0.0, 1.0) * mix(m.z, m.w, t);
+        vec3 ink = m.x < 0.0 ? vec3(0.17, 0.165, 0.19) : vec3(1.0);
+        c = mix(c, ink, cover);
+    }
     outColor = vec4(c * (1.0 - uDark), 1.0);
 }

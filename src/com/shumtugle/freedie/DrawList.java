@@ -59,12 +59,27 @@ final class DrawList {
 
     int[] flat;                                // the flat layer, ARGB, w * h; clear where the scene shows
 
+    // what flies far off in the sky, as strokes the sky draws with itself: per stroke its ends
+    // in frame pixels (x0, y0, x1, y1), then its width and cover at each end; a dark one (a bird)
+    // has its first width negative, the rest are white (a plane, its trail)
+    static final int FLY_MAX = 32;
+    final float[] fly = new float[FLY_MAX * 8];
+    int flyN;
+
+    void fly(float x0, float y0, float x1, float y1, float w0, float w1, float a0, float a1, boolean dark) {
+        if (flyN >= FLY_MAX) return;
+        int o = flyN++ * 8;
+        fly[o] = x0; fly[o + 1] = y0; fly[o + 2] = x1; fly[o + 3] = y1;
+        fly[o + 4] = dark ? -w0 : w0; fly[o + 5] = w1; fly[o + 6] = a0; fly[o + 7] = a1;
+    }
+
     void begin(int w, int h) {
         if (flat == null || flat.length != w * h) flat = new int[w * h];
         this.w = w;
         this.h = h;
         count = 0;
         ballCount = 0;
+        flyN = 0;
     }
 
     /**
@@ -229,6 +244,12 @@ final class DrawList {
         s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
+        s.append(",\"flyN\":").append(flyN).append(",\"fly\":[");
+        for (int i = 0; i < flyN * 8; i++) {
+            if (i > 0) s.append(',');
+            s.append(fly[i]);
+        }
+        s.append(']');
         s.append(",\"count\":").append(count).append(",\"boxes\":[");
         for (int i = 0; i < count * STRIDE; i++) {
             if (i > 0) s.append(',');
