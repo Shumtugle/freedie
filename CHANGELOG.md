@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.3
+- Nothing that only goes about the street passes through things any more. A car coming
+  down the road stops short of the plinth wherever it stands now, and short of anything of
+  the building lying on the road, with room to turn round; the lanes keep clear of the cars
+  parked at the curb. People step round palm trunks, lamp posts, bollards, café tables and
+  whatever lies about. Weather is the only thing that passes through.
+
 ## 0.19.2
 - Car alarms are not all the same any more: each parked car has its own, chosen once, the
   two hoarse tones of before, a lock's short double chirp (the commonest), a horn honking

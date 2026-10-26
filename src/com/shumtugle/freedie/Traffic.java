@@ -35,13 +35,20 @@ final class Traffic {
     /** What each parked car's alarm sounds like: the two tones, a chirp, the horn, a wail. */
     private final int[] alarmSound = new int[PARK_X.length];
     private static final int[] ALARMS = {Synth.ALARM, Synth.CHIRP, Synth.CHIRP, Synth.HORN, Synth.WAIL};
+    /**
+     * Down the street from here the road is clear: the plinth's far side, or anything lying
+     * on the road farther off. A car coming stops short of it with room to turn round.
+     */
+    float clearFrom = -1e9f;
+    private static final float TURN_ROOM = 4.6f;
     /** No cars come down the road: the street is held for the fight. */
     boolean calm;
 
     // cars on the move
     private static final int CARS = 3;
     private static final int OFF = 0, COME = 1, LOOK = 2, TURN = 3, GO = 4;
-    private static final float LANE = 1.3f;
+    // a lane's middle: a car in it keeps clear of the ones parked at the curb
+    private static final float LANE = 1.1f;
     private final float[] cx = new float[CARS], cz = new float[CARS], cYaw = new float[CARS], cV = new float[CARS];
     private final float[] cStop = new float[CARS], cTime = new float[CARS], cLane = new float[CARS], cTheta = new float[CARS];
     private final int[] cState = new int[CARS], cColor = new int[CARS];
@@ -118,6 +125,8 @@ final class Traffic {
         for (int c = 0; c < CARS; c++) {
             switch (cState[c]) {
                 case COME: {
+                    // nothing it might drive through: the plinth, a building's pieces on the road
+                    cStop[c] = Math.max(cStop[c], clearFrom + TURN_ROOM);
                     float d = cz[c] - cStop[c];
                     float want = Math.min(10f, (float) Math.sqrt(Math.max(0f, 2f * 4.5f * d)));
                     cV[c] = approach(cV[c], want, 6f, dt);
@@ -182,6 +191,18 @@ final class Traffic {
         cStop[c] = stopAt + 10f + rnd.nextFloat() * 8f;
         cColor[c] = PAINT[rnd.nextInt(PAINT.length)];
         cState[c] = COME;
+    }
+
+    /** For the desktop stand: where the cars on the move are, x and z one after another; how many. */
+    int standMoving(float[] out) {
+        int k = 0;
+        for (int c = 0; c < CARS; c++)
+            if (cState[c] != OFF) {
+                out[k * 2] = cx[c];
+                out[k * 2 + 1] = cz[c];
+                k++;
+            }
+        return k;
     }
 
     private static float approach(float v, float target, float rate, float dt) {

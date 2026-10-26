@@ -94,6 +94,8 @@ final class Game implements Physics.Listener {
     private Body plinth;
     /** The parked cars: their bodies here, their dents and alarms in the street's traffic. */
     Traffic traffic;
+    /** The street's solids: what lies about is laid down in them every step, for people and cars to keep out of. */
+    Solid solid;
     private final Body[] cars = new Body[Traffic.PARK_X.length];
     private final float[] carHitAt = new float[Traffic.PARK_X.length];
     private float carAlarmAt = -9f;
@@ -614,6 +616,24 @@ final class Game implements Physics.Listener {
         }
     }
 
+    /**
+     * Lays down what lies about now: the pieces of the building wherever they are, low enough
+     * to be in someone's way; and tells the cars on the move how far down the road it is clear.
+     */
+    private void solids() {
+        if (solid == null) return;
+        solid.clearLoose();
+        for (Body b : pieces) {
+            if (b.gone || b.py > Builder.TOP + 1.5f) continue;
+            float r = b.radius > 0f ? b.radius : Math.max(b.hx, b.hz);
+            solid.loose(b.px, b.pz, r);
+        }
+        if (traffic != null) {
+            float far = fight != null ? -1e9f : Builder.CZ + Builder.PHZ;
+            traffic.clearFrom = Math.max(far, solid.farthest(-2.3f, 2.3f));
+        }
+    }
+
     // ---- the close view ----
 
     static final float ZOOM_T = 0.3f;          // seconds to close in, and to open out again
@@ -786,6 +806,7 @@ final class Game implements Physics.Listener {
         rolling();
         windUp(dt);
         zoomStep(dt);
+        solids();
         hammerMoves(dt);
         thunderStep(dt);
         marksStep(dt);

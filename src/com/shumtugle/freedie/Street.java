@@ -28,11 +28,16 @@ final class Street {
 
     /** Everything that stands still, into the list. */
     static void build(DrawList d) {
+        build(d, null);
+    }
+
+    /** The street, and its own things that cannot be walked through, laid down in the solids. */
+    static void build(DrawList d, Solid solid) {
         ground(d);
         houses(d, new Random(5));
         town(d, new Random(13));
-        props(d, new Random(11));
-        palms(d, new Random(7));
+        props(d, new Random(11), solid);
+        palms(d, new Random(7), solid);
     }
 
     // ---- the ground ----
@@ -190,10 +195,11 @@ final class Street {
 
     // ---- lamps, bollards, parasols ----
 
-    private static void props(DrawList d, Random rnd) {
+    private static void props(DrawList d, Random rnd, Solid solid) {
         for (float z = -12f; z < 120f; z += 14f) {
             for (int side = -1; side <= 1; side += 2) {
                 float x = side * LAMP_X, y = WALK_TOP;
+                if (solid != null) solid.fixed(x, z, 0.12f);
                 d.box(x, y + 2.1f, z, 0.06f, 2.1f, 0.06f, null, 0x2E2D2F, DrawList.PLAIN);
                 d.box(x, y + 4.18f, z, 0.1f, 0.04f, 0.1f, null, 0x3A3836, DrawList.PLAIN);
                 d.box(x, y + 4.4f, z, 0.13f, 0.18f, 0.13f, null, 0xF3E2B4, DrawList.PLAIN);
@@ -203,12 +209,16 @@ final class Street {
                     d.box(x - 0.12f, CALL_Y, z, 0.07f, 0.26f, 0.17f, null, 0x8E959C, DrawList.PLAIN);
             }
             if (z < 0f) continue;
-            for (int b = 1; b < 4; b++)
+            for (int b = 1; b < 4; b++) {
+                if (solid != null) solid.fixed(4.45f, z + b * 3.2f, 0.12f);
                 d.box(4.45f, WALK_TOP + 0.4f, z + b * 3.2f, 0.08f, 0.4f, 0.08f, null, 0x2E2D2F, DrawList.PLAIN);
+            }
         }
         for (float z = 6f; z < 90f; z += 9f + rnd.nextFloat() * 8f) {
             if (rnd.nextInt(3) == 0) continue;
             float x = 10.3f + rnd.nextFloat() * 0.8f, y = WALK_TOP;
+            // a parasol over a table: walked round, not under
+            if (solid != null) solid.fixed(x, z, 0.55f);
             int cloth = rnd.nextBoolean() ? 0xF3EDE0 : 0xE4D5B6;
             d.box(x, y + 1.2f, z, 0.04f, 1.2f, 0.04f, null, 0x4A4542, DrawList.PLAIN);
             d.box(x, y + 2.35f, z, 1.2f, 0.12f, 1.2f, null, cloth, DrawList.PLAIN);
@@ -223,14 +233,15 @@ final class Street {
     static final float[] PALM_ROWS = {5.6f, -5.6f, -10.1f};
     private static final int[] GREENS = {0x3F5F22, 0x4F6F28, 0x5E7E2E, 0x6C8434};
 
-    private static void palms(DrawList d, Random rnd) {
+    private static void palms(DrawList d, Random rnd, Solid solid) {
         for (int i = 13; i >= 0; i--)
             for (float rx : PALM_ROWS) {
                 float x = rx + (rnd.nextFloat() - 0.5f) * 0.3f;
                 float z = 7f + i * 7.5f + (rx < -8f ? 3.7f : 0f) + (rnd.nextFloat() - 0.5f) * 0.6f;
                 float height = 7.2f + rnd.nextFloat() * 2.6f;
                 float lean = (rnd.nextFloat() - 0.5f) * 0.6f;
-                // a bed of earth round its foot
+                // a bed of earth round its foot, which nobody walks across
+                if (solid != null) solid.fixed(x, z, 0.65f);
                 d.box(x, WALK_TOP + 0.01f, z, 0.7f, 0.01f, 0.6f, null, 0x8C6E4C, DrawList.GRAIN);
                 palm(d, rnd, x, WALK_TOP, z, height, lean, z > 60f);
             }

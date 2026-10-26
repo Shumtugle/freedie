@@ -6,7 +6,8 @@ import java.util.Random;
  * People going about: each walks from one point to another and back, at a pace of their own,
  * in clothes of their own. They are blocks: legs, a shirt with arms, a head with hair, the
  * legs and arms swinging. Nobody comes nearer to the eye than a set distance: close up a
- * person of blocks reads as a toy.
+ * person of blocks reads as a toy. Given the street's solids, nobody walks through a palm, a
+ * lamp post or a café table, or anything lying about: they step round it.
  */
 final class People {
     private static final int[] SHIRTS = {0xF2EEE2, 0x5A86B8, 0xD9654E, 0xE8C860, 0x6EA87A, 0xE59AB0, 0x3A3A40, 0xC8A27A, 0x8A5A9A};
@@ -20,6 +21,9 @@ final class People {
     private final int[] shirt, legs, skin, hair;
     private final Random rnd;
     private final float nearest;
+    /** What cannot be walked through; none, and people go straight. */
+    Solid solid;
+    private final float[] at = new float[2];
 
     People(int most, long seed, float nearest) {
         this.most = most;
@@ -60,6 +64,13 @@ final class People {
             float k = w < len ? w / len : 2f - w / len;
             float yaw = (float) Math.atan2(dx, dz) + (w < len ? 0f : (float) Math.PI);
             float px = ax[i] + dx * k, pz = az[i] + dz * k;
+            if (solid != null) {
+                at[0] = px;
+                at[1] = pz;
+                solid.push(at, 0.3f);
+                px = at[0];
+                pz = at[1];
+            }
             float qx = px - ex, qy = y[i] + 1f - ey, qz = pz - ez;
             if (qx * qx + qy * qy + qz * qz < nearest * nearest) continue;
             person(d, px, y[i], pz, yaw, t * v[i] * 3.2f + i, i);

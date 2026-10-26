@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.19.2";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.19.3";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -47,6 +47,8 @@ final class World {
     private final DrawList still = new DrawList();   // the street, built once
     private boolean built;
     private final Traffic traffic = new Traffic(PLINTH_Z);
+    // what cannot be walked or driven through: the street's own things, and what lies about
+    private final Solid solid = new Solid();
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
     private final float[] jolt = new float[2], view = new float[3];
@@ -73,6 +75,8 @@ final class World {
         cubes = host.loadInt("cubes");
         game = new Game(host, host.loadInt("level"));
         game.traffic = traffic;
+        game.solid = solid;
+        people.solid = solid;
         level = game.level;
         // along the pavement under the houses and along the promenade; nobody on the road
         java.util.Random r = people.random();
@@ -162,6 +166,11 @@ final class World {
         return bridge != null;
     }
 
+    /** For the desktop stand: the cars on the move, the people's solids. */
+    Traffic standTraffic() {
+        return traffic;
+    }
+
     /** For the desktop stand: the fight at once, as from its screen on the bridge. */
     void standFight() {
         game.fightNow();
@@ -205,7 +214,7 @@ final class World {
 
     void draw(DrawList d) {
         if (!built) {
-            Street.build(still);
+            Street.build(still, solid);
             built = true;
         }
         d.begin(W, h);
