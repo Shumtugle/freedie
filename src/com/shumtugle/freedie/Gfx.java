@@ -193,6 +193,7 @@ final class Gfx {
         GLES30.glUniform1f(u(skyP, "uTime"), d.time);
         GLES30.glUniform1f(u(skyP, "uDark"), d.dark);
         GLES30.glUniform1f(u(skyP, "uOvercast"), d.overcast);
+        GLES30.glUniform1f(u(skyP, "uNight"), d.night);
         GLES30.glUniform1i(u(skyP, "uFlyN"), d.flyN);
         if (d.flyN > 0) GLES30.glUniform4fv(u(skyP, "uFly"), d.flyN * 2, d.fly, 0);
         GLES30.glBindVertexArray(empty);
@@ -224,6 +225,7 @@ final class Gfx {
         GLES30.glUniform1f(u(blitP, "uGold"), d.gold);
         GLES30.glUniform1f(u(blitP, "uTime"), d.time);
         GLES30.glUniform1f(u(blitP, "uBlur"), d.blur);
+        GLES30.glUniform3fv(u(blitP, "uGrade"), 1, d.grade, 0);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
@@ -251,6 +253,7 @@ final class Gfx {
         GLES30.glUniform1f(u(p, "uSpotRadius"), d.spotRadius);
         GLES30.glUniform1f(u(p, "uGoldGlow"), d.goldGlow);
         GLES30.glUniform1f(u(p, "uTime"), d.time);
+        GLES30.glUniform1f(u(p, "uNight"), d.night);
     }
 
     // ---- helpers ----

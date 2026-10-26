@@ -30,6 +30,7 @@ uniform vec3 uSpot;           // the one pool of light left in it
 uniform float uSpotRadius;
 uniform float uGoldGlow;      // how much gold keeps its own light in the dark
 uniform float uTime;          // seconds, for what moves on its own: the swell
+uniform float uNight;         // how far into the night: windows lit, glass showing a dark sky
 
 out vec4 outColor;
 
@@ -114,6 +115,8 @@ vec3 facade(float u, float v, vec3 base, int seed, out float glass) {
         if (fu > 0.3 && fu < 2.6 && fv < 2.75) {
             if (fv < 0.2) return rgb(0x4A4440);
             glass = 1.0;
+            // at night most of the shops are lit
+            if (uNight > 0.0 && float(nz(bay, 77, seed)) < 255.0 * 0.7 * uNight) glass = 2.0;
             return nz(bay, 99, seed) > 150 ? rgb(0x6E4A2E) : rgb(0x35302D);
         }
         return wall * 0.92;
@@ -126,6 +129,8 @@ vec3 facade(float u, float v, vec3 base, int seed, out float glass) {
             if (closed) return shutter * slat;
             if (fu < 1.01 || fu > 1.89 || fv > 2.62) return rgb(0xE9E3D6);       // frame
             glass = 1.0;
+            // at night a window here and there is lit
+            if (uNight > 0.0 && float(nz(bay, storey + 50, seed)) < 255.0 * 0.38 * uNight) glass = 2.0;
             return fv > 1.6 ? rgb(0x3A4048) : rgb(0x2C2E33);
         }
         if ((fu > 0.5 && fu < 0.95) || (fu > 1.95 && fu < 2.4)) {
@@ -241,6 +246,7 @@ void main() {
     float k = 1.0;
     float edge = min(ext.x - abs(uv.x), ext.y - abs(uv.y));
     float gloss = 0.0, glass = 0.0, leaf = 0.0;
+    vec3 emit = vec3(0.0);
     vec3 v = normalize(uEye - vWorld);
     float dist = length(vWorld - uEye);
     float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
@@ -297,6 +303,11 @@ void main() {
     } else if (mat == FACADE) {
         if (abs(vFace.y) < 0.5) {
             base = lin(facade(uv.x + ext.x, uv.y + ext.y, vColor, seed, glass));
+            if (glass > 1.5) {
+                // a lit window: warm light from inside, its curtain a little paler at the top
+                emit = lin(vec3(1.0, 0.76, 0.42)) * (0.9 + 0.25 * hash(vec3(floor(uv / 1.3), face))) * uNight;
+                glass = 0.0;
+            }
         } else {
             base *= 0.7;                                  // the roof
         }
@@ -363,10 +374,11 @@ void main() {
         // glass shows the sky, more of it at a slant, and a glint of the sun
         vec3 r = reflect(-v, n);
         float fres = 0.08 + 0.5 * pow(1.0 - max(dot(n, v), 0.0), 3.0);
-        vec3 sky = r.y > 0.0 ? lin(vec3(0.62, 0.72, 0.86)) : uAmbGround;
+        vec3 sky = r.y > 0.0 ? mix(lin(vec3(0.62, 0.72, 0.86)), uAmbSky * 0.8, uNight) : uAmbGround;
         c = mix(c, sky, fres);
         c += uSunColor * pow(max(dot(r, uSun), 0.0), 40.0) * sh * 0.6;
     }
+    c += emit;
     c = mix(c, lin(uFog), haze);
     // in the dark only the pool of light is left
     // (a wide pool: what stands to either side of it is lit further out than what is below)

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.24
+- The time of day runs with the game: one long evening from the first level to the portal.
+  The first episodes are as before, the sun already low and the shadows long. Then the sun
+  sinks: by the fortieth a golden hour, by the sixtieth a red sunset, the light warmer, the
+  colours deeper, the contrast harder. After the sixty-eighth the sun is gone, an afterglow
+  over the end of the street, the lamps come on; the blue hour; and from the eighty-fifth
+  on it is night, a pale moon on the right, stars, windows lit here and there along the
+  houses, the shops lit below. Between one level and the next the light moves on over a
+  couple of seconds. Out at sea it stays the grey winter light.
+
 ## 0.23.3
 - Room to aim: held against an edge of the screen, the finger keeps the ring creeping on
   that way, faster the harder against the edge. A finger put down near the left edge before

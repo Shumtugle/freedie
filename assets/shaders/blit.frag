@@ -16,6 +16,7 @@ uniform float uRed;       // how far the world is seen red, 0 to 1
 uniform float uGold;      // how far it is seen gold
 uniform float uTime;
 uniform float uBlur;      // out of focus by so many frame pixels, waking from the dark
+uniform vec3 uGrade;      // the hour's grade: contrast, saturation, warmth
 
 out vec4 outColor;
 
@@ -44,6 +45,13 @@ void main() {
         sc.rgb = sum / n;
     }
     vec3 scene = sc.rgb;
+    // the hour of the day: colours deeper and contrast harder toward sunset, warm or cool
+    if (uGrade != vec3(1.0, 1.0, 0.0)) {
+        float l0 = dot(scene, vec3(0.299, 0.587, 0.114));
+        scene = mix(vec3(l0), scene, uGrade.y);
+        scene = clamp((scene - 0.45) * uGrade.x + 0.45, 0.0, 1.0);
+        scene *= vec3(1.0 + 0.07 * uGrade.z, 1.0 + 0.01 * uGrade.z, 1.0 - 0.09 * uGrade.z);
+    }
     // what glows of her own (her eyes, her knees), and the diamond hammer, keep their colours through it all
     if ((uRed > 0.0 || uGold > 0.0) && sc.a > 0.375) {
         float l = dot(scene, vec3(0.3, 0.55, 0.15));

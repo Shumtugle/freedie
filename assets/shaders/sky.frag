@@ -18,6 +18,7 @@ uniform vec3 uSun;
 uniform float uTime;
 uniform float uDark;     // how far the world has gone into the dark
 uniform float uOvercast; // out at sea: a low heavy sky instead of the evening one
+uniform float uNight;    // how far into the night: the stars out, the moon in place of the sun
 // strokes: ends in frame pixels, then widths and covers at the ends (a negative first width: dark)
 uniform vec4 uFly[64];
 uniform int uFlyN;
@@ -47,16 +48,26 @@ void main() {
     vec3 c = mix(low, uTop, k);
     float halo = toSun * toSun * exp(-el * 5.0);
     float glow = pow(toSun, 4.0) * exp(-el * 9.0);
-    c = mix(c, vec3(1.0, 0.79, 0.49), halo * 0.55);
-    c = mix(c, vec3(1.0, 0.94, 0.78), glow * 0.8);
+    c = mix(c, vec3(1.0, 0.79, 0.49), halo * 0.55 * (1.0 - uNight));
+    c = mix(c, vec3(1.0, 0.94, 0.78), glow * 0.8 * (1.0 - uNight));
     // clouds: thin streaks stretched along the horizon, pink, warmer toward the sun
     vec2 uv = d.xz / max(d.y, 0.05) * vec2(0.35, 1.6) + vec2(uTime * 0.004, 0.0);
     float cl = smoothstep(0.55, 0.85, fbm(uv * 1.3 + vec2(3.0, 1.0))) * smoothstep(0.03, 0.1, d.y) * (1.0 - smoothstep(0.3, 0.55, d.y));
     vec3 cloud = mix(vec3(0.94, 0.66, 0.56), vec3(1.0, 0.85, 0.72), toSun * 0.7);
     cloud = mix(cloud, vec3(0.76, 0.64, 0.71), smoothstep(0.45, 0.75, fbm(uv * 3.1 + 11.0)) * 0.5);
+    // the clouds go dark with the sky
+    cloud *= clamp(length(uHorizon) / 1.49, 0.15, 1.0);
     c = mix(c, cloud, cl * 0.8);
     float s = max(dot(d, uSun), 0.0);
-    c += vec3(1.0, 0.85, 0.6) * (pow(s, 64.0) * 0.6 + pow(s, 8.0) * 0.08);
+    c += mix(vec3(1.0, 0.85, 0.6), vec3(0.75, 0.8, 0.95), uNight) * (pow(s, 64.0) * 0.6 + pow(s, 8.0) * 0.08 * (1.0 - uNight));
+    if (uNight > 0.0) {
+        // the moon, a hard pale disc; the stars, fixed in the sky, out once it is dark enough
+        float dark = smoothstep(0.3, 0.75, uNight);
+        if (s > 0.99985) c = mix(c, vec3(0.92, 0.93, 0.98), dark);
+        vec2 g = floor(vec2(atan(d.z, d.x) * 180.0, d.y * 170.0));
+        float st = h(g);
+        if (st > 0.993 && d.y > 0.06) c = mix(c, vec3(0.9, 0.92, 1.0), dark * smoothstep(0.06, 0.25, d.y) * (0.4 + 0.6 * (st - 0.993) / 0.007));
+    }
     if (uOvercast > 0.0) {
         // a low heavy sky, neither night nor day: grey, darker overhead, banks of cloud
         // dragging across, no sun to be seen; fog low down eats the horizon

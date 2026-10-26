@@ -166,6 +166,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
   gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
   gl.uniform1f(u(skyP, 'uOvercast'), frame.overcast || 0);
+  gl.uniform1f(u(skyP, 'uNight'), frame.night || 0);
   gl.uniform1i(u(skyP, 'uFlyN'), frame.flyN || 0);
   if (frame.flyN > 0) gl.uniform4fv(u(skyP, 'uFly'), new Float32Array(frame.fly));
   gl.bindVertexArray(empty);
@@ -192,6 +193,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.uniform1f(u(p, 'uSpotRadius'), frame.spotRadius);
     gl.uniform1f(u(p, 'uGoldGlow'), frame.goldGlow);
     gl.uniform1f(u(p, 'uTime'), frame.time || 0);
+    gl.uniform1f(u(p, 'uNight'), frame.night || 0);
   };
   lit(boxP);
   gl.bindVertexArray(vao);
@@ -219,6 +221,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform1f(u(blitP, 'uGold'), frame.gold || 0);
   gl.uniform1f(u(blitP, 'uTime'), frame.time || 0);
   gl.uniform1f(u(blitP, 'uBlur'), frame.blur || 0);
+  gl.uniform3fv(u(blitP, 'uGrade'), frame.grade || [1, 1, 0]);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

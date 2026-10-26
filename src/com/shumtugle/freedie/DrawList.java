@@ -52,6 +52,8 @@ final class DrawList {
     float red, gold;
     float blur;                                // the frame out of focus by so many of its pixels, waking
     float overcast;                            // out at sea: the low grey winter sky, 0 to 1
+    float night;                               // on the street: lamps and windows lit, stars out, 0 to 1
+    final float[] grade = {1f, 1f, 0f};        // the hour's grade: contrast, saturation, warmth
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -244,7 +246,8 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
-        s.append(",\"overcast\":").append(overcast);
+        s.append(",\"overcast\":").append(overcast).append(",\"night\":").append(night);
+        arr(s, "grade", grade);
         s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);

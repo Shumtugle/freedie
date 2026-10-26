@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.23.3";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.24";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -56,6 +56,7 @@ final class World {
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
     private final float[] jolt = new float[2], view = new float[3], callAt3 = new float[3];
+    private float lightPlate = -1f, frameDt;
 
     // the game's progress: the level being played (from 0), the golden cubes in hand, where
     int level;
@@ -141,6 +142,7 @@ final class World {
 
     void update(float dt) {
         time += dt;
+        frameDt = dt;
         traffic.update(dt);
         if (intro != null) {
             intro.update(dt);
@@ -246,6 +248,8 @@ final class World {
         d.time = time;
         light(d);
         if (game.atSea && intro == null) Ocean.light(d);
+        // on the street, the hour of the evening the level is played at
+        else if (intro == null) Daylight.light(d, plate());
         java.util.Arrays.fill(d.flat, 0);
         Px f = flat(d);
         if (intro != null) {
@@ -301,6 +305,7 @@ final class World {
             Ocean.button(time, callAt3);
         } else {
             d.append(still);
+            if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, time, CAM_X, CAM_Y, CAM_Z);
             callAt3[0] = Street.CALL_X;
@@ -326,6 +331,23 @@ final class World {
         }
     }
 
+    /** The number on the plate of the level being played, eased while one turns into the next, for the light. */
+    private float plate() {
+        float target = game.level + 1;
+        if (lightPlate < 0f || Math.abs(target - lightPlate) > 3f) lightPlate = target;
+        // one level to the next, the light moves on in a couple of seconds rather than at once
+        lightPlate += (target - lightPlate) * Math.min(1f, frameDt * 1.2f);
+        return lightPlate;
+    }
+
+    /** The street lamps lit, as night comes: their glass heads glowing warm. */
+    private void lamps(DrawList d) {
+        int c = Street.mix(0xF3E2B4, 0xFFC878, Math.min(1f, d.night * 1.4f));
+        for (float z = -12f; z < 120f; z += 14f)
+            for (int side = -1; side <= 1; side += 2)
+                d.box(side * Street.LAMP_X, Street.WALK_TOP + 4.4f, z, 0.135f, 0.185f, 0.135f, null, c, DrawList.GLOW);
+    }
+
     /** The evening: a low sun from the left and a little behind, the sky, the haze. */
     private static void light(DrawList d) {
         d.sun(-0.80f, 0.30f, -0.10f, -1f, 4f, 42f, 100f, 36f, 140f);
@@ -340,6 +362,10 @@ final class World {
         d.fogScale = 220f;
         d.dark = 0f;
         d.overcast = 0f;
+        d.night = 0f;
+        d.grade[0] = 1f;
+        d.grade[1] = 1f;
+        d.grade[2] = 0f;
         d.flash = 0f;
         d.goldGlow = 1f;
         d.tube = -1f;
