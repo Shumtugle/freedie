@@ -172,6 +172,7 @@ final class Game implements Physics.Listener {
         crest.settle(fails);
         if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
         readPortal(host.asset("portal.bin"));
+        mirror.readFaces(host.asset("faces.bin"));
         start(this.level, false);
     }
 
@@ -2061,6 +2062,8 @@ final class Game implements Physics.Listener {
             return;
         }
         if (state == PORTAL) drawPortal(f);
+        // a face in the mirror while the lightning lasts
+        if (state == SKY_UP || state == SKY_HOLD || fromSky) mirror.flat(f);
         if (k * fh < fh / 8f) hud(f);
         if (wake >= 0f) lids(f);
         if (!aiming) return;

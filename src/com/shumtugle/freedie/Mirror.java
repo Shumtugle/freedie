@@ -12,7 +12,9 @@ import java.util.Random;
  *
  * The verdict is the weather's. Lightning out of the wreath and thunder for a building
  * felled at one throw; a far flash for a few throws; nothing for many; and when the stars
- * ran out, the wreath goes blacker and one bolt falls. A gift comes down out of the mirror
+ * ran out, the wreath goes blacker and one bolt falls. In each flash, for as long as the sky
+ * is lit, a face shows through the steel, pale and see-through, and is gone with it:
+ * smiling for one throw, calm for a few, stern when the stars ran out. A gift comes down out of the mirror
  * itself: a ring runs out over the steel as over a liquid, and the hammer falls through it.
  */
 final class Mirror {
@@ -40,6 +42,12 @@ final class Mirror {
     private final float[] pose = new float[12], p0 = new float[2], p1 = new float[2];
     // whoever stands where the eye is, as the mirror shows her
     private final Frida self = new Frida();
+    // the faces that show in the flashes: stern, calm, smiling; straight RGBA, each its size
+    static final int STERN = 0, CALM = 1, SMILE = 2;
+    private int[][] face;
+    private int[] faceW, faceH;
+    // where the mirror is on the frame just now, in frame pixels: its middle and radius
+    private float onX, onY, onR;
 
     Mirror() {
         yaw = (float) Math.atan2(-World.CAM_X, World.PLINTH_Z);
@@ -94,6 +102,26 @@ final class Mirror {
             }
         if (giftKind >= 0 && was < giftT0 - 0.15f && time >= giftT0 - 0.15f) ring(1f);
         pose();
+    }
+
+    /** Reads the faces: a count, then for each its width, height and straight RGBA rows. */
+    void readFaces(byte[] b) {
+        if (b == null || b.length < 2) return;
+        int n = ((b[0] & 0xFF) << 8) | (b[1] & 0xFF), p = 2;
+        face = new int[n][];
+        faceW = new int[n];
+        faceH = new int[n];
+        for (int i = 0; i < n && p + 4 <= b.length; i++) {
+            int w = ((b[p] & 0xFF) << 8) | (b[p + 1] & 0xFF), h = ((b[p + 2] & 0xFF) << 8) | (b[p + 3] & 0xFF);
+            p += 4;
+            if (p + w * h * 4 > b.length) return;
+            int[] img = new int[w * h];
+            for (int k = 0; k < img.length; k++, p += 4)
+                img[k] = ((b[p + 3] & 0xFF) << 24) | ((b[p] & 0xFF) << 16) | ((b[p + 1] & 0xFF) << 8) | (b[p + 2] & 0xFF);
+            face[i] = img;
+            faceW[i] = w;
+            faceH[i] = h;
+        }
     }
 
     private void ring(float k) {
@@ -167,11 +195,15 @@ final class Mirror {
      * down, with a fork; a wide faint glow under each stroke. The near ones are thick.
      */
     private void bolts(DrawList d) {
+        onR = 0f;
         if (!d.project(cx, cy, cz, p0)) return;
         float ox = p0[0], oy = p0[1];
         // the mirror's radius on the frame, from a point on its rim
         if (!d.project(cx + d.right[0] * R, cy + d.right[1] * R, cz + d.right[2] * R, p1)) return;
         float rpx = (float) Math.hypot(p1[0] - ox, p1[1] - oy);
+        onX = ox;
+        onY = oy;
+        onR = rpx;
         for (int i = 0; i < boltN; i++) {
             float age = time - boltAt[i];
             if (age < 0f || age > 0.2f || (age > 0.06f && age < 0.1f)) continue;
@@ -209,6 +241,59 @@ final class Mirror {
             }
         }
     }
+
+    /**
+     * The face in the flash, laid over the mirror on the flat layer: as bright as the flash,
+     * see-through, a little cold, kept inside the steel's rim.
+     */
+    void flat(Px f) {
+        // the face lingers a breath longer than the light, an afterimage
+        float k = 0f;
+        for (int i = 0; i < boltN; i++) {
+            float age = time - boltAt[i];
+            if (age < 0f || age > 0.5f) continue;
+            k = Math.max(k, age < 0.06f ? 1f : age < 0.1f ? 0.55f : age < 0.2f ? 0.9f : 0.9f * (0.5f - age) / 0.3f);
+        }
+        if (face == null || k < 0.03f || onR <= 0f) return;
+        int which = verdict == OVATION ? SMILE : verdict == GLOOM ? STERN : CALM;
+        if (which >= face.length || face[which] == null) return;
+        int[] img = face[which];
+        int iw = faceW[which], ih = faceH[which];
+        float scale = onR * FACE / iw;                     // frame pixels per picture pixel
+        int w = Math.round(iw * scale), h = Math.round(ih * scale);
+        int x0 = Math.round(onX - w * 0.5f), y0 = Math.round(onY - h * 0.5f);
+        float rim2 = onR * onR * 0.9f;
+        for (int y = 0; y < h; y++) {
+            int fy = y0 + y;
+            if (fy < 0 || fy >= f.h) continue;
+            int sy = Math.min(ih - 1, (int) (y / scale));
+            for (int x = 0; x < w; x++) {
+                int fx = x0 + x;
+                if (fx < 0 || fx >= f.w) continue;
+                float dx = fx - onX, dy = fy - onY;
+                if (dx * dx + dy * dy > rim2) continue;
+                int c = img[sy * iw + Math.min(iw - 1, (int) (x / scale))];
+                float a = ((c >>> 24) / 255f) * k * SHOW;
+                if (a < 0.02f) continue;
+                // a little cold, as the lightning lights it
+                int r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
+                r = (r * 3 + 200) / 4;
+                g = (g * 3 + 214) / 4;
+                b = (b * 3 + 255) / 4;
+                int under = f.a[fy * f.w + fx];
+                float ua = (under >>> 24) / 255f;
+                float oa = a + ua * (1f - a);
+                if (oa <= 0f) continue;
+                int or = Math.round((r * a + ((under >> 16) & 0xFF) * ua * (1f - a)) / oa);
+                int og = Math.round((g * a + ((under >> 8) & 0xFF) * ua * (1f - a)) / oa);
+                int ob = Math.round((b * a + (under & 0xFF) * ua * (1f - a)) / oa);
+                f.a[fy * f.w + fx] = (Math.round(oa * 255f) << 24) | (or << 16) | (og << 8) | ob;
+            }
+        }
+    }
+
+    // how wide the face is against the mirror's radius, and how much of it shows at the flash's height
+    static float FACE = 1.15f, SHOW = 0.6f;
 
     /** The gift: a hammer let fall out of the mirror, tumbling down past the eye. */
     private void gift(DrawList d) {

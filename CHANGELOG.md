@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27
+- The wreath round the mirror is an even gradient now: black at the steel's edge, going
+  over smoothly into the sky's own colour and light further out, as if the mirror drank the
+  light round it. Blacker and wider when the stars ran out.
+- In every flash of lightning a face shows through the mirror, pale, see-through, a little
+  cold, and is gone a breath after the light: smiling for a building felled at one throw,
+  calm for a few throws, stern when the stars ran out.
+
 ## 0.26.1
 - The mirror is bigger, wider than the screen, cut off at its sides.
 - The wreath round it no longer bristles out into the sky: the sky's blue is heaped in over
