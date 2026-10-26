@@ -12,9 +12,9 @@ import java.util.Random;
  *
  * The verdict is the weather's. Lightning out of the wreath and thunder for a building
  * felled at one throw; a far flash for a few throws; nothing for many; and when the stars
- * ran out, the wreath goes blacker and one bolt falls. In each flash, for as long as the sky
- * is lit, a face shows through the steel, pale and see-through, and is gone with it:
- * smiling for one throw, calm for a few, stern when the stars ran out. A gift comes down out of the mirror
+ * ran out, the wreath goes blacker and one bolt falls. With the first flash a face comes up
+ * slowly in the steel, dark and see-through, one of several chosen by chance, and washes
+ * out slowly after the last. A gift comes down out of the mirror
  * itself: a ring runs out over the steel as over a liquid, and the hammer falls through it.
  */
 final class Mirror {
@@ -42,9 +42,10 @@ final class Mirror {
     private final float[] pose = new float[12], p0 = new float[2], p1 = new float[2];
     // whoever stands where the eye is, as the mirror shows her
     private final Frida self = new Frida();
-    // the faces that show in the flashes: stern, calm, smiling; straight RGBA, each its size
-    static final int STERN = 0, CALM = 1, SMILE = 2;
+    // the faces that may show in the steel; straight RGBA, each its size; which one this time
     private int[][] face;
+    private int facePick = -1;
+    private boolean faceFlip;
     private int[] faceW, faceH;
     // where the mirror is on the frame just now, in frame pixels: its middle and radius
     private float onX, onY, onR;
@@ -76,6 +77,9 @@ final class Mirror {
         giftKind = gift;
         giftT0 = 2.0f;
         ringT0 = -99f;
+        // the face this time, and which way round: chance
+        facePick = face == null ? -1 : rnd.nextInt(face.length);
+        faceFlip = rnd.nextBoolean();
         if (verdict == OVATION) {
             for (int i = 0; i < 3; i++) {
                 boltAt[boltN] = 1.0f + i * (0.45f + rnd.nextFloat() * 0.3f);
@@ -243,22 +247,21 @@ final class Mirror {
     }
 
     /**
-     * The face in the flash, laid over the mirror on the flat layer: as bright as the flash,
-     * see-through, a little cold, kept inside the steel's rim.
+     * The face in the steel, laid over the mirror on the flat layer. It comes up slowly with
+     * the first flash, pixel by pixel, as a picture comes up in the developer, stays through
+     * the lightning, and washes out slowly after the last; dark, nearly grey, see-through,
+     * swaying with the steel as though under water. Which face it is, and which way round,
+     * is chance, new at every visit.
      */
     void flat(Px f) {
-        // the face lingers a breath longer than the light, an afterimage
-        float k = 0f;
-        for (int i = 0; i < boltN; i++) {
-            float age = time - boltAt[i];
-            if (age < 0f || age > 0.5f) continue;
-            k = Math.max(k, age < 0.06f ? 1f : age < 0.1f ? 0.55f : age < 0.2f ? 0.9f : 0.9f * (0.5f - age) / 0.3f);
-        }
-        if (face == null || k < 0.03f || onR <= 0f) return;
-        int which = verdict == OVATION ? SMILE : verdict == GLOOM ? STERN : CALM;
-        if (which >= face.length || face[which] == null) return;
-        int[] img = face[which];
-        int iw = faceW[which], ih = faceH[which];
+        if (face == null || boltN == 0 || onR <= 0f || facePick < 0 || facePick >= face.length || face[facePick] == null) return;
+        float t0 = boltAt[0], t1 = boltAt[boltN - 1] + 0.6f;
+        float k = smooth((time - t0 + 0.1f) / FADE_IN) * (1f - smooth((time - t1) / FADE_OUT));
+        if (k < 0.01f) return;
+        // each flash lights it a little more
+        float lit = 1f + 0.35f * flash();
+        int[] img = face[facePick];
+        int iw = faceW[facePick], ih = faceH[facePick];
         float scale = onR * FACE / iw;                     // frame pixels per picture pixel
         int w = Math.round(iw * scale), h = Math.round(ih * scale);
         int x0 = Math.round(onX - w * 0.5f), y0 = Math.round(onY - h * 0.5f);
@@ -266,20 +269,29 @@ final class Mirror {
         for (int y = 0; y < h; y++) {
             int fy = y0 + y;
             if (fy < 0 || fy >= f.h) continue;
+            // the steel's slow sway, row by row
+            float sway = 1.6f * (float) Math.sin(y * 0.11f + time * 1.7f);
             int sy = Math.min(ih - 1, (int) (y / scale));
             for (int x = 0; x < w; x++) {
                 int fx = x0 + x;
                 if (fx < 0 || fx >= f.w) continue;
                 float dx = fx - onX, dy = fy - onY;
                 if (dx * dx + dy * dy > rim2) continue;
-                int c = img[sy * iw + Math.min(iw - 1, (int) (x / scale))];
-                float a = ((c >>> 24) / 255f) * k * SHOW;
+                // coming up and going, pixel by pixel in a fixed order
+                if (BAYER[(fy & 3) * 4 + (fx & 3)] >= k * 16f) continue;
+                int sx = Math.round(x / scale + sway);
+                if (faceFlip) sx = iw - 1 - sx;
+                if (sx < 0 || sx >= iw) continue;
+                int c = img[sy * iw + sx];
+                float a = ((c >>> 24) / 255f) * SHOW;
                 if (a < 0.02f) continue;
-                // a little cold, as the lightning lights it
+                // dark and almost grey, a little cold; the darkening bends the middle down and
+                // leaves the brightest alone, so the eyes still burn
                 int r = (c >> 16) & 0xFF, g = (c >> 8) & 0xFF, b = c & 0xFF;
-                r = (r * 3 + 200) / 4;
-                g = (g * 3 + 214) / 4;
-                b = (b * 3 + 255) / 4;
+                float l = 0.3f * r + 0.55f * g + 0.15f * b;
+                r = clamp255(dark(l + (r - l) * COLOUR) * lit * 0.97f);
+                g = clamp255(dark(l + (g - l) * COLOUR) * lit);
+                b = clamp255(dark(l + (b - l) * COLOUR) * lit * 1.08f);
                 int under = f.a[fy * f.w + fx];
                 float ua = (under >>> 24) / 255f;
                 float oa = a + ua * (1f - a);
@@ -292,8 +304,24 @@ final class Mirror {
         }
     }
 
-    // how wide the face is against the mirror's radius, and how much of it shows at the flash's height
-    static float FACE = 1.15f, SHOW = 0.6f;
+    private static final int[] BAYER = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
+
+    private static float smooth(float x) {
+        x = Math.max(0f, Math.min(1f, x));
+        return x * x * (3f - 2f * x);
+    }
+
+    private static float dark(float v) {
+        return 255f * (float) Math.pow(Math.max(0f, v) / 255f, DARK);
+    }
+
+    private static int clamp255(float v) {
+        return v < 0f ? 0 : v > 255f ? 255 : Math.round(v);
+    }
+
+    // how wide the face is against the mirror's radius; how much of it shows; how dark (a
+    // power), how much of its colour is left; how long it takes to come up and to wash out, seconds
+    static float FACE = 1.15f, SHOW = 0.55f, DARK = 2.0f, COLOUR = 0.3f, FADE_IN = 0.9f, FADE_OUT = 1.3f;
 
     /** The gift: a hammer let fall out of the mirror, tumbling down past the eye. */
     private void gift(DrawList d) {

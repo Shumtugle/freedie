@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.27.1
+- The face in the mirror comes up slowly with the first flash, pixel by pixel, as a picture
+  comes up in the developer; it stays through the lightning and washes out slowly after the
+  last.
+- It is darker and almost grey, a little cold; the darkening leaves the brightest alone, so
+  its eyes still burn. It sways with the steel, as though seen under water.
+- Which face, and which way round, is chance, new at every visit; there are four of them.
+
 ## 0.27
 - The wreath round the mirror is an even gradient now: black at the steel's edge, going
   over smoothly into the sky's own colour and light further out, as if the mirror drank the
