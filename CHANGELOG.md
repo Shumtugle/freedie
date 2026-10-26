@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.23
+- The portal: when the 101st is down and the gods have looked, no new building comes. A
+  ring of glowing cloud gathers over the empty plinth, raw winter showing through it and
+  snow streaming out. Throws at it cost nothing, and it draws the hammer in quickly; one
+  through it pulls the view in after it, the light rises, and the player is out on the ice.
+- The winter ocean, the levels after the 101st: a low heavy sky, thick fog, a grey sea
+  running in long swells with whitecaps, snow driving across slantwise. The player stands
+  on a floe; the building stands on a block of old ice on an iceberg, pointed spikes of
+  ice round it; two sailing boats ride at anchor at the edges of the view, rolling; a buoy
+  bobs nearer with the call box and its red button on its cage. For now to the 109th.
+- The buildings at sea are this game's own: fifty laid out in advance on the desktop stand,
+  flat in depth, of wood, stone and old blue ice with caps of snow, life rings and ship's
+  wheels among them. Each was tested for standing, as it is and mirrored, and a player let
+  at it to count the throws it takes; they come from easy to stubborn in steps, with a
+  breather every fifth. The first is an easy one that is a sight.
+- Out at sea the gods give the golden hammer again where in town Freedie would come.
+
 ## 0.22
 - Episodes five to eight, plates 51 to 101, everything on the street before the sea, by
   the same seeds as the street game this one grows from. The fiftieth no longer holds the

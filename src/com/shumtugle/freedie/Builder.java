@@ -106,12 +106,13 @@ final class Builder {
         return LATE[r % LATE.length];
     }
 
-    // ---- the winter set ----
-    // Out at sea the buildings are not grown: they come from a set of fifty laid out in
-    // advance, flat in depth, of wood, stone and ice, from easy ones to stubborn ones.
-    // Each is a list of blocks: material (0 wood, 1 stone, 2 ice), middle across, bottom
-    // and size, in millimeters above the plinth top. After fifty they come round again,
-    // mirrored on every other pass.
+    // ---- the sea set ----
+    // Out at sea the buildings are not grown as they are played: they come from a set of
+    // fifty laid out in advance on the desktop stand (see its SeaSet), flat in depth, of
+    // wood, stone and ice with caps of snow, from easy ones to stubborn ones. Each is a list
+    // of blocks: material (0 wood, 1 stone, 2 ice, 3 snow), middle across, bottom and size,
+    // in millimeters above the plinth top. After fifty they come round again, mirrored on
+    // every other pass.
 
     static final float WINTER_DEPTH = 0.24f;      // half the depth of every block, meters
     private static volatile short[][] winter;
@@ -188,6 +189,11 @@ final class Builder {
             b.icy = m == 2;
             // old ice: blue, a shade lighter or darker block by block
             if (b.icy) b.tint = (k & 1) == 0 ? 0xFFB3D5E5 : 0xFFC6E1EC;
+            // a cap of snow on a top: white, light, the first thing to go
+            if (m == 3) {
+                b.look = 3;
+                b.tint = 0xFFF2F5F8;
+            }
             // the big square blocks with a hole: a life ring or a ship's wheel, standing on edge
             if (Math.abs(w + 0.05f - h) < 0.06f && h > 0.6f) {
                 b.look = (byte) (rnd.nextBoolean() ? 1 : 2);

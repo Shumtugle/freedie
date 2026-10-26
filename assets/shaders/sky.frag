@@ -17,6 +17,7 @@ uniform vec3 uGlow;
 uniform vec3 uSun;
 uniform float uTime;
 uniform float uDark;     // how far the world has gone into the dark
+uniform float uOvercast; // out at sea: a low heavy sky instead of the evening one
 // strokes: ends in frame pixels, then widths and covers at the ends (a negative first width: dark)
 uniform vec4 uFly[64];
 uniform int uFlyN;
@@ -56,6 +57,16 @@ void main() {
     c = mix(c, cloud, cl * 0.8);
     float s = max(dot(d, uSun), 0.0);
     c += vec3(1.0, 0.85, 0.6) * (pow(s, 64.0) * 0.6 + pow(s, 8.0) * 0.08);
+    if (uOvercast > 0.0) {
+        // a low heavy sky, neither night nor day: grey, darker overhead, banks of cloud
+        // dragging across, no sun to be seen; fog low down eats the horizon
+        vec2 q = d.xz / max(d.y + 0.08, 0.06);
+        float bank = fbm(q * 0.6 + vec2(uTime * 0.02, 0.0));
+        vec3 w = mix(uHorizon, uTop, pow(min(1.0, el * 1.6), 0.7));
+        w *= 0.82 + 0.3 * bank;
+        w = mix(w, uGlow, exp(-max(d.y, 0.0) * 14.0) * 0.8);
+        c = mix(c, w, uOvercast);
+    }
     // what flies: each stroke covers the pixels near its line, hard-edged like everything else
     vec2 p = vec2(gl_FragCoord.x, uFrame.y - gl_FragCoord.y);
     for (int i = 0; i < 32; i++) {

@@ -29,6 +29,7 @@ uniform float uDark;          // how far the world has gone into the dark
 uniform vec3 uSpot;           // the one pool of light left in it
 uniform float uSpotRadius;
 uniform float uGoldGlow;      // how much gold keeps its own light in the dark
+uniform float uTime;          // seconds, for what moves on its own: the swell
 
 out vec4 outColor;
 
@@ -36,6 +37,7 @@ const float PLAIN = 0.0, GRAIN = 1.0, STONE = 2.0, ASPHALT = 3.0, WOOD = 4.0, PA
 const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, GLOW = 13.0, SEA = 14.0, RAIL = 15.0;
 const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
 const float POLISHED = 20.0, RUBBER = 21.0;
+const float ICE = 22.0, WINTER_SEA = 23.0;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -323,6 +325,21 @@ void main() {
         float toward = max(dot(r, v), 0.0);
         if (n > 0.93 - 0.2 * toward) base = mix(base, lin(rgb(0xFFE3B0)), 0.75 * toward);
         else if (n < 0.16) base *= 0.85;
+    } else if (mat == WINTER_SEA) {
+        // the winter sea: dark slate near, grey far off, long swells running in, whitecaps
+        // breaking now and then on their crests
+        float far = clamp(1.0 - v.y * 9.0, 0.0, 1.0);
+        base = lin(mix(rgb(0x2A3C4C), rgb(0x8C9AA6), pow(far, 2.0)));
+        float sw = sin(vWorld.z * 0.55 + vWorld.x * 0.12 - uTime * 1.1) + 0.5 * sin(vWorld.z * 1.3 - vWorld.x * 0.4 - uTime * 1.9);
+        base *= 0.9 + 0.12 * sw;
+        float n = hash(vec3(floor(vWorld.x * 0.9), floor(vWorld.z * 0.5), floor(uTime * 0.7 + vWorld.x * 0.05)));
+        if (sw > 1.05 && n > 0.72) base = mix(base, lin(rgb(0xD6E0E6)), 0.75);
+        else if (n < 0.12) base *= 0.85;
+    } else if (mat == ICE) {
+        // old ice: the block's own blue, in facets, frosted white at its edges, a little glassy
+        k = 0.9 + 0.16 * hash(vec3(floor(uv / 0.12), face + 3.0));
+        if (edge < 0.04) base = mix(base, lin(vec3(0.94, 0.97, 1.0)), 0.55);
+        glass = 0.5;
     } else if (mat == GOLD) {
         k = 0.92 + 0.1 * hash(vec3(floor(uv / 0.05), face));
         if (edge < 0.025) k *= 0.75;

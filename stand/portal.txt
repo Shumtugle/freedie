@@ -1,0 +1,31 @@
+# The 101st felled (with the golden hammer, to be quick): the gods, then no new building; the
+# ring of cloud gathers over the plinth with winter in it; a throw through it pulls the view
+# in, the light rises, and the 102nd is out on the ice.
+screen 1096 2560
+keep level 100
+keep fails 10
+keep best 101
+restart
+skip
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 14
+shot p1_ring
+down 137 420
+wait 1.0
+shot p2_aim
+up 137 420
+wait 0.5
+shot p3_flight
+wait 0.5
+shot p4_flight
+wait 0.3
+shot p5_in
+wait 0.3
+shot p6_white
+wait 0.6
+shot p7_ice
+wait 2.5
+shot p8_sea

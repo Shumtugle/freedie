@@ -1,0 +1,26 @@
+# Out on the winter ocean: the 102nd as it stands, an aim at it, a throw; then the 105th and
+# the 109th further off.
+screen 1096 2560
+keep level 101
+restart
+skip
+wait 2.8
+shot s102
+down 137 420
+wait 1.0
+shot s102_aim
+up 137 420
+wait 0.4
+shot s102_flight
+wait 2.5
+shot s102_after
+keep level 104
+restart
+skip
+wait 2.8
+shot s105
+keep level 108
+restart
+skip
+wait 2.8
+shot s109

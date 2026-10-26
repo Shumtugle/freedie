@@ -31,18 +31,25 @@ import java.util.Random;
  * and in flight, the view closes in on the building, the farther the more, and opens out
  * again once the hammer is back.
  *
- * For now the levels go as far as the end of the eighth episode, the last on the street
- * before the sea, and the last comes round again.
+ * When the 101st is down, no new building comes: a ring of glowing cloud gathers over the
+ * plinth, winter showing through it, and a hammer thrown through it takes the player out
+ * onto the winter ocean (see Ocean), where the buildings stand on an iceberg and come from
+ * a set laid out in advance (see Builder). For now the levels go as far as the 109th.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
  * where the eye is with frame() before any of them needs it.
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7, INSERT = 8;
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7, INSERT = 8,
+            PORTAL = 9;
     static final int STARS = 5;
-    /** The last level there is yet: the end of the eighth episode, the last on the street. */
-    static final int LAST = 100;
+    /** The last level there is yet: the 109th, out at sea. */
+    static final int LAST = 108;
+    /** The first level out at sea, beyond the portal: the 102nd. */
+    static final int SEA_FROM = 101;
+    /** Whether the level being played is out at sea. */
+    boolean atSea;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
@@ -152,6 +159,8 @@ final class Game implements Physics.Listener {
         fails = Math.max(0, host.loadInt("fails"));
         goldSeen = host.loadInt("goldSeen") == 1;
         crest.settle(fails);
+        if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
+        readPortal(host.asset("portal.bin"));
         start(this.level, false);
     }
 
@@ -186,8 +195,10 @@ final class Game implements Physics.Listener {
         buildFromSky = thrown;
         host.saveInt("level", lv);
         if (host.loadInt("best") < lv + 1) host.saveInt("best", lv + 1);
-        // the first stands close; the rest a little further off
-        Builder.CZ = Builder.BASE_CZ + Builder.farther(lv);
+        // the first stands close; the rest a little further off; at sea, on the iceberg
+        atSea = lv >= SEA_FROM;
+        Builder.CZ = Builder.BASE_CZ + (atSea ? seaFar(lv - SEA_FROM) : Builder.farther(lv));
+        portalIn = -1f;
         Builder.CX = 0f;
         Builder.PHZ = Builder.PHZ1;
         phys.clear();
@@ -198,7 +209,8 @@ final class Game implements Physics.Listener {
         // the parked cars and the cones, as solid as the plinth: what falls on them stays off the road
         for (int i = 0; i < Traffic.PARK_X.length; i++) {
             cars[i] = new Body(0.95f, 0.65f, 2.3f, Body.CAR, 0);
-            carGone(i, false);
+            // out at sea there are no cars
+            carGone(i, atSea);
             phys.add(cars[i]);
         }
         ArrayList<Body> made = buildingFor(lv);
@@ -238,6 +250,12 @@ final class Game implements Physics.Listener {
     static ArrayList<Body> buildingFor(int lv) {
         Builder builder = new Builder();
         long sd = seedOf(lv);
+        if (lv >= SEA_FROM && Builder.hasWinter()) {
+            // out at sea: the set laid out in advance, each already known to stand
+            ArrayList<Body> made = builder.winter(lv - SEA_FROM, sd, false);
+            standsStill(made);
+            return made;
+        }
         for (int attempt = 0; attempt < 6; attempt++) {
             ArrayList<Body> made = builder.build(lv, sd + attempt * 7919L);
             if (standsStill(made)) return made;
@@ -411,10 +429,16 @@ final class Game implements Physics.Listener {
 
     // ---- the finger ----
 
+    /** How far off the iceberg is for the n-th level at sea: nearer than the last plinths in town. */
+    static float seaFar(int n) {
+        return Math.min(30f, 20f + 2f * (n / 10));
+    }
+
     /** Whether the hammer is in hand and a finger may aim. */
     boolean ready() {
         if (hs != HAND) return false;
         if (state == FIGHT) return fight != null && fight.live();
+        if (state == PORTAL) return portalIn < 0f && stateTime > PORTAL_RISE;
         return state == PLAY && stars > 0;
     }
 
@@ -508,6 +532,13 @@ final class Game implements Physics.Listener {
 
     /** Where the ring starts on a level's first throw: the middle of what stands on the plinth. */
     private void buildingCenter() {
+        if (state == PORTAL) {
+            if (project(portalX(), portalY(), Builder.CZ, scr)) {
+                aimX = scr[0];
+                aimY = scr[1];
+            }
+            return;
+        }
         if (fight != null) {
             fight.middle(scr);
             aimX = scr[0];
@@ -568,7 +599,8 @@ final class Game implements Physics.Listener {
     }
 
     private void throwHammer() {
-        float speed = throwSpeed();
+        // the ring draws a hammer thrown at it: it gets there in half the time
+        float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);
         target(aimX + tremX, aimY + tremY, tmp);
         float tx = tmp[0], ty = tmp[1], tz = tmp[2];
         handPoint(tmp);
@@ -585,7 +617,9 @@ final class Game implements Physics.Listener {
         hammer.vz = dz / t;
         spinSign = aimX < fw * 0.5f ? 1f : -1f;
         goldThrow = goldOn;
-        heavyThrow = !goldThrow && heavyOn && heavyLeft > 0;
+        // a throw at the portal costs nothing, not even a heavy one
+        boolean free = state == PORTAL;
+        heavyThrow = !goldThrow && heavyOn && heavyLeft > 0 && !free;
         if (heavyThrow) {
             hammer.scaleMass(HEAVY_MASS);
             heavyLeft--;
@@ -595,9 +629,11 @@ final class Game implements Physics.Listener {
         hammer.wx = 0.6f;
         hammer.savePrev();
         flightTime = t;
-        throwsMade++;
-        stars--;
-        crest.burn(stars);
+        if (!free) {
+            throwsMade++;
+            stars--;
+            crest.burn(stars);
+        }
         hs = FLY;
         hsTime = 0f;
         power = 0f;
@@ -668,7 +704,7 @@ final class Game implements Physics.Listener {
 
     /** Closes in while a throw is aimed or in flight, opens out once the hammer is back. */
     private void zoomStep(float dt) {
-        boolean want = zoomFor(Builder.CZ) > 1f && state == PLAY && fight == null && (aiming || hs != HAND);
+        boolean want = zoomFor(Builder.CZ) > 1f && (state == PLAY || state == PORTAL) && fight == null && (aiming || hs != HAND || portalIn >= 0f);
         float was = zoomK;
         zoomK = Math.max(0f, Math.min(1f, zoomK + (want ? dt : -dt) / ZOOM_T));
         if (zoomK != was) zoomMoved = true;
@@ -691,6 +727,18 @@ final class Game implements Physics.Listener {
      */
     void view(float yaw, float pitch, float[] out) {
         float e = zoomEase();
+        if (portalIn >= 0f) {
+            // pulled in after the hammer, into the ring
+            float k = Math.min(1f, portalIn / CHAPTER_RISE);
+            float dx = portalX() - World.CAM_X, dz = Builder.CZ - World.CAM_Z;
+            float zy = (float) Math.atan2(dx, dz);
+            float zp = (float) Math.atan2(portalY() - World.CAM_Y, (float) Math.sqrt(dx * dx + dz * dz));
+            float m = Math.max(1f, zoomFor(Builder.CZ)) * (1f + 5f * k * k);
+            out[0] = yaw + (zy - yaw) * Math.max(e, k);
+            out[1] = pitch + (zp - pitch) * Math.max(e, k);
+            out[2] = m;
+            return;
+        }
         if (e <= 0f || fight != null) {
             out[0] = yaw;
             out[1] = pitch;
@@ -887,6 +935,9 @@ final class Game implements Physics.Listener {
                     start(Math.min(LAST, nextLevel), false);
                 }
                 break;
+            case PORTAL:
+                portalStep(dt);
+                break;
             case FIGHT:
                 fight.step(dt);
                 if (fight.end > 2.8f && fight.won) fightWon();
@@ -912,6 +963,13 @@ final class Game implements Physics.Listener {
                     if (chapter && craneAfter(level, nextLevel)) {
                         // out of the light onto the street, where the crane carries the plinth on
                         startCrane();
+                        break;
+                    }
+                    if (nextLevel == SEA_FROM && level == SEA_FROM - 1) {
+                        // the last building in town is down: no new one comes, the portal does
+                        openPortal();
+                        fromSky = true;
+                        backT = 0f;
                         break;
                     }
                     // the gods have thrown the blocks: the next building falls into place as the eye comes down
@@ -996,7 +1054,8 @@ final class Game implements Physics.Listener {
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
-                if (!goldSeen) {
+                // out at sea she does not come yet: the golden hammer again instead
+                if (!goldSeen || atSea) {
                     // the tenth time the same building would not fall: the gods give the golden hammer
                     goldGift = true;
                     goldSeen = true;
@@ -1700,6 +1759,7 @@ final class Game implements Physics.Listener {
 
     void draw(DrawList d) {
         if (crane != null) crane.draw(d);
+        else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
         else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
         else fight.draw(d);
         float st = stagger();
@@ -1806,7 +1866,16 @@ final class Game implements Physics.Listener {
             default:
                 break;
         }
-        int mat = b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;
+        // out at sea: a life ring, a ship's wheel, a cap of snow, a block of old ice
+        if (b.look == 1) {
+            Things.lifeRing(d, x, y, z, turn, Math.min(hx, hy), hz);
+            return;
+        }
+        if (b.look == 2) {
+            Things.wheel(d, x, y, z, turn, Math.min(hx, hy), hz, b.tint);
+            return;
+        }
+        int mat = b.look == 3 ? DrawList.GRAIN : b.icy ? DrawList.ICE : b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;
         d.box(b.px, b.py + drop, b.pz, b.hx * scale, b.hy * scale, b.hz * scale, turn, b.tint, mat);
     }
 
@@ -1875,10 +1944,11 @@ final class Game implements Physics.Listener {
             if (!fight.won && fight.end >= 0f) shade(f, Math.min(1f, fight.end / 0.9f));
             return;
         }
+        if (state == PORTAL) drawPortal(f);
         if (k * fh < fh / 8f) hud(f);
         if (wake >= 0f) lids(f);
         if (!aiming) return;
-        float speed = throwSpeed();
+        float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);
         target(aimX + tremX, aimY + tremY, tmp);
         float tx = tmp[0], ty = tmp[1], tz = tmp[2];
         handPoint(tmp);
@@ -2067,6 +2137,202 @@ final class Game implements Physics.Listener {
             f.set(gx, gy - 1, 0xFFFFF0C0);
             f.set(gx, gy + 1, 0xFFFFF0C0);
         }
+    }
+
+    // ---- the portal ----
+    // When the 101st building is down and the gods have looked, no new building comes: a ring
+    // of glowing cloud gathers over the plinth, and through it shows raw winter, grey sky and
+    // a dark sea in a blizzard, snow streaming out of it. Throws cost nothing now. A hammer
+    // through the ring pulls the view in after it, the light rises, and the next level is out
+    // on the ocean.
+
+    static final float PORTAL_H = 3.9f, PORTAL_RISE = 1.6f;
+    private float portalIn = -1f;            // seconds since the hammer went through, or -1
+    private float prevHX, prevHY, prevHZ, snowOut;
+    // the ring as painted: premultiplied colors, and how much of each pixel is the way through
+    private int[] ringCol;
+    private byte[] ringIn;
+    private int ringW, ringH;
+    private float holeU = 0.5f, holeV = 0.42f, holeRU = 0.36f, holeRV = 0.29f;   // as shares of the picture
+
+    private void readPortal(byte[] b) {
+        if (b == null || b.length < 4) return;
+        int ww = ((b[0] & 0xFF) << 8) | (b[1] & 0xFF), hh = ((b[2] & 0xFF) << 8) | (b[3] & 0xFF);
+        if (b.length < 4 + ww * hh * 5) return;
+        ringCol = new int[ww * hh];
+        ringIn = new byte[ww * hh];
+        int x0 = ww, x1 = 0, y0 = hh, y1 = 0;
+        for (int k = 0, p = 4; k < ww * hh; k++, p += 5) {
+            ringCol[k] = ((b[p + 3] & 0xFF) << 24) | ((b[p] & 0xFF) << 16) | ((b[p + 1] & 0xFF) << 8) | (b[p + 2] & 0xFF);
+            ringIn[k] = b[p + 4];
+            if ((b[p + 4] & 0xFF) > 128) {
+                int x = k % ww, y = k / ww;
+                x0 = Math.min(x0, x);
+                x1 = Math.max(x1, x);
+                y0 = Math.min(y0, y);
+                y1 = Math.max(y1, y);
+            }
+        }
+        ringW = ww;
+        ringH = hh;
+        if (x1 > x0 && y1 > y0) {
+            holeU = (x0 + x1 + 1) * 0.5f / ww;
+            holeV = (y0 + y1 + 1) * 0.5f / hh;
+            holeRU = (x1 - x0 + 1) * 0.5f / ww;
+            holeRV = (y1 - y0 + 1) * 0.5f / hh;
+        }
+    }
+
+    private float portalW() {
+        return ringH > 0 ? PORTAL_H * ringW / ringH : PORTAL_H * 0.67f;
+    }
+
+    /** The middle of the picture, in the air over the plinth. */
+    private float portalMid() {
+        return Builder.TOP + 0.05f + PORTAL_H * 0.5f;
+    }
+
+    /** The middle of the way through. */
+    private float portalY() {
+        return portalMid() + (0.5f - holeV) * PORTAL_H;
+    }
+
+    private float portalX() {
+        return Builder.CX + (holeU - 0.5f) * portalW();
+    }
+
+    private void openPortal() {
+        for (Body b : pieces)
+            if (!b.gone) {
+                b.gone = true;
+                b.ghost = true;
+            }
+        stars = STARS;
+        throwsMade = 0;
+        portalIn = -1f;
+        pN = 0;
+        setState(PORTAL);
+        aimedBefore = false;
+        host.sound(Synth.ROLL, 0.8f, 0.7f);
+    }
+
+    private void portalStep(float dt) {
+        if (portalIn >= 0f) {
+            portalIn += dt;
+            // the light has risen: out on the ice
+            if (chapterT >= CHAPTER_RISE) start(SEA_FROM, false);
+            return;
+        }
+        // snow blows out of it toward the player
+        if (stateTime > PORTAL_RISE && (snowOut -= dt) <= 0f) {
+            snowOut = 0.04f;
+            float a = fx.nextFloat() * 6.283f, r = fx.nextFloat();
+            spawn(portalX() + (float) Math.cos(a) * r * holeRU * portalW(), portalY() + (float) Math.sin(a) * r * holeRV * PORTAL_H,
+                    Builder.CZ - 0.2f, true, 0xF4F8FA, 2.2f);
+        }
+        if (hs == FLY) {
+            // through the ring: the hammer crossed its plane inside the way through this frame
+            float z0 = prevHZ - Builder.CZ, z1 = hammer.pz - Builder.CZ;
+            if (hsTime > 0.05f && z0 < 0f && z1 >= 0f) {
+                float k = z0 / (z0 - z1);
+                float x = (prevHX + (hammer.px - prevHX) * k - portalX()) / (holeRU * portalW());
+                float y = (prevHY + (hammer.py - prevHY) * k - portalY()) / (holeRV * PORTAL_H);
+                if (x * x + y * y < 0.85f) {
+                    portalIn = 0f;
+                    chapterT = 0f;
+                    hammer.ghost = true;
+                    hammer.vx = hammer.vy = hammer.vz = 0f;
+                    hammer.px = 0f;
+                    hammer.py = -50f;
+                    host.sound(Synth.WHOOSH, 1.1f, 0.6f);
+                    host.sound(Synth.THUNDER, 0.7f, 1.6f);
+                    host.buzz(120);
+                }
+            }
+        }
+        prevHX = hammer.px;
+        prevHY = hammer.py;
+        prevHZ = hammer.pz;
+    }
+
+    /** The cloud ring gathering over the plinth, and the winter seen through it, on the flat layer. */
+    private void drawPortal(Px f) {
+        if (ringCol == null) return;
+        float t = stateTime - 0.5f;
+        float open = Math.max(0f, Math.min(1f, t / 1.1f));
+        if (open <= 0f) return;
+        float e = 1f - (1f - open) * (1f - open) * (1f - open);
+        float wx = Builder.CX, wy = portalMid(), wz = Builder.CZ;
+        float vz = (wx - eye[0]) * ahead[0] + (wy - eye[1]) * ahead[1] + (wz - eye[2]) * ahead[2];
+        if (vz < 0.5f || !project(wx, wy, wz, scr)) return;
+        float cx = scr[0], cy = scr[1];
+        // grows out of a puff, breathes, sways a little
+        float size = (0.55f + 0.45f * e) * (1f + 0.018f * (float) Math.sin(clock * 1.3f));
+        float px = PORTAL_H / ringH * focal / vz * size;            // frame pixels per picture pixel
+        float rot = 0.035f * (float) Math.sin(clock * 0.55f), c = (float) Math.cos(rot), sn = (float) Math.sin(rot);
+        float half = 0.5f * (float) Math.hypot(ringW, ringH) * px;
+        int x0 = Math.max(0, (int) (cx - half)), x1 = Math.min(fw - 1, (int) (cx + half));
+        int y0 = Math.max(0, (int) (cy - half)), y1 = Math.min(fh - 1, (int) (cy + half));
+        float inv = 1f / px;
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++) {
+                float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+                float u = (c * dx + sn * dy) * inv + ringW * 0.5f, v = (-sn * dx + c * dy) * inv + ringH * 0.5f;
+                int iu = (int) u, iv = (int) v;
+                if (u < 0f || v < 0f || iu >= ringW || iv >= ringH) continue;
+                int q = iv * ringW + iu;
+                int col = ringCol[q], hole = ringIn[q] & 0xFF;
+                float ca = (col >>> 24) / 255f * e;
+                // the way through: winter, as much as the picture says
+                float ha = hole / 255f * e;
+                int base = 0;
+                if (ha > 0f) {
+                    float hu = (u / ringW - holeU) / holeRU, hv = (v / ringH - holeV) / holeRV;
+                    base = winterAt(hu, hv, x, y);
+                }
+                // the cloud over the winter: premultiplied, so its own color is already weighed by its cover
+                float a = ca + ha * (1f - ca);
+                if (a <= 0.004f) continue;
+                float r = (((col >> 16) & 0xFF) * e + ((base >> 16) & 0xFF) * ha * (1f - ca)) / a;
+                float g = (((col >> 8) & 0xFF) * e + ((base >> 8) & 0xFF) * ha * (1f - ca)) / a;
+                float b = ((col & 0xFF) * e + (base & 0xFF) * ha * (1f - ca)) / a;
+                f.a[y * fw + x] = (Math.min(255, Math.round(a * 255f)) << 24) | (Math.min(255, Math.round(r)) << 16)
+                        | (Math.min(255, Math.round(g)) << 8) | Math.min(255, Math.round(b));
+            }
+    }
+
+    /**
+     * Winter through the ring, at a point of it (-1..1 across the way through): a raw grey
+     * sky, a dark sea under it, fog blowing across, and snow streaming out at the viewer.
+     */
+    private int winterAt(float u, float v, int sx, int sy) {
+        float horizon = 0.28f;
+        int c = v < horizon ? Px.mix(0xFF56636F, 0xFFA9B4BD, Math.max(0f, (v + 1f) / (horizon + 1f)))
+                : Px.mix(0xFF4A5E6E, 0xFF2A3A48, Math.min(1f, (v - horizon) * 2.2f));
+        if (v > horizon && v < horizon + 0.05f) c = Px.mix(c, 0xFFB8C4CC, 0.6f);
+        float t = clock;
+        float fog = noise(u * 2.2f - t * 1.4f, v * 3f + t * 0.2f);
+        c = Px.mix(c, 0xFFC4CDD4, Math.max(0f, fog - 0.4f) * 0.8f);
+        // snow coming out of it: flakes on rays from the middle, rushing outward
+        float r = (float) Math.sqrt(u * u + v * v) + 0.02f;
+        float a = (float) Math.atan2(v, u);
+        int ring = (int) Math.floor((float) Math.log(r) * 7f - t * 5f);
+        int spoke = (int) Math.floor(a * 9f + ring * 0.37f);
+        if (Street.nz(spoke, ring, 5) > 236) c = Px.mix(c, 0xFFFFFFFF, Math.min(1f, r * 1.3f));
+        // and streaks blown sideways
+        if (Street.nz((int) Math.floor(sx * 0.25f - t * 24f), sy, 9) > 247) c = Px.mix(c, 0xFFF4F8FA, 0.7f);
+        return c;
+    }
+
+    /** Smooth value noise, 0 to 1. */
+    private static float noise(float x, float y) {
+        int ix = (int) Math.floor(x), iy = (int) Math.floor(y);
+        float fx = x - ix, fy = y - iy;
+        fx = fx * fx * (3f - 2f * fx);
+        fy = fy * fy * (3f - 2f * fy);
+        float a = Street.nz(ix, iy, 3) / 255f, b = Street.nz(ix + 1, iy, 3) / 255f;
+        float c = Street.nz(ix, iy + 1, 3) / 255f, d = Street.nz(ix + 1, iy + 1, 3) / 255f;
+        return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
     }
 
     // ---- for the desktop stand ----

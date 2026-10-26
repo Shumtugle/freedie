@@ -165,6 +165,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform3fv(u(skyP, 'uSun'), frame.sun);
   gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
   gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
+  gl.uniform1f(u(skyP, 'uOvercast'), frame.overcast || 0);
   gl.uniform1i(u(skyP, 'uFlyN'), frame.flyN || 0);
   if (frame.flyN > 0) gl.uniform4fv(u(skyP, 'uFly'), new Float32Array(frame.fly));
   gl.bindVertexArray(empty);
@@ -190,6 +191,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.uniform3fv(u(p, 'uSpot'), frame.spot);
     gl.uniform1f(u(p, 'uSpotRadius'), frame.spotRadius);
     gl.uniform1f(u(p, 'uGoldGlow'), frame.goldGlow);
+    gl.uniform1f(u(p, 'uTime'), frame.time || 0);
   };
   lit(boxP);
   gl.bindVertexArray(vao);

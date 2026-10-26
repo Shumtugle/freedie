@@ -13,6 +13,8 @@ final class DrawList {
     static final int PLAIN = 0, GRAIN = 1, STONE = 2, ASPHALT = 3, WOOD = 4, PAVING = 5, PAINT = 6, GOLD = 7;
     static final int FACADE = 8, FROND = 9, TRUNK = 10, ROAD = 11, GLASS = 12, GLOW = 13, SEA = 14, RAIL = 15,
             PROMENADE = 16, AWNING = 17, SQUARE = 18, LANE = 19;
+    // out at sea: a block of old ice; the grey winter sea
+    static final int ICE = 22, WINTER_SEA = 23;
     // a number a material that reads none of its own may carry: it burns in the golden fire
     // when the world is seen red (see the frame's grade)
     static final int FIRE = 255;
@@ -49,6 +51,7 @@ final class DrawList {
     // how far gold as it ends
     float red, gold;
     float blur;                                // the frame out of focus by so many of its pixels, waking
+    float overcast;                            // out at sea: the low grey winter sky, 0 to 1
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -241,6 +244,7 @@ final class DrawList {
         arr(s, "ambientGround", ambientGround);
         arr(s, "fog", fog);
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
+        s.append(",\"overcast\":").append(overcast);
         s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);

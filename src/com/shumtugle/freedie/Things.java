@@ -43,6 +43,59 @@ final class Things {
                 oz + R[6] * lx + R[7] * ly + R[8] * lz, hx, hy, hz, M, rgb, material);
     }
 
+    /** A box in the thing's own frame, turned about the thing's z axis by a, round its own middle. */
+    private static void turnedZ(DrawList d, float lx, float ly, float lz, float hx, float hy, float hz, float a, int rgb,
+                                int material) {
+        float c = (float) Math.cos(a), s = (float) Math.sin(a);
+        for (int i = 0; i < 3; i++) {
+            float p = R[i * 3], q = R[i * 3 + 1], e = R[i * 3 + 2];
+            M[i * 3] = p * c + q * s;
+            M[i * 3 + 1] = -p * s + q * c;
+            M[i * 3 + 2] = e;
+        }
+        d.box(ox + R[0] * lx + R[1] * ly + R[2] * lz, oy + R[3] * lx + R[4] * ly + R[5] * lz,
+                oz + R[6] * lx + R[7] * ly + R[8] * lz, hx, hy, hz, M, rgb, material);
+    }
+
+    // ---- out at sea: a life ring and a ship's wheel, standing on edge, facing the ice ----
+
+    private static final float SEG = (float) Math.tan(Math.PI / 12) * 1.12f;
+
+    /** A life ring as big as its block: red and white quarters round it, a rope looped along its outside. */
+    static void lifeRing(DrawList d, float x, float y, float z, float[] rot, float r, float hz) {
+        at(x, y, z, rot);
+        float rIn = r * 0.52f, rOut = r * 0.96f, rm = (rIn + rOut) * 0.5f, half = (rOut - rIn) * 0.5f;
+        for (int k = 0; k < 12; k++) {
+            float a = (float) (k * Math.PI / 6), c = (float) Math.cos(a), sn = (float) Math.sin(a);
+            int col = (k / 3) % 2 == 0 ? 0xD8322A : 0xF2EEE6;
+            turnedZ(d, c * rm, sn * rm, 0f, half, rOut * SEG, hz * 0.8f, a, col, DrawList.PAINT);
+        }
+        // the rope: a dark line round the outside, caught to it at four points
+        for (int k = 0; k < 12; k++) {
+            float a = (float) ((k + 0.5) * Math.PI / 6), c = (float) Math.cos(a), sn = (float) Math.sin(a);
+            turnedZ(d, c * r * 0.985f, sn * r * 0.985f, 0f, r * 0.03f, r * SEG * 0.9f, hz * 0.3f, a, 0x4A4038, DrawList.PLAIN);
+        }
+    }
+
+    /** A ship's wheel as big as its block: a rim of dark wood, a hub, eight spokes running out past the rim into handles. */
+    static void wheel(DrawList d, float x, float y, float z, float[] rot, float r, float hz, int wood) {
+        at(x, y, z, rot);
+        int dark = Street.scale(wood, 0.8f);
+        float rIn = r * 0.6f, rOut = r * 0.76f, rm = (rIn + rOut) * 0.5f, half = (rOut - rIn) * 0.5f;
+        for (int k = 0; k < 12; k++) {
+            float a = (float) (k * Math.PI / 6);
+            turnedZ(d, (float) Math.cos(a) * rm, (float) Math.sin(a) * rm, 0f, half, rOut * SEG, hz * 0.45f, a, wood, DrawList.WOOD);
+        }
+        for (int k = 0; k < 8; k++) {
+            float a = (float) (k * Math.PI / 4 + Math.PI / 8), c = (float) Math.cos(a), sn = (float) Math.sin(a);
+            // a spoke from the hub out through the rim, and a turned handle at its end
+            turnedZ(d, c * r * 0.47f, sn * r * 0.47f, 0f, r * 0.42f, r * 0.045f, hz * 0.3f, a, dark, DrawList.WOOD);
+            turnedZ(d, c * r * 0.93f, sn * r * 0.93f, 0f, r * 0.07f, r * 0.065f, hz * 0.3f, a, wood, DrawList.WOOD);
+        }
+        part(d, 0f, 0f, 0f, r * 0.16f, r * 0.16f, hz * 0.6f, dark, DrawList.WOOD);
+        part(d, 0f, 0f, 0f, r * 0.07f, r * 0.07f, hz * 0.75f, 0xB08A3A, DrawList.GOLD);
+    }
+
     // ---- a steel drum standing on end ----
 
     /** Painted steel, darker chimes at both ends, two rolling hoops, a lid a little down inside, a bung. */

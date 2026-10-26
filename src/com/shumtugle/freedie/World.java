@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.22";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.23";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -46,13 +46,14 @@ final class World {
     private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
     private final DrawList still = new DrawList();   // the street, built once
+    private final DrawList sea = new DrawList();     // the winter ocean beyond the portal, built once
     private boolean built;
     private final Traffic traffic = new Traffic(PLINTH_Z);
     // what cannot be walked or driven through: the street's own things, and what lies about
     private final Solid solid = new Solid();
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
-    private final float[] jolt = new float[2], view = new float[3];
+    private final float[] jolt = new float[2], view = new float[3], callAt3 = new float[3];
 
     // the game's progress: the level being played (from 0), the golden cubes in hand, where
     int level;
@@ -154,13 +155,14 @@ final class World {
         }
         flashOut = Math.max(0f, flashOut - dt);
         // birds and planes keep their own time, counted only while the street is in sight
-        fliers.update(dt, bridge == null && game.fight == null && game.tilt() == 0f);
+        fliers.update(dt, bridge == null && game.fight == null && !game.atSea && game.tilt() == 0f);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
             game.cubes = cubes;
             game.update(dt);
             level = game.level;
+            atSea = game.atSea;
             if (game.cubeGift) {
                 // the cube the crane brought, in the rack
                 game.cubeGift = false;
@@ -235,11 +237,13 @@ final class World {
     void draw(DrawList d) {
         if (!built) {
             Street.build(still, solid);
+            Ocean.build(sea);
             built = true;
         }
         d.begin(W, h);
         d.time = time;
         light(d);
+        if (game.atSea && intro == null) Ocean.light(d);
         java.util.Arrays.fill(d.flat, 0);
         Px f = flat(d);
         if (intro != null) {
@@ -270,7 +274,7 @@ final class World {
         d.fogStart *= view[2];
         d.fogScale *= view[2];
         game.frame(d);
-        if (game.fight == null) fliers.strokes(d);
+        if (game.fight == null && !game.atSea) fliers.strokes(d);
         d.red = game.red();
         d.gold = game.gold();
         d.blur = game.blur();
@@ -289,19 +293,29 @@ final class World {
             int k = (int) (up * 255f);
             for (int i = 0; i < a.length; i++) a[i] = (a[i] & 0xFFFFFF) | (k << 24);
         }
-        d.append(still);
-        traffic.draw(d);
-        people.draw(d, time, CAM_X, CAM_Y, CAM_Z);
+        if (game.atSea) {
+            d.append(sea);
+            Ocean.draw(d, Builder.CZ, time);
+            Ocean.button(time, callAt3);
+        } else {
+            d.append(still);
+            traffic.draw(d);
+            people.draw(d, time, CAM_X, CAM_Y, CAM_Z);
+            callAt3[0] = Street.CALL_X;
+            callAt3[1] = Street.CALL_Y + 0.06f;
+            callAt3[2] = Street.CALL_Z;
+        }
         game.draw(d);
         // the red button on the call box: a slow glow, bright for a moment when pressed
         float since = time - pressedAt;
         float glow = since < 0.35f ? 1f : 0.45f + 0.25f * (float) Math.sin(time * 3.1f);
         int red = Street.mix(0x6A0C08, 0xFF2A18, glow);
         float in = since < 0.15f ? 0.015f : 0f;
-        d.box(Street.CALL_X + in, Street.CALL_Y + 0.06f, Street.CALL_Z, 0.025f, 0.075f, 0.075f, null, red, DrawList.GLOW);
-        if (!d.project(Street.CALL_X, Street.CALL_Y + 0.06f, Street.CALL_Z, button)) button[0] = button[1] = -99f;
+        d.box(callAt3[0] + in, callAt3[1], callAt3[2], 0.025f, 0.075f, 0.075f, null, red, DrawList.GLOW);
+        if (!d.project(callAt3[0], callAt3[1], callAt3[2], button)) button[0] = button[1] = -99f;
 
-        // the flat layer: the aim, the version in the corner, and the cost of a frame while the engine is young
+        // the flat layer: snow at sea, the aim, the version in the corner, and the cost of a frame while the engine is young
+        if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
         PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
         if (frameMs > 0f) {
@@ -323,6 +337,7 @@ final class World {
         d.fogStart = 8f;
         d.fogScale = 220f;
         d.dark = 0f;
+        d.overcast = 0f;
         d.flash = 0f;
         d.goldGlow = 1f;
         d.tube = -1f;

@@ -192,6 +192,7 @@ final class Gfx {
         GLES30.glUniform3fv(u(skyP, "uSun"), 1, d.sun, 0);
         GLES30.glUniform1f(u(skyP, "uTime"), d.time);
         GLES30.glUniform1f(u(skyP, "uDark"), d.dark);
+        GLES30.glUniform1f(u(skyP, "uOvercast"), d.overcast);
         GLES30.glUniform1i(u(skyP, "uFlyN"), d.flyN);
         if (d.flyN > 0) GLES30.glUniform4fv(u(skyP, "uFly"), d.flyN * 2, d.fly, 0);
         GLES30.glBindVertexArray(empty);
@@ -249,6 +250,7 @@ final class Gfx {
         GLES30.glUniform3fv(u(p, "uSpot"), 1, d.spot, 0);
         GLES30.glUniform1f(u(p, "uSpotRadius"), d.spotRadius);
         GLES30.glUniform1f(u(p, "uGoldGlow"), d.goldGlow);
+        GLES30.glUniform1f(u(p, "uTime"), d.time);
     }
 
     // ---- helpers ----
