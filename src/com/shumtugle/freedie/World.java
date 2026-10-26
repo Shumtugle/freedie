@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.20";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.21";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -158,6 +158,12 @@ final class World {
             game.cubes = cubes;
             game.update(dt);
             level = game.level;
+            if (game.cubeGift) {
+                // the cube the crane brought, in the rack
+                game.cubeGift = false;
+                cubes++;
+                host.saveInt("cubes", cubes);
+            }
         }
     }
 
@@ -201,6 +207,11 @@ final class World {
         return game.fight == null ? "no fight, level " + (level + 1) : game.fight.standState() + (game.aiming ? " aiming" : "") + " hs " + game.hs;
     }
 
+    /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */
+    void standCrane() {
+        game.standCrane();
+    }
+
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
     void standTear() {
         game.standTear();
@@ -228,18 +239,24 @@ final class World {
             intro.flat(f, d);
             return;
         }
-        float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
-        // up into the gods' sky: the street slides down as far as the frame is tall
-        float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
-        // far plinths: under an aim the view closes in on the building
-        game.view(yaw, pitch, view);
-        yaw = view[0];
-        pitch = view[1];
-        // in the fight the street jolts as she comes down
-        game.jolt(jolt);
-        yaw += jolt[0] / (W * 1.9f);
-        pitch += jolt[1] / (W * 1.9f);
-        d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2], 0.1f, 500f);
+        if (game.crane != null) {
+            // a film between episodes: its own eye
+            game.crane.camera(d, W);
+            view[2] = 1f;
+        } else {
+            float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
+            // up into the gods' sky: the street slides down as far as the frame is tall
+            float pitch = (float) Math.atan(1.3f * game.tilt() * h / (W * 1.9f));
+            // far plinths: under an aim the view closes in on the building
+            game.view(yaw, pitch, view);
+            yaw = view[0];
+            pitch = view[1];
+            // in the fight the street jolts as she comes down
+            game.jolt(jolt);
+            yaw += jolt[0] / (W * 1.9f);
+            pitch += jolt[1] / (W * 1.9f);
+            d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2], 0.1f, 500f);
+        }
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];
         d.fogScale *= view[2];

@@ -1,0 +1,55 @@
+# The film between the third episode and the fourth, the first time: the crane comes for the
+# plinth, carries it three meters on, and brings a golden cube for the rack.
+screen 1096 2560
+keep level 38
+keep cubes 2
+restart
+skip
+wait 2.6
+crane
+wait 0.38
+shot c00
+wait 0.38
+shot c01
+wait 0.38
+shot c02
+wait 0.38
+shot c03
+wait 0.38
+shot c04
+wait 0.38
+shot c05
+wait 0.38
+shot c06
+wait 0.38
+shot c07
+wait 0.38
+shot c08
+wait 0.38
+shot c09
+wait 0.38
+shot c10
+wait 0.38
+shot c11
+wait 0.38
+shot c12
+wait 0.38
+shot c13
+wait 0.38
+shot c14
+wait 0.38
+shot c15
+wait 0.38
+shot c16
+wait 0.38
+shot c17
+wait 0.38
+shot c18
+wait 0.38
+shot c19
+wait 0.38
+shot c20
+wait 0.38
+shot c21
+wait 1.0
+shot c_after

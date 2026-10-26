@@ -199,6 +199,10 @@ public final class Stand implements World.Host {
         } else if (c.equals("tear")) {
             // every mattress torn, every suitcase burst open
             world.standTear();
+        } else if (c.equals("crane")) {
+            // the crane's film between the third episode and the fourth, at once
+            world.standCrane();
+            step();
         } else if (c.equals("fight")) {
             // the fight at once, as from the bridge's console
             world.standFight();

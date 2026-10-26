@@ -39,7 +39,7 @@ import java.util.Random;
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7;
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7, INSERT = 8;
     static final int STARS = 5;
     /** The last level there is yet: the end of the fourth episode, just before the alley. */
     static final int LAST = 49;
@@ -84,6 +84,11 @@ final class Game implements Physics.Listener {
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
     private float chapterT = -1f;
     private boolean chapterDue;
+    // a film between two episodes, while it plays (see Crane); the light rising at its end; the
+    // cube it gave, for the world to put in the rack
+    Crane crane;
+    private boolean craneOut;
+    boolean cubeGift;
     // the gods' sky, made once the frame's size is known
     private Sky sky;
     private int throwsMade, boltsHeard;
@@ -408,10 +413,14 @@ final class Game implements Physics.Listener {
 
     /** Whether the hand is free for something else: the hammer in it, no aim begun. */
     boolean handFree() {
-        return hs == HAND && !aiming;
+        return hs == HAND && !aiming && crane == null;
     }
 
     void touch(int type, float x, float y) {
+        if (crane != null) {
+            if (type == DOWN) crane.tap();
+            return;
+        }
         if (type == DOWN) {
             tapX = x;
             tapY = y;
@@ -857,6 +866,20 @@ final class Game implements Physics.Listener {
             case VANISH:
                 if (stateTime > 0.5f) start(level, false);
                 break;
+            case INSERT:
+                crane.update(dt);
+                if (crane.over() && !craneOut) {
+                    // the film ends as it began, in the light
+                    craneOut = true;
+                    chapterT = 0f;
+                    host.sound(Synth.WHOOSH, 0.7f, 0.7f);
+                }
+                if (craneOut && chapterT >= CHAPTER_RISE) {
+                    crane = null;
+                    craneOut = false;
+                    start(Math.min(LAST, nextLevel), false);
+                }
+                break;
             case FIGHT:
                 fight.step(dt);
                 if (fight.end > 2.8f && fight.won) fightWon();
@@ -872,10 +895,16 @@ final class Game implements Physics.Listener {
                     host.sound(Synth.WHOOSH, 0.7f, 0.7f);
                 }
                 if (stateTime >= holdFor && (chapterT < 0f || chapterT >= CHAPTER_RISE)) {
+                    boolean chapter = chapterDue;
                     chapterDue = false;
                     if (fightNext) {
                         // down out of the sky, into the red street, where she is coming
                         startFight(true);
+                        break;
+                    }
+                    if (chapter && craneAfter(level, nextLevel)) {
+                        // out of the light onto the street, where the crane carries the plinth on
+                        startCrane();
                         break;
                     }
                     // the gods have thrown the blocks: the next building falls into place as the eye comes down
@@ -1041,6 +1070,46 @@ final class Game implements Physics.Listener {
         host.saveInt("ep" + e + "done", 1);
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
         if (Episode.ENDS[e] == Episode.NEW) chapterDue = true;
+    }
+
+    /** Whether the crane's film comes between these two levels: from the third episode into the fourth. */
+    static boolean craneAfter(int lv, int next) {
+        return lv + 1 == Episode.LAST[2] && next == lv + 1;
+    }
+
+    /**
+     * The film between the third episode and the fourth: what was left of the building has
+     * gone in the light, the plinth stands empty, and the crane comes for it. The first time
+     * it brings a golden cube.
+     */
+    private void startCrane() {
+        float from = Builder.CZ, to = Builder.BASE_CZ + Builder.farther(nextLevel);
+        phys.clear();
+        pieces.clear();
+        toBurst.clear();
+        toPop.clear();
+        pN = 0;
+        lN = 0;
+        dropN = 0;
+        hammer.ghost = true;
+        hs = HAND;
+        aiming = false;
+        power = 0f;
+        fromSky = false;
+        crane = new Crane(this, from, to, host.loadInt("ins2") != 1, cubes, nextLevel);
+        // the cars coming down the road keep clear of where it is going
+        Builder.CZ = to;
+        craneOut = false;
+        crest.fresh();
+        setState(INSERT);
+    }
+
+    /** For the desktop stand: the crane's film at once, as if the third episode had just been won. */
+    void standCrane() {
+        level = Episode.LAST[2] - 1;
+        nextLevel = level + 1;
+        Builder.CZ = Builder.BASE_CZ + Builder.farther(level);
+        startCrane();
     }
 
     /** Into an episode from the bridge: its first building, through the light. */
@@ -1622,7 +1691,8 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
-        if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
+        if (crane != null) crane.draw(d);
+        else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
         else fight.draw(d);
         float st = stagger();
         for (int i = 0; i < pieces.size(); i++) {
@@ -1665,7 +1735,7 @@ final class Game implements Physics.Listener {
             d.box(pX[i], pY[i], pZ[i], s, s, s, null, pCol[i], pWet[i] ? DrawList.GLASS : DrawList.PLAIN);
         }
         drawLights(d);
-        hammer(d);
+        if (crane == null) hammer(d);
     }
 
     /**
@@ -1773,6 +1843,10 @@ final class Game implements Physics.Listener {
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {
+        if (crane != null) {
+            crane.flat(f);
+            return;
+        }
         float k = tilt();
         if (k > 0f && sky != null) {
             // the gods' strip comes down from above as the eye goes up
@@ -1891,6 +1965,22 @@ final class Game implements Physics.Listener {
             heavyShown = heavyLeft;
             markT = -1f;
         }
+    }
+
+    /** The crest as a level about to open shows it: whole stars, nothing down yet, so many cubes in the rack. */
+    void crestFor(Px f, int lv, int cubesShown) {
+        Crest c = crest;
+        c.level = lv;
+        c.stars = STARS;
+        c.cubes = cubesShown;
+        c.heavyShown = heavyShown;
+        c.heavyLeft = heavyLeft;
+        c.heavyOn = heavyOn;
+        c.goldOn = false;
+        c.won = false;
+        c.knocked = 0f;
+        c.markT = -1f;
+        c.draw(f);
     }
 
     /** The crest at the top, with what it has to show this frame. */

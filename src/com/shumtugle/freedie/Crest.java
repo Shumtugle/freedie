@@ -278,6 +278,19 @@ final class Crest {
             ".olloroo.",
             "...ooo..."};
 
+    /** The same cube at any size, its pixels grown hard-edged: from its top left corner, so many pixels across. */
+    static void cubeAt(Px f, float x, float y, float size) {
+        int n = CUBE.length;
+        float cell = size / n;
+        int x0 = Math.round(x), y0 = Math.round(y), s = Math.max(1, Math.round(size));
+        for (int j = 0; j < s; j++)
+            for (int i = 0; i < s; i++) {
+                char c = CUBE[Math.min(n - 1, (int) (j / cell))].charAt(Math.min(n - 1, (int) (i / cell)));
+                int col = c == 'o' ? 0xFF7A4A0E : c == 't' ? 0xFFFFE07A : c == 'g' ? 0xFFFFFFFF : c == 'l' ? 0xFFF2B83A : c == 'r' ? 0xFFB8862A : 0;
+                if (col != 0) f.set(x0 + i, y0 + j, col);
+            }
+    }
+
     private void cube(Px f, int x, int y, int i) {
         // now and then a glint runs along the row, cube after cube
         float g = (clock * 1.3f - i * 0.12f) % 3.2f;

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.21
+- The first film between two episodes, after the 39th building: out of the light the street
+  is seen from low by the curb, a tower crane on the promenade lowers its hook, the slings
+  take the empty plinth, and it is carried three meters down the road, swaying under the
+  slewing jib, while the eye goes up and round with it. It is set down with a thud and a
+  puff of dust, the slings drop, and the eye comes back down to the player.
+- The first time only, the hook comes down once more with a golden cube on a short chain;
+  the cube leaves it and flies up into the rack in the crest. After that the film plays
+  without it, and a touch cuts it short.
+- Two new sounds, both synthesized: the winch's motor, and the hook's chain.
+
 ## 0.20
 - The fourth episode, whole: the game goes on to the fiftieth building, by the same seeds
   as the street game it grows from, and holds there until the alley is open. Nothing new

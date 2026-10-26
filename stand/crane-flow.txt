@@ -1,0 +1,27 @@
+# The real way into the film: the 39th felled (with the golden hammer, to be quick), the gods,
+# the light, the crane, the cube, and the 40th.
+screen 1096 2560
+keep level 38
+keep fails 10
+keep best 39
+keep cubes 1
+restart
+skip
+wait 2.6
+down 160 520
+wait 1.0
+up 160 520
+wait 6.5
+shot w0_gods
+wait 3.0
+shot w1_light
+wait 1.5
+shot w2_crane
+wait 4.4
+shot w3_street
+wait 1.4
+shot w4_cube
+wait 1.2
+shot w5_rack
+wait 2.5
+shot w6_fortieth
