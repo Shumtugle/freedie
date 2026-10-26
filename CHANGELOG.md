@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.1
+- Cause before effect: a building felled at one throw no longer puts the heavy hammer in
+  the hand before the gods have given it. The plain hammer stays in the hand as the view
+  goes up; the gods throw the heavy one down; once the view is back and its marks have
+  dropped into the corner, it is in the hand, with a heavy slap, and the plain one waits
+  at the lower left.
+
 ## 0.23
 - The portal: when the 101st is down and the gods have looked, no new building comes. A
   ring of glowing cloud gathers over the empty plinth, raw winter showing through it and

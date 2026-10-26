@@ -71,6 +71,8 @@ final class Game implements Physics.Listener {
     private float downAt, tapX, tapY, tapFar;
     // the marks in the corner lag behind the gift: they drop into place once the view is back down
     private int heavyShown, marksLanded;
+    // a heavy hammer given and still on its way down: not in the hand yet
+    private boolean heavyDue;
     private float markT = -1f;
     private static final float MARK_FALL = Crest.MARK_FALL, MARK_GAP = Crest.MARK_GAP;
     private boolean giftShown;
@@ -463,7 +465,7 @@ final class Game implements Physics.Listener {
             if (!can || !seen) return;
             aiming = true;
             downAt = clock;
-            tapOnHammer = fight == null && heavyLeft > 0 && onHammer(x, y);
+            tapOnHammer = fight == null && heavyShown > 0 && onHammer(x, y);
             lastX = x;
             lastY = y;
             if (fight != null) {
@@ -1075,9 +1077,10 @@ final class Game implements Physics.Listener {
             host.saveInt("fails", 0);
         }
         if (verdict == Sky.OVATION) {
-            // the gods give the heavy hammer, and put it in the hand for the next building
+            // the gods give the heavy hammer: it comes down to the player from the sky, and is in
+            // the hand only once it has come, when its marks have dropped into the corner
             heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
-            heavyOn = true;
+            heavyDue = true;
             host.saveInt("gifts", heavyLeft);
             giftShown = true;
             giftT0 = -1f;
@@ -1910,7 +1913,7 @@ final class Game implements Physics.Listener {
         }
         Hammer.draw(d, pose, gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN, 1f);
         // the other hammer waits at the lower left, in sight and in reach of a tap
-        if (heavyLeft > 0 || heavy) {
+        if (heavyShown > 0 || heavy) {
             Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f * zoomMul(), 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
             Hammer.draw(d, other, !heavy, 0.62f);
         }
@@ -2025,6 +2028,15 @@ final class Game implements Physics.Listener {
         if (heavyShown > heavyLeft) heavyShown = heavyLeft;
         if (heavyShown == heavyLeft) {
             markT = -1f;
+            // the gift has come down and its marks are in the corner: now it is in the hand
+            if (heavyDue && state != SKY_UP && state != SKY_HOLD && tilt() * fh < fh / 8f) {
+                heavyDue = false;
+                if (heavyLeft > 0 && !heavyOn) {
+                    heavyOn = true;
+                    host.sound(Synth.CATCH, 0.8f, 0.75f);
+                    host.buzz(45);
+                }
+            }
             return;
         }
         if (markT < 0f) {

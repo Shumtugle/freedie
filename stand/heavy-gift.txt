@@ -1,0 +1,29 @@
+# A building felled at one throw with only the plain hammer: the plain one stays in the hand
+# while the view goes up; the gods throw the heavy one down; only once its marks have dropped
+# into the corner is it in the hand.
+screen 1096 2560
+keep level 1
+keep gifts 0
+keep fails 10
+restart
+skip
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 2.0
+shot h1_felled
+wait 0.6
+shot h2_up
+wait 4.0
+shot h3_gift
+wait 2.4
+shot h4_back
+wait 0.8
+shot h5_marks
+wait 1.6
+shot h6_hand
+wait 1.5
+shot h7_hand
+wait 1.5
+shot h8_hand
