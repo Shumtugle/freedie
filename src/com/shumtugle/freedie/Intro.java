@@ -196,7 +196,7 @@ final class Intro implements Prelude {
     @Override
     public void draw(DrawList d) {
         d.append(Square.scene());
-        square.life(d, t, eye[0], eye[1], eye[2]);
+        square.life(d, t, eye[0], eye[1], eye[2], d.dark > 0.35f);
         if (frida.broken) frida.drawBroken(d);
         else {
             frida.pose();

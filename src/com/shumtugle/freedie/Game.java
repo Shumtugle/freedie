@@ -319,6 +319,8 @@ final class Game implements Physics.Listener {
      * reddens where it stands.
      */
     void startFight(boolean fromAbove) {
+        // down from the sky she has come in the game itself: her screen on the bridge lights up
+        if (fromAbove) host.saveInt("fought", 1);
         fightNext = false;
         throwDue = false;
         phys.clear();

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.2
+- The opening: once the town has gone dark, the passers-by and the cars on the square are
+  not there at all. Gone dark with the town, a figure still showed walking on the lit floor
+  behind her, its few boxes plain to see.
+- The bridge opens nothing the game has not reached. The fight's screen lights once she has
+  come in the game itself; the islands' screen stays dark until the story leads there. A
+  cube put into either before that, as the last versions allowed, goes back to the rack.
+
 ## 0.23.1
 - Cause before effect: a building felled at one throw no longer puts the heavy hammer in
   the hand before the gods have given it. The plain hammer stays in the hand as the view

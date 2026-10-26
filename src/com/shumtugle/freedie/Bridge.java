@@ -24,7 +24,10 @@ import java.util.Random;
  *
  * Under each screen a slot: a golden cube set into it opens the screen for good, and from
  * then on a throw at it goes to the episode's first level, as often as the player likes. The
- * first episode's slot holds a cube from the start. A cube goes in once and never comes out.
+ * first episode's slot holds a cube from the start. A cube goes in once and never comes out;
+ * only a screen the game has reached takes one: the fight's once she has come in the game,
+ * the islands' once the story leads there. A cube found in a screen not yet reached, from an
+ * earlier version that allowed it, goes back to the rack.
  *
  * On the console: the alley and the stones on the water, each a black and white monitor
  * that answers only where the game is (the first on the street, the second at sea); a dial that shows the whole ring from above; the HOME lever, back to the level being
@@ -76,7 +79,7 @@ final class Bridge {
     // what the screens know, read once as the room opens
     private final boolean[] slot = new boolean[SCREENS];
     private final int[] stars = new int[SCREENS], won = new int[SCREENS];
-    private final boolean alleyDone, finale;
+    private final boolean alleyDone, finale, fought;
     // where each screen was drawn this frame, for touches
     private final float[] xl = new float[SCREENS], xr = new float[SCREENS], ang = new float[SCREENS];
     private final boolean[] shown = new boolean[SCREENS];
@@ -104,6 +107,16 @@ final class Bridge {
         }
         alleyDone = host.loadInt("alley") > 0;
         finale = host.loadInt("finale") == 1;
+        fought = host.loadInt("fought") == 1;
+        // a cube put into a screen the game has not reached yet goes back to the rack: nothing
+        // is opened ahead of where the player has got to
+        for (int i = HUB; i < SCREENS; i++)
+            if (slot[i] && !reached(i)) {
+                slot[i] = false;
+                host.saveInt("slot" + i, 0);
+                w.cubes++;
+                host.saveInt("cubes", w.cubes);
+            }
         if (stills == null) readStills(host.asset("screens.bin"));
     }
 
@@ -159,11 +172,16 @@ final class Bridge {
         return Episode.of(w.level + 1);
     }
 
+    /**
+     * Whether the game has got that far: an episode once its first level is reached, the
+     * crossroads once the alley is done, the fight once she has come in the game. The world
+     * of the hopping drop stays dark until the story leads the player there.
+     */
     boolean reached(int i) {
         if (i < Episode.COUNT) return Episode.FIRST[i] <= w.best();
         if (i == HUB) return alleyDone;
-        // the games are lit from the start, to be seen; they open with a cube, as the rest
-        return true;
+        if (i == GAME_B) return fought;
+        return false;
     }
 
     boolean open(int i) {

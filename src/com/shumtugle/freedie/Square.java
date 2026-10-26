@@ -190,8 +190,13 @@ final class Square {
 
     // ---- what moves ----
 
-    /** Cars going round and people walking, at this moment, seen from where the eye is. */
-    void life(DrawList d, float t, float ex, float ey, float ez) {
+    /**
+     * Cars going round and people walking, at this moment, seen from where the eye is. Once
+     * the town has gone dark they are not there at all: on the black, even a dark figure
+     * walking shows, and shows how few boxes it is made of.
+     */
+    void life(DrawList d, float t, float ex, float ey, float ez, boolean dark) {
+        if (dark) return;
         for (int i = 0; i < CARS; i++) {
             int lane = carLane[i];
             float run = ((carAt[i] + carV[i] * t) % 130f + 130f) % 130f - 65f;
