@@ -1136,6 +1136,8 @@ final class Game implements Physics.Listener {
         if (b != null && b.material == Body.MATTRESS && (hammerHit && speed > 4.5f || speed > 7f)) tearMattress(b, x, y, z);
         boolean plastic = a.material == Body.WATER || (b != null && b.material == Body.WATER);
         float gain = Math.min(1f, (speed - 1f) / 5f);
+        // a heavy ball knocks about a great deal, and each knock was the loudest of all: kept down
+        if (a.material == Body.BALL || b != null && b.material == Body.BALL) gain *= 0.5f;
         if (hammerHit) gain = Math.min(1.3f, gain * 1.4f + 0.2f);
         int voice = voiceOf(a);
         if (voice < 0 && b != null) voice = voiceOf(b);
@@ -1194,7 +1196,8 @@ final class Game implements Physics.Listener {
         host.sound(Synth.CRASH, Math.min(1f, 0.4f + speed * 0.08f), 0.85f + fx.nextFloat() * 0.3f);
         host.sound(Synth.GLASS, 0.5f, 1.1f + fx.nextFloat() * 0.3f);
         if (wasQuiet) {
-            host.sound(Synth.ALARM, 0.45f, 1f);
+            int al = traffic.alarm(i);
+            host.sound(al, al == Synth.CHIRP ? 0.5f : 0.4f, 0.96f + fx.nextFloat() * 0.08f);
             carAlarmAt = clock;
         }
         host.buzz(50);
@@ -1284,7 +1287,7 @@ final class Game implements Physics.Listener {
                 if (o.asleep && !(o.maxX + e < b.minX || b.maxX + e < o.minX || o.maxY + e < b.minY
                         || b.maxY + e < o.minY || o.maxZ + e < b.minZ || b.maxZ + e < o.minZ)) phys.wake(o);
             for (int i = 0; i < 14; i++) spawn(b.px, b.py, b.pz, false, Street.scale(b.tint, 0.8f + fx.nextFloat() * 0.4f), 3.5f);
-            host.sound(Synth.POP, 1f, 0.9f + fx.nextFloat() * 0.25f);
+            host.sound(Synth.POP, 0.55f, 0.9f + fx.nextFloat() * 0.25f);
             host.buzz(20);
         }
         toPop.clear();
@@ -1294,14 +1297,15 @@ final class Game implements Physics.Listener {
 
     /** A heavy ball rolling along the plinth or the street rumbles as it goes. */
     private void rolling() {
-        if (clock - rollAt < 0.45f) return;
+        // one rumble at a time: each runs on for a couple of seconds, and laid over one another they roar
+        if (clock - rollAt < 1.7f) return;
         for (Body b : pieces) {
             if (b.material != Body.BALL || b.gone || b.asleep) continue;
             float onTop = Math.abs(b.px - Builder.CX) < Builder.PHX && Math.abs(b.pz - Builder.CZ) < Builder.PHZ ? Builder.TOP : 0f;
             if (b.py - b.radius > onTop + 0.04f || Math.abs(b.vy) > 0.6f) continue;
             float v = (float) Math.sqrt(b.vx * b.vx + b.vz * b.vz);
             if (v < 1f) continue;
-            host.sound(Synth.ROLL, Math.min(0.7f, v * 0.12f), 0.8f + Math.min(0.5f, v * 0.06f));
+            host.sound(Synth.ROLL, Math.min(0.32f, v * 0.06f), 0.8f + Math.min(0.5f, v * 0.06f));
             rollAt = clock;
             return;
         }

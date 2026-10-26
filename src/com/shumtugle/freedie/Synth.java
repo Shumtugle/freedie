@@ -27,6 +27,8 @@ final class Synth {
     static final int HUM = THUNDER_MORE + THUNDERS - 1, TV_OFF = HUM + 1;
     // the opening: wind high over the town, a chime for the name
     static final int WIND = TV_OFF + 1, CHIME = TV_OFF + 2;
+    // car alarms are not all the same: a lock's chirp, a horn honking, a wailing siren
+    static final int CHIRP = CHIME + 1, HORN = CHIME + 2, WAIL = CHIME + 3;
     static final float HUM_EVERY = 0.5f;
 
     /** One of the thunders: 0 the plain one, then the others. */
@@ -34,7 +36,7 @@ final class Synth {
         return k <= 0 ? THUNDER : THUNDER_MORE + (k - 1) % (THUNDERS - 1);
     }
 
-    final float[][] bank = new float[CHIME + 1][];
+    final float[][] bank = new float[WAIL + 1][];
 
     Synth() {
         Random r = new Random(7);
@@ -87,6 +89,9 @@ final class Synth {
         bank[THUNDER_MORE + 4] = thunder(r, 4.2f, 0.35f, 0f, 0.03f, 0.45f, 2000);
         bank[WIND] = wind(r);
         bank[CHIME] = chime(r);
+        bank[CHIRP] = chirp();
+        bank[HORN] = horn();
+        bank[WAIL] = wail();
         bank[GLASS] = knock(r, 0.4f, new float[]{1870f, 2950f, 4410f}, new float[]{0.6f, 0.4f, 0.3f},
                 new float[]{9f, 12f, 16f}, 0.4f, 0.8f);
     }
@@ -450,6 +455,62 @@ final class Synth {
             float v = lp * (float) Math.exp(-70f * t) * 1.4f;
             v += (float) Math.sin(2 * Math.PI * (210f - 300f * t) * t) * (float) Math.exp(-30f * t) * 0.35f;
             s[i] = v * Math.min(1f, t * 4000f);
+        }
+        return s;
+    }
+
+    /** A car lock's chirp, twice: two short bright beeps. */
+    private static float[] chirp() {
+        int n = (int) (0.32f * RATE);
+        float[] s = new float[n];
+        float ph = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            // beep, a gap, beep
+            float on = t < 0.09f ? t : t > 0.17f && t < 0.26f ? t - 0.17f : -1f;
+            if (on < 0f) continue;
+            ph += 1850f / RATE;
+            float sq = (ph % 1f) < 0.5f ? 1f : -1f;
+            float sn = (float) Math.sin(2 * Math.PI * ph);
+            float env = Math.min(1f, on * 300f) * Math.min(1f, (0.09f - on) * 300f);
+            s[i] = (sq * 0.2f + sn * 0.5f) * env * 0.42f;
+        }
+        return s;
+    }
+
+    /** A car's horn going off: three blunt honks of two tones together. */
+    private static float[] horn() {
+        int n = (int) (1.25f * RATE);
+        float[] s = new float[n];
+        float pa = 0f, pb = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            float k = t % 0.42f;
+            if (k > 0.26f) continue;
+            pa += 410f / RATE;
+            pb += 515f / RATE;
+            // a buzzy sawtooth pair, rounded a little
+            float v = ((pa % 1f) * 2f - 1f) * 0.5f + ((pb % 1f) * 2f - 1f) * 0.5f;
+            v = v * 0.6f + (float) Math.sin(2 * Math.PI * pa) * 0.3f;
+            float env = Math.min(1f, k * 120f) * Math.min(1f, (0.26f - k) * 80f);
+            s[i] = v * env * 0.6f;
+        }
+        return s;
+    }
+
+    /** A siren wailing: a tone swept up and down, twice. */
+    private static float[] wail() {
+        int n = (int) (1.8f * RATE);
+        float[] s = new float[n];
+        float ph = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            float sweep = 0.5f - 0.5f * (float) Math.cos(2 * Math.PI * t / 0.9f);
+            ph += (620f + 680f * sweep) / RATE;
+            float tri = 4f * Math.abs((ph % 1f) - 0.5f) - 1f;
+            float sn = (float) Math.sin(2 * Math.PI * ph);
+            float env = Math.min(1f, t * 30f) * Math.min(1f, (1.8f - t) * 6f);
+            s[i] = (tri * 0.4f + sn * 0.4f) * env * 0.3f;
         }
         return s;
     }

@@ -164,7 +164,7 @@ final class Fight {
         flyState[slot] = 1;
         flyT[slot] = 0f;
         host.sound(Synth.CRASH, 0.5f, 0.7f);
-        host.sound(Synth.ALARM, 0.35f, 0.9f);
+        host.sound(t.alarm(best), 0.35f, 0.9f);
         throwIn = 4.0f - 2.6f * progress();
     }
 

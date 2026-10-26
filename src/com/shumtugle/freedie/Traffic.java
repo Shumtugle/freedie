@@ -32,6 +32,9 @@ final class Traffic {
     /** Where each parked car is now, which way it faces, and whether it is up in the air. */
     final float[] atX = PARK_X.clone(), atZ = PARK_Z.clone(), atYaw = new float[PARK_X.length];
     final boolean[] away = new boolean[PARK_X.length];
+    /** What each parked car's alarm sounds like: the two tones, a chirp, the horn, a wail. */
+    private final int[] alarmSound = new int[PARK_X.length];
+    private static final int[] ALARMS = {Synth.ALARM, Synth.CHIRP, Synth.CHIRP, Synth.HORN, Synth.WAIL};
     /** No cars come down the road: the street is held for the fight. */
     boolean calm;
 
@@ -50,7 +53,13 @@ final class Traffic {
         for (int i = 0; i < PARK_X.length; i++) {
             parkColor[i] = PAINT[rnd.nextInt(PAINT.length)];
             atYaw[i] = PARK_X[i] < 0f ? 0f : (float) Math.PI;
+            alarmSound[i] = ALARMS[rnd.nextInt(ALARMS.length)];
         }
+    }
+
+    /** The sound a parked car's alarm makes, its own. */
+    int alarm(int i) {
+        return alarmSound[i];
     }
 
     int paint(int i) {

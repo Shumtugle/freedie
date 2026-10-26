@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.2
+- Car alarms are not all the same any more: each parked car has its own, chosen once, the
+  two hoarse tones of before, a lock's short double chirp (the commonest), a horn honking
+  three times, or a wailing siren.
+- The balls are quieter. A rolling ball's rumble no longer starts again every half second
+  over the last one (it is one rumble at a time now, and softer); a heavy ball's knocks are
+  half as loud; a balloon pops at half the loudness.
+
 ## 0.19.1
 - In the opening, when the square goes dark and only Freedie is left in her pool of light,
   the people go into the dark with the town: one walking behind her is no longer lit by the
