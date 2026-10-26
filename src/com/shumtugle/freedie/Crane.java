@@ -28,10 +28,10 @@ final class Crane {
     static final float SLINGS = 2.6f, LIFT = 3f;
     // the film, in seconds
     static final float DOWN0 = 0.2f, DOWN1 = 1.5f, GRIP0 = 1.45f, GRIP1 = 1.75f, LIFT0 = 1.9f, LIFT1 = 2.75f,
-            SLEW0 = 2.5f, SLEW1 = 3.9f, LOWER0 = 3.65f, LAND = 4.4f, LET0 = 4.55f, LET1 = 4.85f, UP0 = 4.7f, UP1 = 5.5f,
+            SLEW0 = 2.5f, SLEW1 = 3.9f, LOWER0 = 3.65f, LAND = 4.4f, LET0 = 4.55f, LET1 = 4.85f, UP0 = 4.7f, UP1 = 5.3f,
             STREET = 5.6f;
     // the gift: the jib round to the front, the hook down with the cube, the cube up into the rack
-    static final float GSLEW0 = 5.2f, GSLEW1 = 6.0f, GDOWN0 = 5.85f, GDOWN1 = 6.6f, GOFF = 7.05f, GIN = 7.6f, GEND = 7.9f;
+    static final float GSLEW0 = 4.95f, GSLEW1 = 5.65f, GDOWN0 = 5.45f, GDOWN1 = 6.15f, GOFF = 6.65f, GIN = 7.2f, GEND = 7.5f;
     // where the cube is brought, in front of the player
     static final float GX = -1.3f, GZ = 7.2f, GHOOK = 3.35f, CHAIN = 0.5f, CUBE = 0.24f;
     // the swing: a load on a short rope for the eye, so it sways while it is carried
@@ -287,7 +287,8 @@ final class Crane {
         float k = steady(), hx = tx + ox * k, hz = tz + oz * k;
         hook(d, hx, hz);
         plinth(d, hx, hz);
-        if (gift && t >= GSLEW0 && t < GOFF) cube(d, hx, hz);
+        // the cube is put on the hook up out of sight, and comes down with it
+        if (gift && t >= GDOWN0 && t < GOFF) cube(d, hx, hz);
     }
 
     /** The mast: a square lattice tower on its ballast, standing still while the top slews. */

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.21.2
+- The crane's film, watched through: the empty pause before the cube came down is gone,
+  the hook goes straight round to the front once the plinth is set down; and the cube is no
+  longer seen hanging from it on the way, it comes down with the hook from out of sight.
+
 ## 0.21.1
 - Things cross the sky again, as seldom as they did in the street game this one grows from:
   now and then a small flock of birds far off over the end of the street, wings beating and
