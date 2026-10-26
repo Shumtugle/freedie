@@ -23,12 +23,13 @@ final class DrawList {
     // and a third: it goes into the dark with the world, the pool of light left there never
     // lights it (the people: seen close on the black, they are too plainly a few boxes)
     static final int CROWD = 253;
-    // and a fourth: high in the sky, above the street's haze, it takes none (the watchers' room)
-    static final int ALOFT = 252;
-    /** While true, every box added is marked ALOFT, unless it carries a number of its own. */
-    boolean aloft;
-    // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one
-    static final int POLISHED = 20, RUBBER = 21;
+    // and a fourth: only the mirror up in the sky shows it (whoever stands where the eye is)
+    static final int MIRRORED = 251;
+    /** While true, every box added is marked MIRRORED, unless it carries a number of its own. */
+    boolean mirrored;
+    // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one;
+    // or the mirror, a ball of steel that shows the world round it
+    static final int POLISHED = 20, RUBBER = 21, MIRROR = 24;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 
@@ -58,6 +59,13 @@ final class DrawList {
     float overcast;                            // out at sea: the low grey winter sky, 0 to 1
     float night;                               // on the street: lamps and windows lit, stars out, 0 to 1
     final float[] grade = {1f, 1f, 0f};        // the hour's grade: contrast, saturation, warmth
+    // the mirror up in the sky: its middle and radius (radius 0: there is none). The world
+    // round it is drawn once more from its middle, all six ways, for it to show
+    final float[] mirror = new float[4];
+    // its wreath of storm cloud: how far out (in mirror widths, 0: none), how black, lit within
+    final float[] halo = new float[3];
+    float rippleAge, ripple;                   // a ring over the mirror: seconds since, how strong
+    float bolt;                                // lightning just now, 0 to 1
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -89,6 +97,9 @@ final class DrawList {
         count = 0;
         ballCount = 0;
         flyN = 0;
+        mirror[3] = 0f;
+        halo[0] = halo[1] = halo[2] = 0f;
+        ripple = rippleAge = bolt = 0f;
     }
 
     /**
@@ -169,7 +180,7 @@ final class DrawList {
         b[o + 15] = ((rgb >> 16) & 0xFF) / 255f;
         b[o + 16] = ((rgb >> 8) & 0xFF) / 255f;
         b[o + 17] = (rgb & 0xFF) / 255f;
-        b[o + 18] = aloft && material == (float) Math.floor(material) ? material + ALOFT / 256f : material;
+        b[o + 18] = mirrored && material == (float) Math.floor(material) ? material + MIRRORED / 256f : material;
         count++;
     }
 
@@ -255,6 +266,9 @@ final class DrawList {
         s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
+        arr(s, "mirror", mirror);
+        arr(s, "halo", halo);
+        s.append(",\"rippleAge\":").append(rippleAge).append(",\"ripple\":").append(ripple).append(",\"bolt\":").append(bolt);
         s.append(",\"flyN\":").append(flyN).append(",\"fly\":[");
         for (int i = 0; i < flyN * 8; i++) {
             if (i > 0) s.append(',');

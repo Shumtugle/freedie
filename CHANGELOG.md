@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.26
+- The sky has a mirror now instead of the room with the glass floor. High over the street
+  hangs a great ball of polished steel in a wreath of black storm cloud. Seen from below it
+  shows the street from above, bent round as in a drop of mercury: the plinth and what is
+  left on it, the palms, the houses, the sea, the horizon in a ring at its rim. It takes the
+  hour and the season as the street does: a sunset in it, lit windows at night, the grey
+  ice out at sea.
+- In the middle of the mirror stands whoever looks up at it: a dark Freedie, a giant, her
+  hammer in her hand, her eyes alight. Not plain at the first look.
+- The weather judges the fall: lightning out of the wreath and thunder for a building
+  felled at one throw; a far flash for a few throws; nothing for many; and when the stars
+  ran out the wreath goes blacker and one bolt falls. The bolts are thick and forked, the
+  frame flashes cold with them, and the near ones make the steel shiver.
+- A gift comes out of the mirror itself: a ring runs out over the steel as over a liquid,
+  and the hammer falls through it.
+- Heavy throws add up past nine: their marks go in rows of nine under the stars, five rows
+  at most.
+
 ## 0.25
 - Who watches from the sky is no longer a row of old gods in the clouds. High over the
   street hangs an iron hoop, and in it a round room with a glass floor: the eye goes up and

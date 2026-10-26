@@ -49,8 +49,9 @@ final class Frida {
     final float[] ax = new float[JOINTS], az = new float[JOINTS], ay = new float[JOINTS];
     float x, z;                              // where she stands; she faces -z
     float y;                                 // the floor she stands on, if not the ground
-    // which of her she is: of stone, as in town; of fire, embers in her brick; of old ice
-    static final int STONE_KIND = 0, FIRE_KIND = 1, ICE_KIND = 2;
+    // which of her she is: of stone, as in town; of fire, embers in her brick; of old ice;
+    // or the one the mirror shows where the player stands, a shadow, only her eyes alight
+    static final int STONE_KIND = 0, FIRE_KIND = 1, ICE_KIND = 2, SHADOW_KIND = 3;
     int kind;
     float lift;                              // how far her hips are raised (or, below 0, sunk), her units
     float size = 1f;                         // meters to her unit
@@ -251,9 +252,14 @@ final class Frida {
         return hurt > 0f ? Street.mix(c, 0xFFE0B0, Math.min(1f, hurt) * 0.6f) : c;
     }
 
-    /** Her colours as the fiery one or the icy one. */
+    /** Her colours as the fiery one, the icy one or the shadow. */
     private int kindColor(int i, int c) {
         boolean eye = i >= eyeFrom && i < eyeTo, knee = i >= kneeFrom && i < kneeTo && look[i] == DrawList.GLOW;
+        if (kind == SHADOW_KIND) {
+            if (eye) return 0xFFB45A;
+            if (c == WHITE || c == LACE) return 0x2E2C33;
+            return knee ? 0x3A2A22 : Street.scale(c, 0.12f) | 0x0A0A0E;
+        }
         if (kind == FIRE_KIND) {
             if (eye || knee) return 0xFFF0B0;
             if (look[i] == DrawList.GRAIN) return c == BRICK ? 0xFF6A1C : 0xE8501A;

@@ -13,10 +13,9 @@ import java.util.Random;
  *
  * Every throw burns one of five stars in the corner. Knock three quarters of a building's
  * weight off the plinth before the stars run out and, once things are still, the view tips up
- * to the glass floor among the clouds where his other selves look down and judge the fall
- * (see Deck); then the next building
- * falls out of the sky onto the plinth as the view comes back down. Run out of stars, and the
- * watchers frown, and the same building comes down again for another try.
+ * to the mirror in the sky, where the weather judges the fall (see Mirror); then the next
+ * building falls out of the sky onto the plinth as the view comes back down. Run out of stars,
+ * and the sky goes black over him, and the same building comes down again for another try.
  *
  * The first building is the watchers' welcome: it stands close, flies to pieces at the first touch
  * of the hammer, and they all laugh and give the heavy hammer. From the second on the plinth
@@ -64,7 +63,8 @@ final class Game implements Physics.Listener {
     private int nextLevel;
 
     // the heavy hammer: the watchers give a few heavy throws for a building felled at one throw
-    static final int HEAVY_GIFT = 3, HEAVY_MAX = 9;
+    // they add up in rows of nine under the stars, five rows at most
+    static final int HEAVY_GIFT = 3, HEAVY_MAX = Crest.ROW * 5;
     static final float HEAVY_MASS = 2.5f;
     int heavyLeft;
     boolean heavyOn;
@@ -99,8 +99,8 @@ final class Game implements Physics.Listener {
     Crane crane;
     private boolean craneOut;
     boolean cubeGift;
-    // who watches from the glass floor among the clouds
-    private final Deck deck = new Deck();
+    // the mirror up in the sky, and who it shows
+    private final Mirror mirror = new Mirror();
     private int throwsMade, boltsHeard;
     private float holdFor, backT;
     private boolean fromSky, buildFromSky;
@@ -376,7 +376,7 @@ final class Game implements Physics.Listener {
     private void fightWon() {
         afterFight = true;
         winSky = 0f;
-        lookUp(Deck.OVATION, level + 1);
+        lookUp(Mirror.OVATION, level + 1);
     }
 
     /** The fight is lost: the player wakes on the street, before the same building, as from a dream. */
@@ -555,7 +555,8 @@ final class Game implements Physics.Listener {
 
     /** Where the hammer in hand is on screen, the other one at the lower left, and the marks. */
     private boolean onHammer(float x, float y) {
-        return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 32f);
+        int rows = Math.max(1, (heavyShown + Crest.ROW - 1) / Crest.ROW);
+        return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 32f + (rows - 1) * 10f);
     }
 
     /** What a body is, in a word or two, for the journal. */
@@ -981,10 +982,10 @@ final class Game implements Physics.Listener {
         // a lost try shows on the ring once the street is back in sight
         if (tilt() * fh < fh / 8f && state != SKY_UP && state != SKY_HOLD) crest.attempts(fails);
         if (state == SKY_UP || state == SKY_HOLD || fromSky) {
-            deck.update(dt);
-            if (deck.bolts != boltsHeard) {
-                boltsHeard = deck.bolts;
-                strikeHeard(deck.boltNear);
+            mirror.update(dt);
+            if (mirror.bolts != boltsHeard) {
+                boltsHeard = mirror.bolts;
+                strikeHeard(mirror.boltNear);
             }
         }
         if (chapterT >= 0f) {
@@ -1011,12 +1012,12 @@ final class Game implements Physics.Listener {
                 break;
             case CLEARED:
                 if (stateTime > 2.2f && hs == HAND && (phys.settled() || stateTime > 4.5f)) {
-                    lookUp(throwsMade <= 1 ? Deck.OVATION : throwsMade <= 3 ? Deck.CHEER : Deck.POLITE, level + 1);
+                    lookUp(throwsMade <= 1 ? Mirror.OVATION : throwsMade <= 3 ? Mirror.CHEER : Mirror.POLITE, level + 1);
                 }
                 break;
             case LOST:
                 if (stateTime > 0.7f) {
-                    lookUp(Deck.GLOOM, level);
+                    lookUp(Mirror.GLOOM, level);
                 }
                 break;
             case VANISH:
@@ -1136,26 +1137,26 @@ final class Game implements Physics.Listener {
     }
 
     /**
-     * Up into the sky, where the watchers judge the fall: laughter and lightning for a building
-     * felled at one throw, and the heavy hammer; smiles for a few; a sceptic look for many;
-     * anger, sleep and scepticism when the stars ran out. The first building is their
-     * welcome: they all laugh aloud. Then the building for the level next.
+     * Up into the sky, to the mirror, where the weather judges the fall: lightning and thunder
+     * for a building felled at one throw, and the heavy hammer; a far flash for a few; nothing
+     * for many; a blacker sky and one bolt when the stars ran out. Then the building for the
+     * level next.
      */
     private void lookUp(int verdict, int next) {
         nextLevel = next;
-        String[] page = journal.end(clock, String.format(java.util.Locale.ROOT, "%s after %d throws: %.0f%% off the plinth; the watchers: %s",
-                verdict == Deck.GLOOM ? "lost" : "felled", throwsMade, (1f - onPlinth()) * 100f,
-                verdict == Deck.OVATION ? "laughter" : verdict == Deck.CHEER ? "smiles" : verdict == Deck.POLITE ? "a polite look" : "anger"));
+        String[] page = journal.end(clock, String.format(java.util.Locale.ROOT, "%s after %d throws: %.0f%% off the plinth; the sky: %s",
+                verdict == Mirror.GLOOM ? "lost" : "felled", throwsMade, (1f - onPlinth()) * 100f,
+                verdict == Mirror.OVATION ? "lightning" : verdict == Mirror.CHEER ? "a far flash" : verdict == Mirror.POLITE ? "still" : "black"));
         if (page != null) host.journal(page[0], page[1]);
         boolean fought = afterFight;
         afterFight = false;
-        holdFor = verdict == Deck.GLOOM ? 2.2f : verdict == Deck.OVATION ? 3.2f : 2.4f;
+        holdFor = verdict == Mirror.GLOOM ? 2.2f : verdict == Mirror.OVATION ? 3.2f : 2.4f;
         giftShown = false;
         goldGift = false;
         diamondGift = false;
         if (fought) {
             // the fight is over: nothing counted, and no fight again at once
-        } else if (verdict == Deck.GLOOM) {
+        } else if (verdict == Mirror.GLOOM) {
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
@@ -1178,7 +1179,7 @@ final class Game implements Physics.Listener {
             fails = 0;
             host.saveInt("fails", 0);
         }
-        if (verdict == Deck.OVATION) {
+        if (verdict == Mirror.OVATION) {
             // the watchers give the heavy hammer: it comes down to the player from the sky, and is in
             // the hand only once it has come, when its marks have dropped into the corner
             heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
@@ -1186,14 +1187,9 @@ final class Game implements Physics.Listener {
             host.saveInt("gifts", heavyLeft);
             giftShown = true;
         }
-        // who is up there: the fiery one once she has given her golden hammer, the icy one once
-        // she has armed him against her sister, or out on the ice; the giver, if a gift comes
-        deck.here[Deck.FIRE] = goldSeen;
-        deck.here[Deck.ICE] = atSea || host.loadInt("fought") == 1 || diamondGift;
-        int gift = diamondGift ? Hammer.DIAMOND : goldGift ? Hammer.GOLDEN : verdict == Deck.OVATION ? Hammer.HEAVY_KIND : -1;
-        // after a fight won they all laugh aloud, as at the first building
-        deck.begin(verdict, (level == 0 || fought) && verdict == Deck.OVATION, gift);
-        boltsHeard = deck.bolts;
+        int gift = diamondGift ? Hammer.DIAMOND : goldGift ? Hammer.GOLDEN : verdict == Mirror.OVATION ? Hammer.HEAVY_KIND : -1;
+        mirror.begin(verdict, gift);
+        boltsHeard = mirror.bolts;
         aiming = false;
         host.sound(Synth.WHOOSH, 0.5f, 0.6f);
         setState(SKY_UP);
@@ -1283,11 +1279,9 @@ final class Game implements Physics.Listener {
         setState(INSERT);
     }
 
-    /** For the desktop stand: up among the watchers at once, all three there, with a verdict, and held there. */
+    /** For the desktop stand: up at the mirror at once, with a verdict, and held there. */
     void standDeck(int verdict) {
-        deck.here[Deck.FIRE] = true;
-        deck.here[Deck.ICE] = true;
-        deck.begin(verdict, false, verdict == Deck.OVATION ? Hammer.HEAVY_KIND : -1);
+        mirror.begin(verdict, verdict == Mirror.OVATION ? Hammer.HEAVY_KIND : -1);
         nextLevel = level;
         holdFor = 600f;
         setState(SKY_HOLD);
@@ -1885,8 +1879,8 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
-        // up among the clouds, who watches
-        if (state == SKY_UP || state == SKY_HOLD || fromSky) deck.draw(d);
+        // up in the sky, the mirror
+        if (state == SKY_UP || state == SKY_HOLD || fromSky) mirror.draw(d);
         if (crane != null) crane.draw(d);
         else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
         else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);

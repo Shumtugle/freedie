@@ -2,7 +2,8 @@
 // its flat layer as a picture) with the same shaders and in the same passes as the phone:
 // the sun's depth map, the sky and the boxes into the small frame, then the small frame onto
 // the screen with hard pixels and the flat layer over it. Balls go after the boxes in each
-// pass, with the same shaders built for spheres.
+// pass, with the same shaders built for spheres. A mirror up in the sky gets what it sees
+// drawn first, six ways round from its middle into a small cube.
 'use strict';
 
 const CUBE = (() => {
@@ -20,6 +21,20 @@ const CUBE = (() => {
 })();
 
 const SHADOW_SIZE = 2048;
+const CUBE_SIZE = 128;
+// the six ways round a point, as the cube's faces want them: ahead, right, up
+const FACES = [
+  [1, 0, 0, 0, 0, -1, 0, -1, 0], [-1, 0, 0, 0, 0, 1, 0, -1, 0],
+  [0, 1, 0, 1, 0, 0, 0, 0, 1], [0, -1, 0, 1, 0, 0, 0, 0, -1],
+  [0, 0, 1, 1, 0, 0, 0, -1, 0], [0, 0, -1, -1, 0, 0, 0, -1, 0]];
+
+// one face of the cube round a point: world to clip, a quarter turn wide each way
+function face(q, e) {
+  const [ax, ay, az, rx, ry, rz, ux, uy, uz] = q;
+  const near = 0.1, far = 500, a = (far + near) / (far - near), b = -2 * far * near / (far - near);
+  const tx = -(rx * e[0] + ry * e[1] + rz * e[2]), ty = -(ux * e[0] + uy * e[1] + uz * e[2]), tz = -(ax * e[0] + ay * e[1] + az * e[2]);
+  return new Float32Array([rx, ux, a * ax, ax, ry, uy, a * ay, ay, rz, uz, a * az, az, tx, ty, a * tz + b, tz]);
+}
 
 async function text(url) {
   const r = await fetch(url);
@@ -128,6 +143,20 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
+  // what the mirror sees
+  const cubeTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeTex);
+  gl.texStorage2D(gl.TEXTURE_CUBE_MAP, 1, gl.RGBA8, CUBE_SIZE, CUBE_SIZE);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+    [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_R, gl.CLAMP_TO_EDGE]])
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, k, v);
+  const cubeDepth = gl.createRenderbuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER, cubeDepth);
+  gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, CUBE_SIZE, CUBE_SIZE);
+  const cubeFb = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, cubeFb);
+  gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, cubeDepth);
+
   const u = (p, n) => gl.getUniformLocation(p, n);
   gl.enable(gl.DEPTH_TEST);
   gl.disable(gl.CULL_FACE);
@@ -148,33 +177,9 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
   }
 
-  // 2. the sky, then the boxes, into the small frame
-  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFb);
-  gl.viewport(0, 0, W, H);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  gl.disable(gl.DEPTH_TEST);
-  gl.useProgram(skyP);
-  gl.uniform3fv(u(skyP, 'uRight'), frame.right);
-  gl.uniform3fv(u(skyP, 'uUp'), frame.up);
-  gl.uniform3fv(u(skyP, 'uAhead'), frame.ahead);
-  gl.uniform2f(u(skyP, 'uFrame'), W, H);
-  gl.uniform1f(u(skyP, 'uFocal'), frame.focal);
-  gl.uniform3fv(u(skyP, 'uTop'), frame.skyTop);
-  gl.uniform3fv(u(skyP, 'uHorizon'), frame.skyHorizon);
-  gl.uniform3fv(u(skyP, 'uGlow'), frame.skyGlow);
-  gl.uniform3fv(u(skyP, 'uSun'), frame.sun);
-  gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
-  gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
-  gl.uniform1f(u(skyP, 'uOvercast'), frame.overcast || 0);
-  gl.uniform1f(u(skyP, 'uNight'), frame.night || 0);
-  gl.uniform1i(u(skyP, 'uFlyN'), frame.flyN || 0);
-  if (frame.flyN > 0) gl.uniform4fv(u(skyP, 'uFly'), new Float32Array(frame.fly));
-  gl.bindVertexArray(empty);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
-  gl.enable(gl.DEPTH_TEST);
-  const lit = p => {
+  const lit = (p, viewProj, eye, inCube) => {
     gl.useProgram(p);
-    gl.uniformMatrix4fv(u(p, 'uViewProj'), false, frame.viewProj);
+    gl.uniformMatrix4fv(u(p, 'uViewProj'), false, viewProj);
     gl.uniformMatrix4fv(u(p, 'uLight'), false, frame.lightProj);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, shadowTex);
@@ -184,7 +189,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.uniform3fv(u(p, 'uSunColor'), frame.sunColor);
     gl.uniform3fv(u(p, 'uAmbSky'), frame.ambientSky);
     gl.uniform3fv(u(p, 'uAmbGround'), frame.ambientGround);
-    gl.uniform3fv(u(p, 'uEye'), frame.eye);
+    gl.uniform3fv(u(p, 'uEye'), eye);
     gl.uniform3fv(u(p, 'uFog'), frame.fog);
     gl.uniform1f(u(p, 'uFogStart'), frame.fogStart);
     gl.uniform1f(u(p, 'uFogScale'), frame.fogScale);
@@ -195,17 +200,80 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.uniform1f(u(p, 'uTime'), frame.time || 0);
     gl.uniform1f(u(p, 'uNight'), frame.night || 0);
     gl.uniform1f(u(p, 'uOvercast'), frame.overcast || 0);
+    gl.uniform1f(u(p, 'uInCube'), inCube ? 1 : 0);
+    // the mirror reads the cube, but never while the cube is being drawn
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, inCube ? null : cubeTex);
+    gl.uniform1i(u(p, 'uCube'), 1);
+    gl.uniform2f(u(p, 'uRipple'), frame.rippleAge || 0, frame.ripple || 0);
+    gl.uniform1f(u(p, 'uBolt'), frame.bolt || 0);
+    gl.activeTexture(gl.TEXTURE0);
   };
-  lit(boxP);
-  gl.bindVertexArray(vao);
-  gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
-  if (nb > 0) {
-    lit(ballP);
-    gl.bindVertexArray(ballVao);
-    gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+  const mirror = frame.mirror || [0, 0, 0, 0];
+  // which way the mirror is from the eye and how wide it looks, for its wreath; none from inside it
+  const wreath = inCube => {
+    const h = [0, 0, 0, 0];
+    const k = frame.halo || [0, 0, 0];
+    if (inCube || mirror[3] <= 0 || k[0] <= 0) return h;
+    const x = mirror[0] - frame.eye[0], y = mirror[1] - frame.eye[1], z = mirror[2] - frame.eye[2];
+    const l = Math.hypot(x, y, z);
+    if (l <= mirror[3]) return h;
+    return [x / l, y / l, z / l, Math.asin(mirror[3] / l)];
+  };
+  // the sky, then the boxes and the balls, into what is bound, seen from the eye given
+  const scene = (w, h, focal, right, up, ahead, viewProj, eye, inCube) => {
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.disable(gl.DEPTH_TEST);
+    gl.useProgram(skyP);
+    gl.uniform3fv(u(skyP, 'uRight'), right);
+    gl.uniform3fv(u(skyP, 'uUp'), up);
+    gl.uniform3fv(u(skyP, 'uAhead'), ahead);
+    gl.uniform2f(u(skyP, 'uFrame'), w, h);
+    gl.uniform1f(u(skyP, 'uFocal'), focal);
+    gl.uniform3fv(u(skyP, 'uTop'), frame.skyTop);
+    gl.uniform3fv(u(skyP, 'uHorizon'), frame.skyHorizon);
+    gl.uniform3fv(u(skyP, 'uGlow'), frame.skyGlow);
+    gl.uniform3fv(u(skyP, 'uSun'), frame.sun);
+    gl.uniform1f(u(skyP, 'uTime'), frame.time || 0);
+    gl.uniform1f(u(skyP, 'uDark'), frame.dark || 0);
+    gl.uniform1f(u(skyP, 'uOvercast'), frame.overcast || 0);
+    gl.uniform1f(u(skyP, 'uNight'), frame.night || 0);
+    const flyN = inCube ? 0 : (frame.flyN || 0);
+    gl.uniform1i(u(skyP, 'uFlyN'), flyN);
+    if (flyN > 0) gl.uniform4fv(u(skyP, 'uFly'), new Float32Array(frame.fly));
+    gl.uniform4fv(u(skyP, 'uHalo'), wreath(inCube));
+    gl.uniform3fv(u(skyP, 'uHaloK'), frame.halo || [0, 0, 0]);
+    gl.bindVertexArray(empty);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.enable(gl.DEPTH_TEST);
+    lit(boxP, viewProj, eye, inCube);
+    gl.bindVertexArray(vao);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
+    if (nb > 0) {
+      lit(ballP, viewProj, eye, inCube);
+      gl.bindVertexArray(ballVao);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+    }
+  };
+
+  // 2. what the mirror sees, if there is one: six ways round from its middle
+  if (mirror[3] > 0) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, cubeFb);
+    gl.viewport(0, 0, CUBE_SIZE, CUBE_SIZE);
+    const e = [mirror[0], mirror[1], mirror[2]];
+    for (let f = 0; f < 6; f++) {
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + f, cubeTex, 0);
+      const q = FACES[f];
+      scene(CUBE_SIZE, CUBE_SIZE, CUBE_SIZE * 0.5, q.slice(3, 6), q.slice(6, 9), q.slice(0, 3), face(q, e), e, true);
+    }
   }
 
-  // 3. onto the screen
+  // 3. the sky, then the boxes, into the small frame
+  gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFb);
+  gl.viewport(0, 0, W, H);
+  scene(W, H, frame.focal, frame.right, frame.up, frame.ahead, frame.viewProj, frame.eye, false);
+
+  // 4. onto the screen
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.disable(gl.DEPTH_TEST);
@@ -223,6 +291,7 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform1f(u(blitP, 'uTime'), frame.time || 0);
   gl.uniform1f(u(blitP, 'uBlur'), frame.blur || 0);
   gl.uniform3fv(u(blitP, 'uGrade'), frame.grade || [1, 1, 0]);
+  gl.uniform1f(u(blitP, 'uBolt'), frame.bolt || 0);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

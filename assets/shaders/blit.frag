@@ -17,6 +17,7 @@ uniform float uGold;      // how far it is seen gold
 uniform float uTime;
 uniform float uBlur;      // out of focus by so many frame pixels, waking from the dark
 uniform vec3 uGrade;      // the hour's grade: contrast, saturation, warmth
+uniform float uBolt;      // lightning just now: the whole frame lit cold for a moment
 
 out vec4 outColor;
 
@@ -88,6 +89,7 @@ void main() {
         c = mix(c, sum / 8.0, min(1.0, uFlash * 2.0));
         c = mix(c, vec3(1.0, 0.98, 0.93), smoothstep(0.25, 1.0, uFlash));
     }
+    if (uBolt > 0.0) c = mix(c, vec3(0.86, 0.9, 1.0), uBolt * 0.3) + uBolt * 0.06;
     c = mix(c, vec3(0.957, 0.973, 1.0), glowTube);
     outColor = vec4(c, 1.0);
 }

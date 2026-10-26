@@ -32,6 +32,7 @@ uniform float uGoldGlow;      // how much gold keeps its own light in the dark
 uniform float uTime;          // seconds, for what moves on its own: the swell
 uniform float uNight;         // how far into the night: windows lit, glass showing a dark sky
 uniform float uOvercast;      // out at sea: the low grey winter sky
+uniform float uInCube;        // drawing what the mirror up in the sky sees, from its middle
 
 out vec4 outColor;
 
@@ -40,6 +41,7 @@ const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, 
 const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
 const float POLISHED = 20.0, RUBBER = 21.0;
 const float ICE = 22.0, WINTER_SEA = 23.0;
+const float MIRROR = 24.0;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -167,6 +169,40 @@ flat in vec3 vCenter;
 flat in vec3 vTurn0, vTurn1, vTurn2;          // the ball's turn, column after column
 uniform mat4 uViewProj;
 uniform mat4 uLight;
+uniform samplerCube uCube;    // what the mirror sees, all round, from its middle
+uniform vec2 uRipple;         // a ring running out over the mirror: seconds since it started, how strong
+uniform float uBolt;          // lightning just now, 0 to 1
+
+/**
+ * The mirror: a great ball of polished steel hanging in the sky. Seen from below it shows the
+ * street from above, bent round as in a drop of mercury: the plinth, the cars, the roofs,
+ * the horizon in a ring at its rim; and in its middle, small, whoever looks up at it. A
+ * ring now and then runs out over it from that middle, as over a liquid.
+ */
+void mirror(vec3 l, vec3 world) {
+    if (uInCube > 0.5) discard;
+    vec3 n = mat3(vTurn0, vTurn1, vTurn2) * l;
+    vec3 v = normalize(uEye - world);
+    if (uRipple.y > 0.0) {
+        vec3 o = normalize(uEye - vCenter);
+        float th = acos(clamp(dot(n, o), -1.0, 1.0));
+        float w = th - uRipple.x * 1.3;
+        float ring = exp(-w * w / 0.04) * sin(w * 34.0) + 0.35 * exp(-(w + 0.35) * (w + 0.35) / 0.03) * sin(w * 50.0);
+        vec3 across = n - o * dot(n, o);
+        if (dot(across, across) > 1e-6) n = normalize(n + normalize(across) * ring * uRipple.y * 0.22 * exp(-uRipple.x * 0.9));
+    }
+    vec3 rf = reflect(-v, n);
+    vec3 c = texture(uCube, rf).rgb;
+    // the street seen from that high is pale with haze: the steel gives it back a little harder
+    float l0 = dot(c, vec3(0.3, 0.55, 0.15));
+    c = clamp((mix(vec3(l0), c, 1.2) - 0.45) * 1.15 + 0.45, 0.0, 1.0);
+    // steel takes a little of the light and cools it; less of both at a slant
+    float fres = pow(1.0 - max(dot(n, v), 0.0), 4.0);
+    c *= mix(vec3(0.8, 0.83, 0.88), vec3(1.0), fres);
+    c += vec3(1.0, 0.95, 0.85) * pow(max(dot(rf, uSun), 0.0), 300.0) * (1.0 - uNight) * 1.5;
+    c += uBolt * vec3(0.45, 0.5, 0.65) * (0.1 + 0.6 * fres);
+    outColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+}
 
 // the three finger holes, as directions in the ball's own frame
 const vec3 HOLE0 = vec3(0.0, 0.96, 0.28), HOLE1 = vec3(-0.24, 0.95, -0.2), HOLE2 = vec3(0.24, 0.95, -0.2);
@@ -191,6 +227,10 @@ void sphere(float mat) {
     vec3 world = vCenter + vTurn * (l * r);
     vec4 clip = uViewProj * vec4(world, 1.0);
     gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
+    if (mat == MIRROR) {
+        mirror(l, world);
+        return;
+    }
     vec3 n = vTurn * l;
     vec3 v = normalize(uEye - world);
     bool rubber = mat == RUBBER;
@@ -234,6 +274,8 @@ void main() {
     return;
 #endif
     int seed = int(floor(fract(vMaterial + 0.001) * 256.0));
+    // what only the mirror shows: whoever stands where the eye is
+    if (seed == 251 && uInCube < 0.5) discard;
     if (mat == FROND && frondHole(vLocal, vHalf)) discard;
     if (mat == RAIL && railHole(vLocal, vHalf)) discard;
 
@@ -250,8 +292,7 @@ void main() {
     vec3 emit = vec3(0.0);
     vec3 v = normalize(uEye - vWorld);
     float dist = length(vWorld - uEye);
-    // up in the sky, above the haze of the street: no haze at all
-    float haze = seed == 252 ? 0.0 : 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
+    float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
 
     if (mat == GLOW) {
         // lit from inside: no sun, no shade, only the haze
@@ -367,14 +408,6 @@ void main() {
     // leaves let the light through: lit from either side, never quite dark
     float lit = leaf > 0.0 ? (0.35 + 0.65 * abs(ndl)) * sh : max(ndl, 0.0) * sh;
     vec3 amb = mix(uAmbGround, uAmbSky, n.y * 0.5 + 0.5);
-    // up in the watchers' room, what faces down through the glass is lit by the room's own
-    // lamps round the hoop, warm, as well as by the sky's light from below; in winter the lamps
-    // burn cold and the grey sky gives little
-    if (seed == 252) {
-        vec3 lamps = mix(vec3(0.42, 0.33, 0.2), vec3(0.2, 0.24, 0.29), uOvercast);
-        amb = mix(uAmbSky * mix(1.5, 1.1, uOvercast) + lamps, uAmbSky, n.y * 0.5 + 0.5);
-        lit *= 0.5;
-    }
     vec3 c = albedo * (amb + uSunColor * lit);
     if (gloss > 0.0) {
         float spec = pow(max(dot(reflect(-uSun, n), v), 0.0), 18.0) * sh;

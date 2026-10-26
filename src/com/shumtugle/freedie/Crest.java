@@ -190,13 +190,15 @@ final class Crest {
     // ---- the heavy throws ----
 
     private void heavy(Px f) {
-        int x0 = CX - R - 19, y = CY + 8;
-        for (int i = 0; i < heavyShown; i++) hammerMark(f, x0 - i * 12, y, heavyOn && i == 0);
+        int x0 = CX - R - 19, y0 = CY + 8;
+        // rows of nine under the stars, the newest row lowest
+        for (int i = 0; i < heavyShown; i++) hammerMark(f, x0 - i % ROW * 12, y0 + i / ROW * 10, heavyOn && i == 0);
         // new ones dropping in one after another, a bounce on landing and a glint
         if (markT >= 0f)
             for (int i = heavyShown; i < heavyLeft; i++) {
                 float tk = markT - (i - heavyShown) * MARK_GAP;
                 if (tk <= 0f) continue;
+                int y = y0 + i / ROW * 10;
                 float yy;
                 if (tk < MARK_FALL) {
                     float u = tk / MARK_FALL;
@@ -205,7 +207,7 @@ final class Crest {
                     float b = tk - MARK_FALL;
                     yy = y - 4f * (float) Math.abs(Math.sin(b * 14f)) * (float) Math.exp(-b * 9f);
                 }
-                int mx = x0 - i * 12, my = Math.round(yy);
+                int mx = x0 - i % ROW * 12, my = Math.round(yy);
                 float since = tk - MARK_FALL;
                 if (since > 0f && since < 0.3f) {
                     int a = Math.round(2f + 3f * (1f - since / 0.3f));
@@ -216,6 +218,9 @@ final class Crest {
     }
 
     /** A little heavy hammer, 11 by 8, ringed in gold when it is the one in hand. */
+    /** How many heavy marks go in a row. */
+    static final int ROW = 9;
+
     private void hammerMark(Px f, int x, int y, boolean lit) {
         if (lit) {
             int ring = mix(0xFFFFC93A, 0xFFFFF4C0, 0.5f + 0.5f * (float) Math.sin(clock * 4f));

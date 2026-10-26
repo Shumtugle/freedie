@@ -1,6 +1,6 @@
 #version 300 es
 // Depth only; leaves and railings keep their holes. The same holes as in box.frag.
-// A ball is the sphere inside its cube, as there.
+// A ball is the sphere inside its cube, as there; the mirror is no ball here.
 precision highp float;
 
 in vec3 vLocal;
@@ -35,6 +35,8 @@ uniform vec3 uSun;
 
 void main() {
 #ifdef SPHERE
+    // the mirror up in the sky casts nothing on the street
+    if (floor(vMaterial + 0.001) == 24.0) discard;
     // a ball: the sun's ray through this point of the cube, followed to the sphere inside
     mat3 turn = mat3(vTurn0, vTurn1, vTurn2);
     float r = vHalf.x;

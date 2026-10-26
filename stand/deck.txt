@@ -1,6 +1,6 @@
-# Who watches: the view tips up to the glass floor among the clouds. First with the stone one
-# alone, a building felled at one throw (laughter, the heavy hammer down through the hatch);
-# then all three at night, the stars run out and then a nod; then at sea, under the winter sky.
+# The mirror in the sky: the view tips up to a ball of steel in a wreath of storm cloud. First
+# a building felled at one throw (lightning, thunder, the heavy hammer out of the mirror);
+# then at night, the stars run out and then a far flash; then at sea, under the winter sky.
 screen 1096 2560
 keep level 4
 keep fails 10
