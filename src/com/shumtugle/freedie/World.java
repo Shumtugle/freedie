@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.23.2";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.23.3";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -30,6 +30,8 @@ final class World {
         byte[] asset(String name);
         /** One of the games on the bridge's screens, played until it hands back: 0 the first. */
         void play(int game);
+        /** A round written down (see Journal): kept as a plain text by this name, in a folder of its own. */
+        void journal(String name, String text);
     }
 
     // the eye, where it stands in the game it comes from: left of the plinth, eyes at a person's height

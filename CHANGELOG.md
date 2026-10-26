@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.23.3
+- Room to aim: held against an edge of the screen, the finger keeps the ring creeping on
+  that way, faster the harder against the edge. A finger put down near the left edge before
+  the view closes in can still aim at the left of a building.
+- The ring starts where the last throw was aimed in the world, wherever that now is in the
+  view. It used to start on the last throw's spot on the screen, which meant somewhere else
+  once the view had opened out, and ran off when it closed in again.
+- A journal: after every round a plain text in Documents/Freedie, with the time, each finger
+  down, move and lift, where the ring was and what it was on, how far the view had closed
+  in, each throw (hammer, speed, aim point, time in the air), what the hammer hit, how much
+  came off, and what the gods said. Places as frame pixels and as shares of the screen.
+
 ## 0.23.2
 - The opening: once the town has gone dark, the passers-by and the cars on the square are
   not there at all. Gone dark with the town, a figure still showed walking on the lit floor

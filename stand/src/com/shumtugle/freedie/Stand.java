@@ -85,6 +85,16 @@ public final class Stand implements World.Host {
     }
 
     @Override
+    public void journal(String name, String text) {
+        try {
+            Files.write(new File(out, name).toPath(), text.getBytes(StandardCharsets.UTF_8));
+            System.out.println(String.format("%7.2fs  journal %s", time, name));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
     public byte[] asset(String name) {
         try {
             return Files.readAllBytes(new File("assets", name).toPath());

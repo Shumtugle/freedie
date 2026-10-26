@@ -1,0 +1,52 @@
+# The 63rd: the finger goes down near the left edge, the view closes in on the building and
+# the ring is on it, far to the right of the finger; held against the edge, the ring creeps
+# on to the left. Then the rest of the stars go, and the round is written down.
+screen 1096 2560
+keep level 62
+restart
+skip
+wait 2.6
+down 20 420
+wait 0.5
+shot g1_down
+move 2 420
+wait 1.2
+shot g2_creep
+move 30 420
+wait 0.4
+shot g3_held
+up 30 420
+wait 4.0
+down 137 420
+wait 0.8
+up 137 420
+wait 4.0
+down 137 400
+wait 0.8
+up 137 400
+wait 4.0
+down 137 380
+wait 0.8
+up 137 380
+wait 4.0
+down 137 360
+wait 0.8
+up 137 360
+wait 4.5
+down 137 380
+wait 0.8
+up 137 380
+wait 4.5
+down 137 370
+wait 0.8
+up 137 370
+wait 4.5
+down 137 360
+wait 0.8
+up 137 360
+wait 4.5
+down 137 350
+wait 0.8
+up 137 350
+wait 9.0
+shot g9_end

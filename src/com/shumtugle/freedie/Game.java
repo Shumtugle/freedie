@@ -131,6 +131,8 @@ final class Game implements Physics.Listener {
     float aimX, aimY;
     private float lastX, lastY;
     private boolean aimedBefore;
+    // where the last throw was aimed, in the world
+    private final float[] lastAim = new float[3];
     // the wind-up: strength while the finger rests; past full, a tiring arm shakes the ring
     float power;
     private float fatigue, tremX, tremY, anchorX, anchorY, movedAt;
@@ -142,6 +144,12 @@ final class Game implements Physics.Listener {
     private final ArrayList<Body> toBurst = new ArrayList<Body>();
 
     private final Random fx = new Random(99);
+
+    // the round written down, for the author (see Journal)
+    final Journal journal = new Journal();
+    private float movedLogAt = -9f;
+    private boolean hitLogged, creeping;
+    private static final String[] HAMMERS = {"plain", "heavy", "golden", "diamond"};
     private final float[] tmp = new float[3], dir = new float[3], scr = new float[2];
 
     // the eye, as the world set it on the last frame
@@ -246,6 +254,13 @@ final class Game implements Physics.Listener {
         lastLanded = -1;
         lastBuildTime = 0f;
         setState(BUILD);
+        if (!journal.open()) {
+            journal.fw = fw;
+            journal.fh = fh;
+            journal.begin(clock, lv + 1, String.format(java.util.Locale.ROOT,
+                    "%s; plinth %.1f m down the street, close view up to x%.2f; %d pieces; tries lost here %d; heavy throws %d%s",
+                    atSea ? "at sea" : "in town", Builder.CZ, zoomFor(Builder.CZ), pieces.size(), fails, heavyLeft, goldOn ? "; golden hammer" : ""));
+        } else journal.line(clock, "the same building again, " + pieces.size() + " pieces");
     }
 
     /** A building for a level, tested and ready: the first seeds that stand still on their own. */
@@ -474,13 +489,21 @@ final class Game implements Physics.Listener {
                 // the diamond hammer is quick: the ring comes up right over the finger
                 aimX = Math.max(2f, Math.min(fw - 3f, x));
                 aimY = Math.max(2f, Math.min(fh - 3f, y - Fight.FINGER));
-            } else if (!aimedBefore) buildingCenter();
+            } else if (!aimedBefore || !project(lastAim[0], lastAim[1], lastAim[2], scr)) buildingCenter();
+            else {
+                // where the last throw was aimed, in the world: wherever that is in the view now,
+                // open or closed in, the ring starts there
+                aimX = Math.max(2f, Math.min(fw - 3f, scr[0]));
+                aimY = Math.max(2f, Math.min(fh - 3f, scr[1]));
+            }
             anchorX = x;
             anchorY = y;
             movedAt = clock;
             power = 0f;
             fatigue = 0f;
             fullFelt = false;
+            if (fight == null)
+                journal.line(clock, "finger down " + journal.at(x, y) + ", ring " + journal.at(aimX, aimY) + over() + zoomNow());
             return;
         }
         if (!aiming) return;
@@ -493,6 +516,11 @@ final class Game implements Physics.Listener {
         }
         lastX = x;
         lastY = y;
+        if (fight == null && type == MOVE && clock - movedLogAt >= 0.1f) {
+            movedLogAt = clock;
+            journal.line(clock, String.format(java.util.Locale.ROOT, "finger %s, ring %s, power %.2f%s",
+                    journal.at(x, y), journal.at(aimX, aimY), power, zoomNow()));
+        }
         // a finger never lies quite still: only a real move breaks the wind-up
         float mx = x - anchorX, my = y - anchorY;
         if (mx * mx + my * my > 2.5f * 2.5f) {
@@ -504,6 +532,7 @@ final class Game implements Physics.Listener {
             aiming = false;
             // a short tap on the hammer, without a move, swaps hammers instead of throwing
             if (tapOnHammer && clock - downAt < 0.6f && tapFar < 6f) {
+                journal.line(clock, "tap on the hammer: " + (heavyOn ? "plain" : "heavy") + " in hand");
                 heavyOn = !heavyOn;
                 power = 0f;
                 host.sound(Synth.CATCH, 0.6f, heavyOn ? 0.7f : 1.2f);
@@ -526,6 +555,70 @@ final class Game implements Physics.Listener {
     /** Where the hammer in hand is on screen, the other one at the lower left, and the marks. */
     private boolean onHammer(float x, float y) {
         return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 32f);
+    }
+
+    /** What a body is, in a word or two, for the journal. */
+    private String what(Body b) {
+        if (b == null) return "the ground";
+        if (b == plinth) return "the plinth";
+        if (b.material == Body.CAR) return "a parked car";
+        if (b.look == 1) return "a life ring";
+        if (b.look == 2) return "a ship's wheel";
+        if (b.look == 3) return "snow";
+        if (b.icy) return "ice";
+        String[] m = {"wood", "stone", "the hammer", "the plinth", "glass", "a water bottle", "a ball", "a car", "a balloon", "gold",
+                "a drum", "a cone", "a tyre", "a sandbag", "a suitcase", "a mattress"};
+        return b.material < m.length ? m[b.material] : "a piece";
+    }
+
+    /** What the ring is over now, for the journal. */
+    private String over() {
+        ray(aimX, aimY, dir);
+        float best = 1e9f;
+        Body hit = null;
+        for (Body b : pieces) {
+            if (b.gone) continue;
+            float t = rayBox(b, eye[0], eye[1], eye[2], dir[0], dir[1], dir[2]);
+            if (t > 0f && t < best) {
+                best = t;
+                hit = b;
+            }
+        }
+        if (hit == null) {
+            float t = rayBox(plinth, eye[0], eye[1], eye[2], dir[0], dir[1], dir[2]);
+            if (t > 0f) return " on the plinth";
+            return " on nothing";
+        }
+        return String.format(java.util.Locale.ROOT, " on %s %.1f m up", what(hit), best * dir[1] + eye[1]);
+    }
+
+    /** How far the view has closed in now, for the journal. */
+    private String zoomNow() {
+        return zoomK > 0f ? String.format(java.util.Locale.ROOT, ", view x%.2f", zoomMul()) : "";
+    }
+
+    // the ring creeps on when the finger is held against an edge of the screen: there is
+    // always room to aim, wherever the finger went down
+    static final float EDGE = 12f;
+
+    private void creep(float dt) {
+        boolean on = aiming && fight == null && state != FIGHT;
+        float kx = 0f, ky = 0f;
+        if (on) {
+            if (lastX < EDGE) kx = -(EDGE - lastX) / EDGE;
+            else if (lastX > fw - 1 - EDGE) kx = (lastX - (fw - 1 - EDGE)) / EDGE;
+            if (lastY < EDGE) ky = -(EDGE - lastY) / EDGE;
+            else if (lastY > fh - 1 - EDGE) ky = (lastY - (fh - 1 - EDGE)) / EDGE;
+        }
+        boolean now = kx != 0f || ky != 0f;
+        if (now != creeping) {
+            creeping = now;
+            journal.line(clock, now ? "finger against the edge " + journal.at(lastX, lastY) + ": the ring creeps on" : "the ring stops creeping at " + journal.at(aimX, aimY));
+        }
+        if (!now) return;
+        float sp = 30f + 60f * Math.max(Math.abs(kx), Math.abs(ky));
+        aimX = Math.max(2f, Math.min(fw - 3f, aimX + Math.signum(kx) * sp * Math.min(1f, Math.abs(kx) * 2f) * dt));
+        aimY = Math.max(2f, Math.min(fh - 3f, aimY + Math.signum(ky) * sp * Math.min(1f, Math.abs(ky) * 2f) * dt));
     }
 
     /** Lets a finger go without a throw: the room took it, or the game was put away. */
@@ -607,6 +700,9 @@ final class Game implements Physics.Listener {
         float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);
         target(aimX + tremX, aimY + tremY, tmp);
         float tx = tmp[0], ty = tmp[1], tz = tmp[2];
+        lastAim[0] = tx;
+        lastAim[1] = ty;
+        lastAim[2] = tz;
         handPoint(tmp);
         float sx = tmp[0], sy = tmp[1], sz = tmp[2];
         float dx = tx - sx, dy = ty - sy, dz = tz - sz;
@@ -638,6 +734,11 @@ final class Game implements Physics.Listener {
             stars--;
             crest.burn(stars);
         }
+        hitLogged = false;
+        journal.line(clock, String.format(java.util.Locale.ROOT,
+                "throw %d: finger up %s, ring %s%s, power %.2f, %s hammer at %.1f m/s, aimed at (%.2f, %.2f, %.2f) m, %.2f s in the air%s",
+                throwsMade, journal.at(lastX, lastY), journal.at(aimX + tremX, aimY + tremY), over(), power,
+                HAMMERS[goldThrow ? 2 : heavyThrow ? 1 : 0], speed, tx, ty, tz, t, zoomNow()));
         hs = FLY;
         hsTime = 0f;
         power = 0f;
@@ -873,6 +974,7 @@ final class Game implements Physics.Listener {
         drops(dt);
         rolling();
         windUp(dt);
+        creep(dt);
         zoomStep(dt);
         solids();
         hammerMoves(dt);
@@ -1014,6 +1116,9 @@ final class Game implements Physics.Listener {
                 }
                 hs = HAND;
                 hsTime = 0f;
+                if (fight == null && state == PLAY)
+                    journal.line(clock, String.format(java.util.Locale.ROOT, "hammer back in hand%s; %.0f%% of the building off the plinth, %d stars left",
+                            hitLogged ? "" : " (it met nothing)", (1f - onPlinth()) * 100f, stars));
                 // the last star spent waits for the hammer back, and then for things to settle
                 if (state == PLAY) stateTime = 0f;
                 if (throwDue) {
@@ -1043,6 +1148,10 @@ final class Game implements Physics.Listener {
      */
     private void lookUp(int verdict, int next) {
         nextLevel = next;
+        String[] page = journal.end(clock, String.format(java.util.Locale.ROOT, "%s after %d throws: %.0f%% off the plinth; the gods: %s",
+                verdict == Sky.GLOOM ? "lost" : "felled", throwsMade, (1f - onPlinth()) * 100f,
+                verdict == Sky.OVATION ? "laughter" : verdict == Sky.CHEER ? "smiles" : verdict == Sky.POLITE ? "a polite look" : "anger"));
+        if (page != null) host.journal(page[0], page[1]);
         boolean fought = afterFight;
         afterFight = false;
         // after a fight won they all laugh aloud, as at the first building
@@ -1268,6 +1377,11 @@ final class Game implements Physics.Listener {
     public void knock(Body a, Body b, float speed, float x, float y, float z) {
         boolean hammerHit = a == hammer || b == hammer;
         Body other = a == hammer ? b : a;
+        if (hammerHit && !hitLogged && fight == null) {
+            hitLogged = true;
+            journal.line(clock, String.format(java.util.Locale.ROOT, "the hammer hits %s at (%.2f, %.2f, %.2f) m, %.1f m/s",
+                    what(other), x, y, z, speed));
+        }
         if (a.material == Body.CAR || (b != null && b.material == Body.CAR)) {
             carKnock(a.material == Body.CAR ? a : b, speed, x, y, z);
             return;

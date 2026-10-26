@@ -151,6 +151,43 @@ public final class MainActivity extends Activity implements World.Host {
         return getSharedPreferences("game", MODE_PRIVATE).getInt(key, 0);
     }
 
+    /**
+     * A round written down: a plain text in Documents/Freedie, where any file manager finds it;
+     * on old systems, in the app's own folder. Written off the game's thread.
+     */
+    @Override
+    public void journal(final String name, final String text) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    byte[] b = text.getBytes("UTF-8");
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        android.content.ContentValues v = new android.content.ContentValues();
+                        v.put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, name);
+                        v.put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "text/plain");
+                        v.put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH,
+                                android.os.Environment.DIRECTORY_DOCUMENTS + "/Freedie");
+                        android.net.Uri u = getContentResolver().insert(android.provider.MediaStore.Files.getContentUri("external"), v);
+                        if (u == null) return;
+                        java.io.OutputStream o = getContentResolver().openOutputStream(u);
+                        if (o == null) return;
+                        o.write(b);
+                        o.close();
+                    } else {
+                        java.io.File dir = new java.io.File(getExternalFilesDir(null), "Freedie");
+                        if (!dir.isDirectory() && !dir.mkdirs()) return;
+                        java.io.FileOutputStream o = new java.io.FileOutputStream(new java.io.File(dir, name));
+                        o.write(b);
+                        o.close();
+                    }
+                } catch (Exception e) {
+                    // a round not written down is no reason to stop the game
+                }
+            }
+        }).start();
+    }
+
     @Override
     public byte[] asset(String name) {
         try (java.io.InputStream in = getAssets().open(name)) {
