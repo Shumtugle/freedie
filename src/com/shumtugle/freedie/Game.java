@@ -31,7 +31,7 @@ import java.util.Random;
  * and in flight, the view closes in on the building, the farther the more, and opens out
  * again once the hammer is back.
  *
- * For now the levels go as far as the end of the third episode, and the last comes round
+ * For now the levels go as far as the end of the fourth episode, and the last comes round
  * again.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
@@ -41,8 +41,8 @@ final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7;
     static final int STARS = 5;
-    /** The last level there is yet: the end of the third episode. */
-    static final int LAST = 38;
+    /** The last level there is yet: the end of the fourth episode, just before the alley. */
+    static final int LAST = 49;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength

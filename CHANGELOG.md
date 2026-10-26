@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20
+- The fourth episode, whole: the game goes on to the fiftieth building, by the same seeds
+  as the street game it grows from, and holds there until the alley is open. Nothing new
+  goes into its buildings; the plinth goes farther off, twelve meters at the fortieth and
+  twenty-four at the fiftieth, and the close view closes in that much more.
+- In the close view the haze thins as if the building had come nearer, so a far one stays
+  readable instead of going pale.
+
 ## 0.19.3
 - Nothing that only goes about the street passes through things any more. A car coming
   down the road stops short of the plinth wherever it stands now, and short of anything of

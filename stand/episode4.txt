@@ -1,0 +1,61 @@
+# The fourth episode, plates 40 to 50: each building as it stands, and one aimed at in the close view.
+screen 1096 2560
+keep level 39
+restart
+skip
+wait 2.6
+shot e40
+keep level 40
+restart
+skip
+wait 2.6
+shot e41
+keep level 41
+restart
+skip
+wait 2.6
+shot e42
+keep level 42
+restart
+skip
+wait 2.6
+shot e43
+keep level 43
+restart
+skip
+wait 2.6
+shot e44
+keep level 44
+restart
+skip
+wait 2.6
+shot e45
+keep level 45
+restart
+skip
+wait 2.6
+shot e46
+keep level 46
+restart
+skip
+wait 2.6
+shot e47
+keep level 47
+restart
+skip
+wait 2.6
+shot e48
+keep level 48
+restart
+skip
+wait 2.6
+shot e49
+keep level 49
+restart
+skip
+wait 2.6
+shot e50
+down 137 400
+wait 0.6
+shot e50_close
+up 137 400

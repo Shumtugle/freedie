@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.19.3";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.20";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -240,6 +240,9 @@ final class World {
         yaw += jolt[0] / (W * 1.9f);
         pitch += jolt[1] / (W * 1.9f);
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2], 0.1f, 500f);
+        // closed in, the haze thins as if the building had come nearer: it stays readable far off
+        d.fogStart *= view[2];
+        d.fogScale *= view[2];
         game.frame(d);
         d.red = game.red();
         d.gold = game.gold();
