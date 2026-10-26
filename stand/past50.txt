@@ -1,0 +1,15 @@
+# The fiftieth felled: no alley yet, so the light, and on to the 51st.
+screen 1096 2560
+keep level 49
+keep fails 10
+keep best 50
+restart
+skip
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 9.5
+shot l0_light
+wait 3
+shot l1_fiftyfirst

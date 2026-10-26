@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.22
+- Episodes five to eight, plates 51 to 101, everything on the street before the sea, by
+  the same seeds as the street game this one grows from. The fiftieth no longer holds the
+  game: until the alley is there, it ends in the light like any other episode. The plinth
+  goes on down the street, twenty-four meters at the fiftieth and thirty-six from the
+  eightieth, and the close view closes in that much more. The game holds at the 101st,
+  until the sea.
+- A recipe that will not stand however it is seeded no longer falls back to the very first
+  building: a building of the level before is grown in its place. This changes the 26th
+  and the 77th.
+
 ## 0.21.2
 - The crane's film, watched through: the empty pause before the cube came down is gone,
   the hook goes straight round to the front once the plinth is set down; and the cube is no

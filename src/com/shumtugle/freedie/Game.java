@@ -31,8 +31,8 @@ import java.util.Random;
  * and in flight, the view closes in on the building, the farther the more, and opens out
  * again once the hammer is back.
  *
- * For now the levels go as far as the end of the fourth episode, and the last comes round
- * again.
+ * For now the levels go as far as the end of the eighth episode, the last on the street
+ * before the sea, and the last comes round again.
  *
  * Plain Java: the world calls touch(), update() and draw() from its one thread, and says
  * where the eye is with frame() before any of them needs it.
@@ -41,8 +41,8 @@ final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7, INSERT = 8;
     static final int STARS = 5;
-    /** The last level there is yet: the end of the fourth episode, just before the alley. */
-    static final int LAST = 49;
+    /** The last level there is yet: the end of the eighth episode, the last on the street. */
+    static final int LAST = 100;
     static final float TILT = 1.0f;            // seconds to tip up into the sky, and back
     static final int HAND = 0, FLY = 1, BACK = 2;
     static final float CHARGE = 0.9f;          // seconds of stillness to full strength
@@ -242,6 +242,13 @@ final class Game implements Physics.Listener {
             ArrayList<Body> made = builder.build(lv, sd + attempt * 7919L);
             if (standsStill(made)) return made;
         }
+        // a recipe that will not stand however it is seeded: a building of the level before,
+        // grown afresh, as tall and as varied as this one should be
+        for (int back = 1; back <= 3 && lv - back > 0; back++)
+            for (int attempt = 0; attempt < 6; attempt++) {
+                ArrayList<Body> made = builder.build(lv - back, sd + back * 104729L + attempt * 7919L);
+                if (standsStill(made)) return made;
+            }
         return builder.build(0, sd);
     }
 
@@ -1069,7 +1076,8 @@ final class Game implements Physics.Listener {
         if (!Episode.last(plate)) return;
         host.saveInt("ep" + e + "done", 1);
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
-        if (Episode.ENDS[e] == Episode.NEW) chapterDue = true;
+        // an episode that ends in the alley goes on through the light too, until the alley is there
+        if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
     }
 
     /** Whether the crane's film comes between these two levels: from the third episode into the fourth. */
