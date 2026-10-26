@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.1
+- In the opening, when the square goes dark and only Freedie is left in her pool of light,
+  the people go into the dark with the town: one walking behind her is no longer lit by the
+  pool, so no plain figure of a few boxes shows on the black.
+
 ## 0.19
 - The close view for far plinths. From the 21st building on the plinth stands farther down
   the street; now, while a throw is aimed and while it flies, the view turns straight onto

@@ -94,6 +94,6 @@ final class People {
         ox *= s;
         oy *= s;
         oz *= s;
-        d.box(px + c * ox + sn * oz, py + oy, pz - sn * ox + c * oz, hx * s, hy * s, hz * s, turn, rgb, DrawList.PLAIN);
+        d.box(px + c * ox + sn * oz, py + oy, pz - sn * ox + c * oz, hx * s, hy * s, hz * s, turn, rgb, DrawList.material(DrawList.PLAIN, DrawList.CROWD));
     }
 }

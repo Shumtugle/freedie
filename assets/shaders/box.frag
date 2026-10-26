@@ -354,6 +354,8 @@ void main() {
     // in the dark only the pool of light is left
     // (a wide pool: what stands to either side of it is lit further out than what is below)
     float pool = 1.0 - smoothstep(uSpotRadius * 0.55, uSpotRadius, length((vWorld - uSpot) * vec3(0.55, 1.0, 1.0)));
+    // the people go into the dark with the world: the pool never lights them
+    if (seed == 253 && mat == PLAIN) pool = 0.0;
     // gold keeps its own light in the dark
     if (mat == GOLD) pool = max(pool, 0.9 * uGoldGlow);
     c *= mix(1.0, pool, uDark);
