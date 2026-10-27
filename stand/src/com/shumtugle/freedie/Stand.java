@@ -221,6 +221,9 @@ public final class Stand implements World.Host {
             // deck VERDICT: up among the watchers at once (0 laughter, 1 nods, 2 unimpressed, 3 the stars ran out)
             world.standDeck(Integer.parseInt(p[1]));
             step();
+        } else if (c.equals("shove")) {
+            // her film between the second episode and the third, at once
+            world.standShove();
         } else if (c.equals("truck")) {
             // the truck's film between the first episode and the second, at once
             world.standTruck();

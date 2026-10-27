@@ -33,6 +33,8 @@ final class Synth {
     static final int WINCH = WAIL + 1, CHAIN = WAIL + 2;
     // the truck between episodes: its diesel, its reversing beeper, its air brakes let off
     static final int DIESEL = WAIL + 3, BEEP = WAIL + 4, HISS = WAIL + 5;
+    // stone dragged over asphalt
+    static final int SCRAPE = WAIL + 6;
     static final float HUM_EVERY = 0.5f;
 
     /** One of the thunders: 0 the plain one, then the others. */
@@ -40,7 +42,7 @@ final class Synth {
         return k <= 0 ? THUNDER : THUNDER_MORE + (k - 1) % (THUNDERS - 1);
     }
 
-    final float[][] bank = new float[HISS + 1][];
+    final float[][] bank = new float[SCRAPE + 1][];
 
     Synth() {
         Random r = new Random(7);
@@ -101,6 +103,7 @@ final class Synth {
         bank[DIESEL] = diesel(r);
         bank[BEEP] = beep();
         bank[HISS] = hiss(r);
+        bank[SCRAPE] = scrape(r);
         bank[GLASS] = knock(r, 0.4f, new float[]{1870f, 2950f, 4410f}, new float[]{0.6f, 0.4f, 0.3f},
                 new float[]{9f, 12f, 16f}, 0.4f, 0.8f);
     }
@@ -622,6 +625,30 @@ final class Synth {
             lp += (hp - lp) * (0.55f - 0.35f * t / dur);
             float env = Math.min(1f, t / 0.01f) * (float) Math.exp(-t * 4.5f);
             s[i] = lp * env * 0.5f;
+        }
+        return s;
+    }
+
+    /**
+     * A block of stone dragged over asphalt: a coarse grinding noise, low and rough, catching
+     * and slipping, louder as it gets going and dying as it stops.
+     */
+    private static float[] scrape(Random r) {
+        float dur = 0.75f;
+        int n = (int) (dur * RATE);
+        float[] s = new float[n];
+        float lp = 0f, bp = 0f, grit = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            float nz = r.nextFloat() * 2f - 1f;
+            lp += (nz - lp) * 0.12f;
+            bp += (lp - bp) * 0.05f;
+            // it catches and slips: the grinding comes in uneven bursts
+            if (r.nextFloat() < 0.004f) grit = 1f;
+            grit *= 0.9992f;
+            float rough = (lp - bp) * (0.55f + 0.45f * grit) * (1f + 0.5f * (float) Math.sin(t * 70f + Math.sin(t * 23f) * 3f));
+            float env = Math.min(1f, t / 0.08f) * (float) Math.pow(Math.max(0f, 1f - t / dur), 1.5);
+            s[i] = rough * env * 2.4f;
         }
         return s;
     }

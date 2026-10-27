@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.34
+- A film between the second episode and the third: out of the light, Freedie stands at
+  the empty plinth and looks up at the eye, her eyes kindling. She turns to the plinth, gets
+  down low and sets her shoulder to its top edge, and in three heaves shoves it three meters
+  down the road, stone grinding on the asphalt, dust coming out from under it; the last
+  heave she puts her voice into. Then she straightens and looks back over her shoulder at
+  the eye. She comes at her own size here, a woman at a block of stone. The first time it
+  plays whole; after that a touch cuts it short.
+- A new sound: stone dragged over asphalt.
+
 ## 0.33
 - A film between the first episode and the second: out of the light, a tipper truck backs
   up the road to the plinth, beeping, its beacon turning, and stops with a hiss of air. Its

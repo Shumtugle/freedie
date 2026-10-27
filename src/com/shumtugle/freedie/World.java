@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.33";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.34";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -237,6 +237,11 @@ final class World {
     /** For the desktop stand: the truck's film between the first episode and the second, at once. */
     void standTruck() {
         game.standTruck();
+    }
+
+    /** For the desktop stand: her film between the second episode and the third, at once. */
+    void standShove() {
+        game.standShove();
     }
 
     /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */

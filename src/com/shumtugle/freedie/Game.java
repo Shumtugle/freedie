@@ -1076,6 +1076,11 @@ final class Game implements Physics.Listener {
                         startFight(true);
                         break;
                     }
+                    if (chapter && shoveAfter(level, nextLevel)) {
+                        // out of the light onto the street, where she shoves the plinth on herself
+                        startShove();
+                        break;
+                    }
                     if (chapter && truckAfter(level, nextLevel)) {
                         // out of the light onto the street, where a truck backs up and tips its load
                         startTruck();
@@ -1388,25 +1393,9 @@ final class Game implements Physics.Listener {
      * what the second episode builds with, drums, tyres and cones, onto the road behind it.
      */
     private void startTruck() {
-        Builder.CZ = Builder.BASE_CZ + Builder.farther(nextLevel);
-        phys.clear();
-        pieces.clear();
-        toBurst.clear();
-        toPop.clear();
-        pN = 0;
-        lN = 0;
-        dropN = 0;
-        // the plinth where the next episode has it, and the parked cars, solid: the load lands among them
-        plinth.setPose(Builder.CX, Builder.TOP * 0.5f, Builder.CZ, 1, 0, 0, 0);
-        phys.add(plinth);
-        for (Body c : cars) phys.add(c);
-        hammer.ghost = true;
-        hs = HAND;
-        aiming = false;
-        power = 0f;
-        fromSky = false;
-        // no car comes down the road while the truck is on it
-        traffic.calm = true;
+        // the plinth where the next episode has it: the load lands round it and the parked cars
+        clearForFilm();
+        plinthAt(Builder.BASE_CZ + Builder.farther(nextLevel));
         Truck truck = new Truck(this, Builder.CZ, host.loadInt("ins0") != 1);
         for (Body b : truck.load) {
             phys.add(b);
@@ -1423,6 +1412,59 @@ final class Game implements Physics.Listener {
         level = Episode.LAST[0] - 1;
         nextLevel = level + 1;
         startTruck();
+    }
+
+    /** Whether her film comes between these two levels: from the second episode into the third. */
+    static boolean shoveAfter(int lv, int next) {
+        return lv + 1 == Episode.LAST[1] && next == lv + 1;
+    }
+
+    /**
+     * The film between the second episode and the third: what was left of the building has
+     * gone in the light, and she sets her shoulder to the empty plinth and shoves it on.
+     */
+    private void startShove() {
+        float from = Builder.CZ, to = Builder.BASE_CZ + Builder.farther(nextLevel);
+        clearForFilm();
+        Shove shove = new Shove(this, from, to, host.loadInt("ins1") != 1);
+        plinthAt(from);
+        film = shove;
+        filmOut = false;
+        crest.fresh();
+        setState(INSERT);
+    }
+
+    /** For the desktop stand: her film at once, as if the second episode had just been won. */
+    void standShove() {
+        level = Episode.LAST[1] - 1;
+        nextLevel = level + 1;
+        Builder.CZ = Builder.BASE_CZ + Builder.farther(level);
+        startShove();
+    }
+
+    /** The street emptied for a film: no building, no hammer in sight, no car coming; the plinth and the parked cars solid. */
+    private void clearForFilm() {
+        phys.clear();
+        pieces.clear();
+        toBurst.clear();
+        toPop.clear();
+        pN = 0;
+        lN = 0;
+        dropN = 0;
+        phys.add(plinth);
+        for (Body c : cars) phys.add(c);
+        hammer.ghost = true;
+        hs = HAND;
+        aiming = false;
+        power = 0f;
+        fromSky = false;
+        traffic.calm = true;
+    }
+
+    /** The plinth set down here along the street, for a film that moves it. */
+    void plinthAt(float z) {
+        Builder.CZ = z;
+        plinth.setPose(Builder.CX, Builder.TOP * 0.5f, z, 1, 0, 0, 0);
     }
 
     /** Whether the crane's film comes between these two levels: from the third episode into the fourth. */
