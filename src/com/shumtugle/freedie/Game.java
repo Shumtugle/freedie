@@ -23,9 +23,10 @@ import java.util.Random;
  * always brings the heavy hammer: a few heavy throws, marked under the stars; a tap on the
  * hammer in hand, or the one waiting low on the left, swaps one for the other.
  *
- * Lose the same building ten times running and the watchers give the golden hammer: one throw
- * that scatters the building whatever it hits, as the very first one did. Once that has been
- * given, the next ten lost in a row bring Freedie herself, and the fight (see Fight).
+ * Lose the same building five times running and the console gives the golden hammer, and in
+ * town Freedie herself comes, and the fight (see Fight). Won or lost, the fight ends before the
+ * same building, the golden hammer in hand: one throw that scatters the building whatever it
+ * hits, as the very first one did. Out at sea she does not come: the golden hammer alone.
  *
  * From the 21st on the plinth stands farther down the street; then, while a throw is aimed
  * and in flight, the view closes in on the building, the farther the more, and opens out
@@ -82,7 +83,7 @@ final class Game implements Physics.Listener {
     private boolean giftShown;
     // the golden hammer: lose the same building ten times running and the watchers give one throw
     // that scatters it whatever it hits
-    static final int GOLD_AFTER = 10;
+    static final int GOLD_AFTER = 5;
     int fails;
     boolean goldOn, goldSeen;
     private boolean goldThrow, goldGift;
@@ -90,7 +91,7 @@ final class Game implements Physics.Listener {
     // the fight with Freedie: on now, or due after the sky; the diamond hammer the watchers give
     // for it; the world going gold after a fight won, the eyes opening after one lost
     Fight fight;
-    private boolean fightNext, diamondGift, afterFight, throwDue;
+    private boolean fightNext, afterFight, throwDue;
     private float dueX, dueY;
     private float winSky = -1f, wake = -1f;
     // between episodes: a light that rises over the sky and clears onto the next one
@@ -376,17 +377,15 @@ final class Game implements Physics.Listener {
         startFight(false);
     }
 
-    /** The fight is won: the world goes gold and up into the sky, where the watchers cheer. */
+    /** The fight is won: the world goes gold, the console comes, and back to the same building, the golden hammer in hand. */
     private void fightWon() {
         afterFight = true;
         winSky = 0f;
-        lookUp(OVATION, level + 1);
+        lookUp(OVATION, level);
     }
 
-    /** The fight is lost: the player wakes on the street, before the same building, as from a dream. */
+    /** The fight is lost: the player wakes on the street, before the same building, as from a dream, the golden hammer in hand. */
     private void fightLost() {
-        fails = 0;
-        host.saveInt("fails", 0);
         start(level, false);
         wake = 0f;
         host.sound(Synth.BEAT, 0.8f, 0.9f);
@@ -1153,26 +1152,19 @@ final class Game implements Physics.Listener {
         holdFor = verdict == GLOOM ? 2.2f : verdict == OVATION ? 3.2f : 2.4f;
         giftShown = false;
         goldGift = false;
-        diamondGift = false;
         if (fought) {
             // the fight is over: nothing counted, and no fight again at once
         } else if (verdict == GLOOM) {
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
-                // out at sea she does not come yet: the golden hammer again instead
-                if (!goldSeen || atSea) {
-                    // the tenth time the same building would not fall: the watchers give the golden hammer
-                    goldGift = true;
-                    goldSeen = true;
-                    host.saveInt("goldSeen", 1);
-                } else {
-                    // ever after, she comes instead, and the watchers give the diamond hammer for her
-                    fightNext = true;
-                    diamondGift = true;
-                    fails = 0;
-                    host.saveInt("fails", 0);
-                }
+                // the fifth time the same building would not fall: the golden hammer; in town she
+                // comes first, and the hammer is in hand once the fight is over (the count of lost
+                // tries stays as it is till the building falls, so the hammer stays golden)
+                goldGift = true;
+                goldSeen = true;
+                host.saveInt("goldSeen", 1);
+                if (!atSea) fightNext = true;
                 giftShown = true;
             }
         } else if (fails > 0) {
@@ -1187,7 +1179,7 @@ final class Game implements Physics.Listener {
             host.saveInt("gifts", heavyLeft);
             giftShown = true;
         }
-        int gift = diamondGift ? Hammer.DIAMOND : goldGift ? Hammer.GOLDEN : verdict == OVATION ? Hammer.HEAVY_KIND : -1;
+        int gift = goldGift ? Hammer.GOLDEN : verdict == OVATION ? Hammer.HEAVY_KIND : -1;
         knocks(gift, Math.min(LAST, nextLevel));
         holdFor = console.length();
         aiming = false;

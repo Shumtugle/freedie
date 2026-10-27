@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.29
+- Five lost tries in a row at the same building, not ten, and the ring round the level's
+  number has five segments. At the fifth the console gives the golden hammer and, in town,
+  Freedie comes at once: the hammer knocks the golden hammer and then the fight. Won or lost,
+  the fight ends before the same building with the golden hammer in hand, and one throw
+  takes it. Out at sea she does not come yet: the golden hammer alone.
+
 ## 0.28
 - No sky between rounds any more. When a building is down, the dispatcher's room closes in
   over the street from above and below, and the street goes still on the tube of an old

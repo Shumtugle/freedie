@@ -1,49 +1,23 @@
-# The tenth try at the same building: five throws into the air burn the stars one by one,
-# the gods frown, the tenth segment of the ring lights, the golden hammer drops from the
-# thunderer's cloud, and back on the street the medallion turns gold. One golden throw and
-# the building flies to pieces whatever it hits.
+# The golden hammer in hand: five tries lost at this building already (and the fight over, in
+# town), the medallion gold. One golden throw and the building flies to pieces whatever it
+# hits; then the console, and the next building.
 screen 1096 2560
 keep level 3
-keep fails 9
+keep fails 5
 keep gifts 2
 keep cubes 3
 restart
 skip
-wait 2.4
-shot g0_ninth
-down 140 300
-move 140 60
-up 140 60
-wait 0.15
-shot g1_burn
-wait 3.4
-down 140 300
-move 140 60
-up 140 60
-wait 3.6
-down 140 300
-move 140 60
-up 140 60
-wait 3.6
-down 140 300
-move 140 60
-up 140 60
-wait 3.6
-down 140 300
-move 140 60
-up 140 60
-wait 3.6
-shot g2_spent
-wait 3.0
-shot g3_gift
-wait 2.8
-shot g4_gold
-wait 2.4
-shot g5_ring
-down 200 520
+wait 2.6
+shot g0_gold
+down 137 420
 wait 1.0
-up 200 520
-wait 0.5
-shot g6_scatter
-wait 1.6
-shot g7_down
+up 137 420
+wait 0.6
+shot g1_scatter
+wait 2.0
+shot g2_down
+wait 3.0
+shot g3_console
+wait 3.0
+shot g4_next

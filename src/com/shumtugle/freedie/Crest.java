@@ -20,7 +20,7 @@ final class Crest {
     float knocked;                 // share of the building off the plinth
     float markT = -1f;             // the new heavy marks dropping in, seconds; below 0 none
     static final float MARK_FALL = 0.32f, MARK_GAP = 0.24f;
-    static final int TRIES = 10;   // the attempts a ring has room for
+    static final int TRIES = Game.GOLD_AFTER;   // the attempts a ring has room for
 
     private float clock;
     private final float[] burnt = {-1f, -1f, -1f, -1f, -1f};   // seconds since each star burnt
@@ -78,7 +78,7 @@ final class Crest {
 
     // ---- the medallion ----
 
-    /** How ripe the attempts are: green, amber, red as the tenth nears. */
+    /** How ripe the attempts are: green, amber, red as the last nears. */
     static int ripe(int n) {
         float r = Math.min(1f, n / (float) TRIES);
         return r < 0.5f ? mix(0xFF9ED67A, 0xFFF2B640, r * 2f) : mix(0xFFF2B640, 0xFFE0402C, (r - 0.5f) * 2f);

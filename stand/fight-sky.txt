@@ -1,12 +1,12 @@
-# The way into the fight from the sky: the golden hammer given once already, nine buildings
-# lost in a row; five throws into the sky lose the tenth, the gods frown and drop the diamond
-# hammer, and the view comes down into the red street where she waits. There nobody throws:
-# her cars get through, the shields break, and the fight is lost; the player wakes on the
-# street before the same building.
+# The way into the fight: four buildings lost in a row; five throws into the sky lose the
+# fifth, the console's hammer knocks the golden hammer and the fight, and the room draws back
+# off the red street where she waits. There nobody throws: her cars get through, the shields
+# break, and the fight is lost; the player wakes on the street before the same building, the
+# golden hammer in hand.
 screen 1096 2560
 keep level 4
 keep goldSeen 1
-keep fails 9
+keep fails 4
 restart
 skip
 wait 2.6
