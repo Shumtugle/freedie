@@ -2077,12 +2077,10 @@ final class Game implements Physics.Listener {
             return;
         }
         if (b.material == Body.GOLD) {
-            // the golden cube: a glowing heart in a shell of polished gold a little bigger, so it
-            // shines out of the shade of the building and is never taken for a painted block
+            // the golden cube: gold that burns from inside, so it shines out of the shade of the
+            // building and is never taken for a painted block
             float hs = b.hx * scale;
-            d.box(b.px, b.py + drop, b.pz, hs, hs, hs, turn, 0xE8A820, DrawList.GOLD);
-            float glow = 0.75f + 0.25f * (float) Math.sin(clock * 4f);
-            d.box(b.px, b.py + drop, b.pz, hs * 1.04f, hs * 0.55f, hs * 1.04f, turn, Street.scale(0xFFD84A, glow), DrawList.GLOW);
+            d.box(b.px, b.py + drop, b.pz, hs, hs, hs, turn, 0xFFB428, DrawList.FIRE_GOLD);
             return;
         }
         float x = b.px, y = b.py + drop, z = b.pz, hx = b.hx * scale, hy = b.hy * scale, hz = b.hz * scale;
@@ -2202,7 +2200,9 @@ final class Game implements Physics.Listener {
             return;
         }
         if (state == PORTAL) drawPortal(f);
-        // the golden cube on the building catches the light now and then: a little star of white
+        // the golden cube burns: a warm haze round it, breathing
+        if (goldCube != null && !goldCube.gone && (state == PLAY || state == BUILD)) haze(f, goldCube);
+        // and catches the light now and then: a little star of white
         if (goldCube != null && !goldCube.gone && (state == PLAY || state == BUILD) && project(goldCube.px, goldCube.maxY, goldCube.pz, scr)) {
             float g = (clock * 0.8f) % 1.6f;
             if (g < 0.35f) {
@@ -2258,6 +2258,24 @@ final class Game implements Physics.Listener {
     private static void shade(Px f, float k) {
         int c = ((int) (Math.min(1f, k) * 255f) << 24);
         for (int i = 0; i < f.a.length; i++) f.a[i] = c;
+    }
+
+    /** A warm haze round the golden cube, on the empty air of the flat layer only. */
+    private void haze(Px f, Body b) {
+        if (!project(b.px, b.py, b.pz, scr)) return;
+        float cx = scr[0], cy = scr[1];
+        if (!project(b.px, b.py + b.hy, b.pz, scr)) return;
+        float r = Math.max(2f, Math.abs(cy - scr[1]) * 0.8f), out = r * 3.4f;
+        float breath = 0.8f + 0.2f * (float) Math.sin(clock * 3.3f);
+        for (int y = (int) (cy - out); y <= cy + out; y++)
+            for (int x = (int) (cx - out); x <= cx + out; x++) {
+                if (x < 0 || y < 0 || x >= f.w || y >= f.h || f.a[y * f.w + x] != 0) continue;
+                float d = ((float) Math.hypot(x + 0.5f - cx, y + 0.5f - cy) - r) / (out - r);
+                if (d >= 1f || d < 0f) continue;
+                float a = (1f - d) * (1f - d);
+                int al = Math.round(110 * a * breath);
+                if (al > 0) f.a[y * f.w + x] = (al << 24) | 0xFF9628;
+            }
     }
 
     /**

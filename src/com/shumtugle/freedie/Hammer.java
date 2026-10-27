@@ -26,9 +26,10 @@ final class Hammer {
     };
     private static final int[] HEAVY_COL = {0x6E4A2C, 0x3E2618, 0x3F3D44, 0xA8783A, 0xA8783A};
     private static final int[] HEAVY_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.STONE, DrawList.PAINT, DrawList.PAINT};
-    // the golden hammer: the plain one's shape, its head and hoops of gold
-    private static final int[] GOLD_COL = {0x8A5A32, 0x5A3418, 0xF2C64A, 0xFFF0B0, 0xFFF0B0};
-    private static final int[] GOLD_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.GOLD, DrawList.GOLD, DrawList.GOLD};
+    // the golden hammer: the plain one's shape, its head of gold burning from inside, its hoops
+    // of polished gold
+    private static final int[] GOLD_COL = {0x8A5A32, 0x5A3418, 0xFFB428, 0xC88A2E, 0xC88A2E};
+    private static final int[] GOLD_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.FIRE_GOLD, DrawList.GOLD, DrawList.GOLD};
     // the watchers' hammer for the fight: the heavy one's shape, its head of pale blue diamond
     private static final int[] DIAMOND_COL = {0x7A5A3A, 0x3E2618, 0x6CC8EC, 0xE8FAFF, 0xE8FAFF};
     private static final int[] DIAMOND_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.GLASS, DrawList.GLASS, DrawList.GLASS};

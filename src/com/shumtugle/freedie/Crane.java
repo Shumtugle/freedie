@@ -470,7 +470,7 @@ final class Crane {
         float a = t * 1.7f;
         float c = (float) Math.cos(a), s = (float) Math.sin(a);
         float[] r = {c, 0f, s, 0f, 1f, 0f, -s, 0f, c};
-        d.box(hx, cy, hz, CUBE, CUBE, CUBE, r, 0xF2B020, DrawList.GOLD);
+        d.box(hx, cy, hz, CUBE, CUBE, CUBE, r, 0xFFB428, DrawList.FIRE_GOLD);
         // its edges darker, as the cubes in the rack are drawn
         float e = CUBE + 0.006f, th = 0.028f;
         for (int i = 0; i < 4; i++) {

@@ -30,6 +30,8 @@ final class DrawList {
     // what a ball is: a polished one with a marbled swirl and finger holes, or a rubber one;
     // or the mirror, a ball of steel that shows the world round it
     static final int POLISHED = 20, RUBBER = 21, MIRROR = 24;
+    // gold that burns from inside: the golden cube, the golden hammer's head
+    static final int FIRE_GOLD = 25;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 

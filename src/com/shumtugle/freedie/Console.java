@@ -30,7 +30,7 @@ final class Console {
     private static final int[] BX = {4, 72, 140, 208};
     private static final int BY = 422, BW = 58, BH = 32;
     private static final int DY = 474;                                   // the desk
-    private static final int[] LIT = {0x4FE36A, 0xFFC93A, 0x9AA3B4, 0xFF5A3C};
+    private static final int[] LIT = {0x4FE36A, 0xFFA830, 0x9AA3B4, 0xFF5A3C};
 
     // the timeline, seconds: the hammer coming up, each knock, the channel flicking over
     static final float RISE = 0.3f, KNOCK = 0.42f, FLICK = 0.18f;
@@ -101,9 +101,9 @@ final class Console {
             int cx = Math.round(x0 + cw * (col + 0.5f)), cy = y1 - 11 - row * 22;
             boolean lit = i == shown - 1 && shine > 0f;
             // a little golden cube: its top light, its two sides darker
-            f.rect(cx - 7, cy - 7, cx + 7, cy - 2, lit ? 0xFFFFF4C0 : 0xFFFFE07A);
-            f.rect(cx - 7, cy - 2, cx, cy + 7, 0xFFE0A82E);
-            f.rect(cx, cy - 2, cx + 7, cy + 7, 0xFFB07E1E);
+            f.rect(cx - 7, cy - 7, cx + 7, cy - 2, lit ? 0xFFFFE6A0 : 0xFFFFC24A);
+            f.rect(cx - 7, cy - 2, cx, cy + 7, 0xFFF08C1E);
+            f.rect(cx, cy - 2, cx + 7, cy + 7, 0xFFB85A12);
         }
         // the grille over it, thin: they are behind bars, not in the hand
         for (int x = x0 + 8; x < x1 - 2; x += 17) f.rect(x, y0, x + 1, y1, 0xFF5A626C);
@@ -335,11 +335,11 @@ final class Console {
     // ---- the hammer ----
 
     // the head's colours by kind (plain, heavy, golden, diamond): side, top, striking face, grain, bands
-    private static final int[] HEAD = {0xE8B45E, 0x4A4C52, 0xF2C64A, 0x6CC8EC};
+    private static final int[] HEAD = {0xE8B45E, 0x4A4C52, 0xF59A26, 0x6CC8EC};
     private static final int[][] HEAD_SET = {
             {0xE8B45E, 0xF4D490, 0xFBE3A6, 0xDCA552, 0x4A423A},
             {0x4A4C52, 0x6A6D74, 0x8A8E96, 0x42444A, 0xC08A34},
-            {0xF2C64A, 0xFFE08A, 0xFFF0B8, 0xD8AC34, 0xFFF0B0},
+            {0xF59A26, 0xFFC24A, 0xFFE6A0, 0xD8781A, 0xC88A2E},
             {0x6CC8EC, 0xA8E4F6, 0xE8FAFF, 0x5AB4DC, 0xE8FAFF}};
     private static final float ANG = (float) Math.toRadians(-24);
     private static final float HL = 122f, HH = 82f, TOP = 14f;

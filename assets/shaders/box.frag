@@ -42,6 +42,7 @@ const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
 const float POLISHED = 20.0, RUBBER = 21.0;
 const float ICE = 22.0, WINTER_SEA = 23.0;
 const float MIRROR = 24.0;
+const float FIRE_GOLD = 25.0;
 
 float hash(vec3 p) {
     p = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -398,6 +399,22 @@ void main() {
         k = 0.92 + 0.1 * hash(vec3(floor(uv / 0.05), face));
         if (edge < 0.025) k *= 0.75;
         gloss = 1.0;
+    } else if (mat == FIRE_GOLD) {
+        // gold that burns: lit from inside, white-hot in the middle of a face, deep orange at
+        // the rims, and slow tongues of brightness rising over it
+        vec2 q = uv / max(ext, vec2(1e-4));
+        float heat = 1.0 - clamp(max(abs(q.x), abs(q.y)), 0.0, 1.0);
+        vec2 f = uv / max(ext.x, ext.y) * 2.5 + vec2(0.0, -uTime * 0.9) + face * 1.7;
+        vec2 i0 = floor(f), w = smoothstep(0.0, 1.0, fract(f));
+        float n = mix(mix(hash(vec3(i0, face)), hash(vec3(i0 + vec2(1.0, 0.0), face)), w.x),
+                      mix(hash(vec3(i0 + vec2(0.0, 1.0), face)), hash(vec3(i0 + vec2(1.0, 1.0), face)), w.x), w.y);
+        float beat = 0.88 + 0.12 * sin(uTime * 5.3 + face);
+        float hot = clamp(heat * 1.6 * (0.55 + 0.6 * n) * beat, 0.0, 1.0);
+        // (in light itself, not paint: red runs far ahead of green, so the curve keeps it orange)
+        emit = mix(vec3(0.8, 0.09, 0.012), vec3(2.2, 0.32, 0.04), hot) * (0.85 + 0.4 * n)
+             + vec3(1.6, 0.9, 0.25) * pow(hot, 6.0);
+        if (edge < 0.02) emit *= 0.5;
+        k = 0.2;
     } else {
         k = 0.97 + 0.04 * hash(vec3(floor(uv / 0.08), face));
     }
@@ -430,9 +447,10 @@ void main() {
     if (seed == 253 && mat == PLAIN) pool = 0.0;
     // gold keeps its own light in the dark
     if (mat == GOLD) pool = max(pool, 0.9 * uGoldGlow);
+    if (mat == FIRE_GOLD) pool = 1.0;
     c *= mix(1.0, pool, uDark);
     // what burns in the golden fire, when the world is seen red, is marked in the alpha
-    bool fire = seed == 255 && (mat == PLAIN || mat == GRAIN || mat == STONE || mat == WOOD || mat == GOLD || mat == RAIL);
+    bool fire = seed == 255 && (mat == PLAIN || mat == GRAIN || mat == STONE || mat == WOOD || mat == GOLD || mat == FIRE_GOLD || mat == RAIL);
     // and what keeps its own colours, in the alpha too
     bool keep = seed == 254 && (mat == PLAIN || mat == WOOD || mat == GLASS);
     outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), keep ? 0.25 : fire ? 0.5 : 1.0);

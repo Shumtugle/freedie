@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.1
+- Gold as fire: the golden cube on a building, the cube the crane brings and the golden
+  hammer's head burn from inside now, white-hot in the middle of a face, deep orange at the
+  rims, with slow tongues of brightness rising over them. The cube on a building breathes a
+  warm haze round itself. They keep their light in the dark.
+- The cubes on the console, in the bank and on the bridge, the cube button and the golden
+  hammer over the buttons are orange gold too, a hot spot on the top.
+
 ## 0.32
 - The golden cube for an episode only for an episode played clean: from its first level on,
   every building felled at its first throw. Lose a try, or take two throws, and the console

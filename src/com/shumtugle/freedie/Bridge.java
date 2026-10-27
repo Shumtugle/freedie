@@ -414,10 +414,13 @@ final class Bridge {
     }
 
     private static void cube(Px f, int cx, int cy, int r) {
-        tri(f, cx, cy - r, cx + r, cy - r / 2, cx, cy, 0xFFFFE07A);
-        tri(f, cx, cy - r, cx - r, cy - r / 2, cx, cy, 0xFFFFE07A);
-        quad(f, cx - r, cy - r / 2, cx, cy, cx, cy + r, cx - r, cy + r / 2, 0xFFE0A82E);
-        quad(f, cx + r, cy - r / 2, cx, cy, cx, cy + r, cx + r, cy + r / 2, 0xFFB07E1E);
+        // gold as fire: an orange body, a hot heart on top
+        tri(f, cx, cy - r, cx + r, cy - r / 2, cx, cy, 0xFFFFC24A);
+        tri(f, cx, cy - r, cx - r, cy - r / 2, cx, cy, 0xFFFFC24A);
+        quad(f, cx - r, cy - r / 2, cx, cy, cx, cy + r, cx - r, cy + r / 2, 0xFFF08C1E);
+        quad(f, cx + r, cy - r / 2, cx, cy, cx, cy + r, cx + r, cy + r / 2, 0xFFB85A12);
+        float hx = r * 0.45f, hy = r * 0.23f, my = cy - r / 2f;
+        quad(f, cx, my - hy, cx + hx, my, cx, my + hy, cx - hx, my, 0xFFFFE6A0);
     }
 
     private static void quad(Px f, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, int c) {
@@ -443,7 +446,7 @@ final class Bridge {
 
     /** The row of buttons: enter, lit; the cube's, lit while there is a channel to pay; the hammer's dim; a cap where the games will be. */
     private void buttons(Px f, int oy) {
-        int[] col = {0x4FE36A, 0xFFC93A, 0x9AA3B4};
+        int[] col = {0x4FE36A, 0xFFA830, 0x9AA3B4};
         boolean[] lit = {paid(), !paid() && w.cubes > 0, false};
         for (int i = 0; i < 4; i++) {
             int x = BX[i], y = BY + oy;
