@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.36
+- People drawn round, as balls drawn out along the limbs: legs in shorts, trousers or a
+  skirt, shoes, a body flatter front to back, arms swinging against the legs, neck, head
+  and hair, now and then long hair, a straw hat or a bag; a child here and there. Plain
+  cloth and skin, no shine; they go into the dark with the world as before.
+- They walk the pavement by the curb and the near edge of the promenade, up and down the
+  whole street and right past the eye, and cast their shadows like everything else.
+- Balls may be drawn out longer one way than another, in the picture and in the shadows.
+
 ## 0.35
 - No films between episodes any more: the crane, the truck and Freedie at the plinth are
   gone, and an episode ends in the light and the next building. The game stays in the

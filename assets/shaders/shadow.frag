@@ -38,13 +38,15 @@ void main() {
     // the mirror up in the sky casts nothing on the street
     if (floor(vMaterial + 0.001) == 24.0) discard;
     // a ball: the sun's ray through this point of the cube, followed to the sphere inside
+    // (drawn out longer one way, as a limb: squeezed to a unit sphere first)
     mat3 turn = mat3(vTurn0, vTurn1, vTurn2);
-    float r = vHalf.x;
-    vec3 rd = transpose(turn) * -uSun;
-    float b = dot(vLocal, rd);
-    float h = b * b - dot(vLocal, vLocal) + r * r;
+    vec3 hs = vHalf;
+    vec3 ro = vLocal / hs;
+    vec3 rd = normalize(transpose(turn) * -uSun / hs);
+    float b = dot(ro, rd);
+    float h = b * b - dot(ro, ro) + 1.0;
     if (h < 0.0) discard;
-    vec3 world = vCenter + turn * (vLocal + rd * (-b - sqrt(h)));
+    vec3 world = vCenter + turn * ((ro + rd * (-b - sqrt(h))) * hs);
     vec4 p = uLight * vec4(world, 1.0);
     gl_FragDepth = p.z / p.w * 0.5 + 0.5;
     return;

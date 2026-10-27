@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.35";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.36";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -46,7 +46,7 @@ final class World {
     float sceneTime;
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
-    private final People people = new People(26, 0x5EE7L, 9f);   // up and down the street
+    private final People people = new People(20, 0x5EE7L, 1.2f);   // up and down the street, and right by the eye
     private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
     private final DrawList still = new DrawList();   // the street, built once
@@ -85,15 +85,15 @@ final class World {
         game.solid = solid;
         people.solid = solid;
         level = game.level;
-        // along the pavement under the houses and along the promenade; nobody on the road
+        // along the pavement by the curb and the promenade's near edge, up and down the whole
+        // street and right past the eye: half out of the frame close by, their long shadows
+        // reach across the road in front of it; nobody on the road
         java.util.Random r = people.random();
-        for (int i = 0; i < 11; i++) {
-            float x = 6.3f + r.nextFloat() * 5.4f, z = 13f + r.nextFloat() * 50f;
-            people.walk(x, z, x + (r.nextFloat() - 0.5f) * 1.2f, z + (r.nextBoolean() ? 1f : -1f) * (8f + r.nextFloat() * 14f), Street.WALK_TOP);
-        }
-        for (int i = 0; i < 11; i++) {
-            float x = -13.5f + r.nextFloat() * 7f, z = 12f + r.nextFloat() * 50f;
-            people.walk(x, z, x + (r.nextFloat() - 0.5f) * 1.2f, z + (r.nextBoolean() ? 1f : -1f) * (8f + r.nextFloat() * 14f), Street.WALK_TOP);
+        for (int i = 0; i < 20; i++) {
+            float side = (i & 1) == 0 ? 1f : -1f;
+            float x = side * (4.8f + r.nextFloat() * (side > 0 ? 4.6f : 2.0f));
+            float z0 = -4f + r.nextFloat() * 40f, z1 = Math.min(82f, z0 + 30f + r.nextFloat() * 30f);
+            people.walk(x, z0, x + (r.nextFloat() - 0.5f) * 0.8f, z1, Street.WALK_TOP);
         }
     }
 

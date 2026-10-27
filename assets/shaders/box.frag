@@ -39,7 +39,7 @@ out vec4 outColor;
 const float PLAIN = 0.0, GRAIN = 1.0, STONE = 2.0, ASPHALT = 3.0, WOOD = 4.0, PAVING = 5.0, PAINT = 6.0, GOLD = 7.0;
 const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, GLOW = 13.0, SEA = 14.0, RAIL = 15.0;
 const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
-const float POLISHED = 20.0, RUBBER = 21.0;
+const float POLISHED = 20.0, RUBBER = 21.0, MATTE = 26.0;
 const float ICE = 22.0, WINTER_SEA = 23.0;
 const float MIRROR = 24.0;
 const float FIRE_GOLD = 25.0;
@@ -212,29 +212,33 @@ const vec3 HOLE0 = vec3(0.0, 0.96, 0.28), HOLE1 = vec3(-0.24, 0.95, -0.2), HOLE2
  * A ball, drawn on the faces of the cube round it: the eye's ray through this pixel is
  * followed in the ball's own frame to where it meets the sphere; outside it there is
  * nothing. The depth is the sphere's, so balls touch and hide each other as round things do.
- * A polished ball has a marbled swirl and three finger holes that turn with it and a small
- * hard shine; a rubber one is plain with a broader, softer shine.
+ * A ball may be drawn out longer one way than another (the cube's half sizes are its own):
+ * a limb, a body. A polished ball has a marbled swirl and three finger holes that turn with
+ * it and a small hard shine; a rubber one is plain with a broader, softer shine; a matte one
+ * (people) is plain cloth and skin, and goes into the dark with the world.
  */
 void sphere(float mat) {
-    float r = vHalf.x;
+    vec3 hs = vHalf;
     mat3 vTurn = mat3(vTurn0, vTurn1, vTurn2);
     mat3 back = transpose(vTurn);
-    vec3 ro = back * (uEye - vCenter);
-    vec3 rd = normalize(back * (vWorld - uEye));
+    // in the ball's frame, squeezed so it is a unit sphere
+    vec3 ro = back * (uEye - vCenter) / hs;
+    vec3 rd = normalize(back * (vWorld - uEye) / hs);
     float b = dot(ro, rd);
-    float h = b * b - dot(ro, ro) + r * r;
+    float h = b * b - dot(ro, ro) + 1.0;
     if (h < 0.0) discard;
-    vec3 l = (ro + rd * (-b - sqrt(h))) / r;              // on the unit sphere, in the ball's frame
-    vec3 world = vCenter + vTurn * (l * r);
+    vec3 l = ro + rd * (-b - sqrt(h));                     // on the unit sphere, in the ball's frame
+    vec3 world = vCenter + vTurn * (l * hs);
     vec4 clip = uViewProj * vec4(world, 1.0);
     gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
     if (mat == MIRROR) {
         mirror(l, world);
         return;
     }
-    vec3 n = vTurn * l;
+    vec3 n = normalize(vTurn * (l / hs));
     vec3 v = normalize(uEye - world);
-    bool rubber = mat == RUBBER;
+    bool matte = mat == MATTE;
+    bool rubber = mat == RUBBER || matte;
     vec3 base = lin(vColor);
     bool hole = false;
     if (!rubber) {
@@ -247,7 +251,7 @@ void sphere(float mat) {
     float ndl = dot(n, uSun);
     vec3 amb = mix(uAmbGround, uAmbSky, n.y * 0.5 + 0.5);
     vec3 c = base * (amb + uSunColor * max(ndl, 0.0) * sh);
-    if (!hole) {
+    if (!hole && !matte) {
         // the shine sits half way between the sun and the eye
         float sp = max(dot(n, normalize(uSun + v)), 0.0);
         sp = rubber ? pow(sp, 10.0) * 0.6 : pow(sp, 48.0) * 1.5;
@@ -263,7 +267,7 @@ void sphere(float mat) {
     float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
     c = mix(c, lin(uFog), haze);
     float pool = 1.0 - smoothstep(uSpotRadius * 0.55, uSpotRadius, length((world - uSpot) * vec3(0.55, 1.0, 1.0)));
-    c *= mix(1.0, pool, uDark);
+    c *= mix(1.0, matte ? 0.0 : pool, uDark);
     outColor = vec4(pow(tone(c), vec3(1.0 / 2.2)), 1.0);
 }
 #endif

@@ -1,0 +1,48 @@
+# People on the street, close by and far off, at three hours of the evening: the 21st,
+# the 51st, the 91st.
+screen 1096 2560
+keep level 20
+keep best 21
+restart
+skip
+wait 3.0
+wait 1.6
+shot a0
+wait 1.6
+shot a1
+wait 1.6
+shot a2
+wait 1.6
+shot a3
+wait 1.6
+shot a4
+keep level 50
+keep best 51
+restart
+skip
+wait 3.0
+wait 1.6
+shot b0
+wait 1.6
+shot b1
+wait 1.6
+shot b2
+wait 1.6
+shot b3
+wait 1.6
+shot b4
+keep level 90
+keep best 91
+restart
+skip
+wait 3.0
+wait 1.6
+shot c0
+wait 1.6
+shot c1
+wait 1.6
+shot c2
+wait 1.6
+shot c3
+wait 1.6
+shot c4

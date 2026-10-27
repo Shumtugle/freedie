@@ -32,6 +32,8 @@ final class DrawList {
     static final int POLISHED = 20, RUBBER = 21, MIRROR = 24;
     // gold that burns from inside: the golden cube, the golden hammer's head
     static final int FIRE_GOLD = 25;
+    // a ball of plain cloth or skin, without shine (people); it goes into the dark with the world
+    static final int MATTE = 26;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 
@@ -114,6 +116,22 @@ final class DrawList {
         boxes = balls;
         count = ballCount;
         box(x, y, z, r, r, r, rot, rgb, kind);
+        balls = boxes;
+        ballCount = count;
+        boxes = keep;
+        count = kept;
+    }
+
+    /**
+     * A ball drawn out longer one way than another, as a limb or a body: its middle, its half
+     * sizes along its own axes, its turn (a 3x3, row by row), color, and what it is.
+     */
+    void ellipsoid(float x, float y, float z, float hx, float hy, float hz, float[] rot, int rgb, int kind) {
+        float[] keep = boxes;
+        int kept = count;
+        boxes = balls;
+        count = ballCount;
+        box(x, y, z, hx, hy, hz, rot, rgb, kind);
         balls = boxes;
         ballCount = count;
         boxes = keep;
