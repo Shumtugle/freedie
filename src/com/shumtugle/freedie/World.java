@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.27.1";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.28";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -42,6 +42,8 @@ final class World {
     private final Host host;
     int h = 640;
     float time;
+    // the time the street keeps: it stands still while the room between rounds is closed over it
+    float sceneTime;
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
     private final People people = new People(26, 0x5EE7L, 9f);   // up and down the street
@@ -143,7 +145,12 @@ final class World {
     void update(float dt) {
         time += dt;
         frameDt = dt;
-        traffic.update(dt);
+        // the street on the set is a still: while the room is all closed in, nothing on it moves
+        boolean still = game.tilt() >= 1f;
+        if (!still) {
+            sceneTime += dt;
+            traffic.update(dt);
+        }
         if (intro != null) {
             intro.update(dt);
             if (intro.done()) {
@@ -250,7 +257,7 @@ final class World {
             built = true;
         }
         d.begin(W, h);
-        d.time = time;
+        d.time = sceneTime;
         light(d);
         if (game.atSea && intro == null) Ocean.light(d);
         // on the street, the hour of the evening the level is played at
@@ -269,8 +276,8 @@ final class World {
             view[2] = 1f;
         } else {
             float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
-            // up, almost straight up, to the mirror in the sky
-            float pitch = game.tilt() * Mirror.PITCH;
+            // as the room closes in, the eye drops a little to the plinth, so it sits on the set
+            float pitch = -0.2f * game.tilt();
             // far plinths: under an aim the view closes in on the building
             game.view(yaw, pitch, view);
             yaw = view[0];
@@ -279,8 +286,8 @@ final class World {
             game.jolt(jolt);
             yaw += jolt[0] / (W * 1.9f);
             pitch += jolt[1] / (W * 1.9f);
-            // looking up at it the lens widens, to take the mirror and its wreath in
-            float wide = 1f - 0.45f * game.tilt();
+            // as the room closes in over the street, the street draws back a little into the set
+            float wide = 1f - 0.15f * game.tilt();
             d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
         }
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
@@ -308,13 +315,13 @@ final class World {
         }
         if (game.atSea) {
             d.append(sea);
-            Ocean.draw(d, Builder.CZ, time);
+            Ocean.draw(d, Builder.CZ, sceneTime);
             Ocean.button(time, callAt3);
         } else {
             d.append(still);
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
-            people.draw(d, time, CAM_X, CAM_Y, CAM_Z);
+            people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
             callAt3[0] = Street.CALL_X;
             callAt3[1] = Street.CALL_Y + 0.06f;
             callAt3[2] = Street.CALL_Z;

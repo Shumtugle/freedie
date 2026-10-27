@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28
+- No sky between rounds any more. When a building is down, the dispatcher's room closes in
+  over the street from above and below, and the street goes still on the tube of an old
+  set, its sides running off the frame. Over the set the clock and the date, the player's
+  own, in glowing digits, and the golden cube in its slot that powers the set; under it a
+  row of buttons; under those the level, big, and a key back to the level before. Above and
+  below, the room goes off into the dark.
+- The hammer is the hand: it comes up out of the dark, big, lazy, and knocks the buttons one
+  after another, each going in with a click and lighting up: the hammer given, if one is
+  (in its own colour), the cube when an episode is won, the fight when it is due, and last
+  the one that goes on. A lost round goes on the same way, to the same level.
+- The set flicks over with a moment of snow, the counter shows the next level, the room
+  draws back off the street, and the next building is already coming down.
+- About two seconds between rounds, where the sky took four or five.
+
 ## 0.27.1
 - The face in the mirror comes up slowly with the first flash, pixel by pixel, as a picture
   comes up in the developer; it stays through the lightning and washes out slowly after the

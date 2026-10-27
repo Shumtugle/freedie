@@ -1,6 +1,6 @@
-# The mirror in the sky: the view tips up to a ball of steel in a wreath of storm cloud. First
-# a building felled at one throw (lightning, thunder, the heavy hammer out of the mirror);
-# then at night, the stars run out and then a far flash; then at sea, under the winter sky.
+# Between rounds: the dispatcher's room closes in over the street, the hammer knocks the
+# console's buttons (the heavy hammer given, then on), the set flicks over, the room draws off.
+# First by day after a building felled at one throw; then at night, held; then at sea.
 screen 1096 2560
 keep level 4
 keep fails 10
