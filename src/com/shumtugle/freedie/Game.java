@@ -103,6 +103,8 @@ final class Game implements Physics.Listener {
     Crane crane;
     private boolean craneOut;
     boolean cubeGift;
+    // a golden cube won with an episode, to be given on the console
+    private boolean cubeDue;
     // the console between rounds, and the hammer that knocks it
     private final Console console = new Console();
     private int throwsMade;
@@ -1195,7 +1197,7 @@ final class Game implements Physics.Listener {
     private void knocks(int gift, int next) {
         int n = 0;
         if (gift >= 0) knockList[n++] = Console.HAMMER;
-        if (chapterDue) knockList[n++] = Console.CUBE;
+        if (cubeDue) knockList[n++] = Console.CUBE;
         knockList[n++] = fightNext ? Console.GAME : Console.NEXT;
         int hand = goldOn ? Hammer.GOLDEN : heavyOn && heavyLeft > 0 ? Hammer.HEAVY_KIND : Hammer.PLAIN;
         console.begin(knockList, n, hand, gift, level + 1, next + 1);
@@ -1206,6 +1208,12 @@ final class Game implements Physics.Listener {
     /** A button knocked on the console: it goes in with a click; the set flickers over at the last. */
     private void knocked(int button) {
         if (button < 0) return;
+        if (button == Console.CUBE && cubeDue) {
+            // the cube knocked out is the player's: into the rack at once
+            cubeDue = false;
+            cubeGift = true;
+            host.sound(Synth.CATCH, 0.8f, 1.4f);
+        }
         host.sound(Synth.TOCK, 0.7f, 0.8f);
         host.sound(Synth.LATCH, 0.8f, button == Console.NEXT ? 1f : 1.15f);
         host.buzz(20);
@@ -1241,6 +1249,8 @@ final class Game implements Physics.Listener {
         int run = host.loadInt("epRun") + Math.max(0, stars);
         host.saveInt("epRun", run);
         if (!Episode.last(plate)) return;
+        // an episode won for the first time: a golden cube, given on the console between rounds
+        if (host.loadInt("ep" + e + "done") != 1) cubeDue = true;
         host.saveInt("ep" + e + "done", 1);
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
         // an episode that ends in the alley goes on through the light too, until the alley is there

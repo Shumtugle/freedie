@@ -1,0 +1,29 @@
+# The twentieth building, the last of the second episode, felled for the first time: on the
+# console the hammer knocks the cube's button, a golden cube goes into the rack, and the next
+# episode opens with it shown in the corner.
+screen 1096 2560
+keep level 19
+keep fails 5
+keep best 20
+keep cubes 0
+restart
+skip
+wait 2.6
+shot c0_twentieth
+down 137 420
+wait 1.0
+up 137 420
+wait 3.6
+shot c1_console
+wait 0.5
+shot c2_knock
+wait 0.5
+shot c3_after
+wait 1.2
+shot c4_room
+wait 0.5
+shot c5_cube
+wait 0.5
+shot c6_next_button
+wait 4.0
+shot c7_next

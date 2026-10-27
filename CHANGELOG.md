@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.31.1
+- An episode won for the first time gives a golden cube, and it is given where it is shown:
+  the console's hammer knocks the cube's button and the cube goes into the rack. Until now
+  the button was knocked at every episode's end and no cube came. The first one is the
+  twentieth level's.
+
 ## 0.31
 - A landmark that comes round again in town is never its own copy any more. Thirteen of the
   town's buildings were exact twins of earlier ones, only their colours changed: the recipes
