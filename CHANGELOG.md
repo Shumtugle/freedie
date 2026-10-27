@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30
+- The bridge is the console room now, the same one seen between rounds, and the player sits
+  down at it. One set; the episodes are its channels, and a big red knob on the front of the
+  desk clicks from one to the next, with a moment of snow. There are only as many channels as
+  the game has reached, and the fight once she has come: the knob stops against the last.
+- A channel not paid for comes scrambled, grey and torn into sliding bands, its slot an empty
+  slit with an amber lamp blinking. A tap on the slot drops a golden cube from the tray on the
+  desk into it like a token, and the picture comes clear for good.
+- The green button goes into the channel: its first level, or the red street of the fight.
+  The key at the left goes back one level from the one being played. HOME goes back to the
+  street. The lamp sways, a fan's shadow crawls round the wall, the tube flickers.
+
 ## 0.29
 - Five lost tries in a row at the same building, not ten, and the ring round the level's
   number has five segments. At the fifth the console gives the golden hammer and, in town,

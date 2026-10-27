@@ -170,7 +170,7 @@ final class Console {
     private static final int VFD = 0x6CF2D8, VFD_OFF = 0x0B1816, AMBER = 0xFF8A2A, AMBER_OFF = 0x1A0B04;
 
     /** The clock and the date over the set: the player's own, in glowing digits. */
-    private void clock(Px f, int dy) {
+    static void clock(Px f, int dy) {
         Calendar c = Calendar.getInstance();
         int hh = c.get(Calendar.HOUR_OF_DAY), mm = c.get(Calendar.MINUTE);
         int dd = c.get(Calendar.DAY_OF_MONTH), mo = c.get(Calendar.MONTH) + 1;
@@ -282,7 +282,7 @@ final class Console {
     // which segments light for each digit: a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle
     private static final String[] SEG = {"abcdef", "bc", "abged", "abgcd", "fgbc", "afgcd", "afgedc", "abc", "abcdefg", "abcfgd"};
 
-    private static void digit(Px f, int x, int y, int w, int h, int t, int n, int on, int off) {
+    static void digit(Px f, int x, int y, int w, int h, int t, int n, int on, int off) {
         String lit = n >= 0 && n <= 9 ? SEG[n] : "";
         int m = h / 2;
         seg(f, x + t, y, x + w - t, y + t, lit.indexOf('a') >= 0 ? on : off);

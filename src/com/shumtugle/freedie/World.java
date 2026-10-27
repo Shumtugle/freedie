@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.29";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.30";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -437,6 +437,13 @@ final class World {
             game.enter(Episode.FIRST[which] - 1);
             level = game.level;
         } else flashOut = FLASH_OUT;
+    }
+
+    /** The back key on the bridge: to that level (from 0), through the light. */
+    void bridgeLevel(int lv) {
+        bridge = null;
+        game.enter(Math.max(0, lv));
+        level = game.level;
     }
 
     /** A game's screen, poked: the game is played over the bridge, which waits behind it. */

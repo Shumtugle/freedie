@@ -1,11 +1,14 @@
-# The fight from the bridge: its own screen on the ring, the last one, a black and white
-# monitor where she comes up the street in golden fire. Three presses of the red button open
-# the room; the ring turned one screen back; a cube from the rack goes into the screen's
-# slot; then a poke at the screen, and the street comes on red with her far up the road.
+# The fight on the bridge: once she has come in the game, her red street is the last channel.
+# The knob clicks on to it; it comes scrambled; a cube in the slot; the green button, and out
+# onto the red street where she comes.
 screen 1096 2560
+keep best 12
+keep fought 1
+keep cubes 1
+keep slot0 1
+keep slot1 1
 skip
 wait 1.0
-keep cubes 1
 down 240 325
 up 240 325
 wait 0.3
@@ -15,18 +18,18 @@ wait 0.3
 down 240 325
 up 240 325
 wait 0.8
-shot g0_room
-drag 120 250 200 250 0.25
-wait 1.2
-shot g1_screen
-down 137 252
-up 137 252
-wait 1.2
-shot g2_slot
-down 137 329
-up 137 329
-wait 0.5
-shot g3_poke
-wait 1.4
-shot g4_street
-fightstate
+down 200 590
+up 200 590
+wait 0.6
+down 200 590
+up 200 590
+wait 0.9
+shot f0_channel
+down 218 96
+up 218 96
+wait 1.6
+shot f1_paid
+down 33 438
+up 33 438
+wait 1.5
+shot f2_street
