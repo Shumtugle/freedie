@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.34.1
+- The hammer over the console's buttons and on the bridge is one whole block again: its
+  top and its striking face were stepped back in two different directions, which left a
+  corner cut away at the striking end and a sliver sticking out at the other. Now both are
+  the side moved back by the same step and meet at the corner; the bands run on over the top.
+
 ## 0.34
 - A film between the second episode and the third: out of the light, Freedie stands at
   the empty plinth and looks up at the eye, her eyes kindling. She turns to the plinth, gets

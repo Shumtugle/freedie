@@ -415,18 +415,23 @@ final class Console {
         bar(f, hx + (dxh * 30 - 2 * c) * s, hy + (dyh * 30 - 2 * sn) * s, dxh, dyh, 290 * s, 16 * s, 0xFF9A5E2E);
         bar(f, hx + (dxh * 30 - 11 * c) * s, hy + (dyh * 30 - 11 * sn) * s, dxh, dyh, 290 * s, 5 * s, 0xFFC0803E);
         float hl = HL * s / 2f, hh = HH * s / 2f, tp = TOP * s;
-        // the top, seen a little from above
-        quad(f, hx, hy, c, sn, -hl, -hh, hl, -hh, hl + 6 * s, -hh - tp, -hl + 6 * s, -hh - tp, 0xFF000000 | col[1]);
+        // the head is a block seen a little from above and from the left: its top and its
+        // striking face are the side moved back by one and the same step, so they meet at the corner
+        float bx = -8f * s, by = -tp;
+        // the top
+        quad(f, hx, hy, c, sn, -hl, -hh, hl, -hh, hl + bx, -hh + by, -hl + bx, -hh + by, 0xFF000000 | col[1]);
         // the side
         quad(f, hx, hy, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0xFF000000 | col[0]);
         // grain along it
         for (float g = -hh + 4 * s; g < hh - 2 * s; g += 5 * s)
             quad(f, hx, hy, c, sn, -hl + 2, g, hl - 2, g, hl - 2, g + 1, -hl + 2, g + 1, 0xFF000000 | col[3]);
-        // the bands
-        for (float b : new float[]{-hl + 16 * s, hl - 16 * s})
-            quad(f, hx, hy, c, sn, b - 5 * s, -hh - tp, b + 5 * s, -hh - tp, b + 5 * s, hh, b - 5 * s, hh, 0xFF000000 | col[4]);
+        // the bands, down the side and across the top
+        for (float b : new float[]{-hl + 16 * s, hl - 16 * s}) {
+            quad(f, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s, hh, b - 5 * s, hh, 0xFF000000 | col[4]);
+            quad(f, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s + bx, -hh + by, b - 5 * s + bx, -hh + by, 0xFF000000 | col[4]);
+        }
         // the striking face, at the left end, lit
-        quad(f, hx, hy, c, sn, -hl - 8 * s, -hh - 4 * s, -hl, -hh, -hl, hh, -hl - 8 * s, hh - 4 * s, 0xFF000000 | col[2]);
+        quad(f, hx, hy, c, sn, -hl, -hh, -hl, hh, -hl + bx, hh + by, -hl + bx, -hh + by, 0xFF000000 | col[2]);
         // its shadowed lower edge
         quad(f, hx, hy, c, sn, -hl, hh - 2, hl, hh - 2, hl, hh, -hl, hh, 0xFF000000 | Street.scale(col[0], 0.66f));
     }
