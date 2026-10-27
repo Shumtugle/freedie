@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31
+- A landmark that comes round again in town is never its own copy any more. Thirteen of the
+  town's buildings were exact twins of earlier ones, only their colours changed: the recipes
+  stop growing after the 32nd level and the seed only painted them. Now the second time a
+  landmark stands it holds something else, the third time something else again, the fourth
+  time it is as it was the first time, and the fifth it holds what it held the second time,
+  the other way round. Balls, bottles, drums and blocks take turns; every one stands and is
+  checked on the stand.
+
 ## 0.30.1
 - One way out of the bridge: the key with the back arrow, the number of the level the player
   came from on it, goes back to the street as it was. HOME is gone; the red knob sits in the

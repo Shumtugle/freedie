@@ -78,6 +78,12 @@ final class Builder {
         String k = KINDS[kind];
         // bottles are a treat, not a rule: the rack always, the rest now and then
         water = k.equals("RACK") || rnd.nextFloat() < 0.3f;
+        // a landmark come round again in town is never its own copy: the second time it holds
+        // something else, the third time something else again, the fourth it is as it was the
+        // first time, the fifth it holds what it held the second time, the other way round
+        int pass = level < Game.SEA_FROM ? passOf(level) : 0;
+        fill = pass == 1 || pass == 4 ? 1 : pass == 2 ? 2 : 0;
+        boolean mirror = pass == 4;
         if (k.equals("WALL")) wall(size);
         else if (k.equals("TOWER")) tower(size);
         else if (k.equals("SEESAW")) seesaw(size);
@@ -90,7 +96,29 @@ final class Builder {
         else if (k.equals("CROWN")) crown(size);
         else if (k.equals("GROWN")) grown(level);
         else gate(size);
+        fill = 0;
+        if (mirror) mirrored();
         return new ArrayList<Body>(out);
+    }
+
+    // which filling a landmark holds this time: 0 its own, 1 and 2 two others
+    private int fill;
+
+    /** How many times the landmark for a level has stood in town before it, counted from 0; grown buildings never come round. */
+    static int passOf(int level) {
+        int kind = kindOf(level);
+        if (kind == GROWN || level < FIRST_KINDS) return 0;
+        int n = 0;
+        for (int l = 0; l < level; l++) if (kindOf(l) == kind) n++;
+        return n;
+    }
+
+    /** The building the other way round, across the plinth. */
+    private void mirrored() {
+        for (Body b : out) {
+            b.setPose(-b.px, b.py, b.pz, b.qw, b.qx, -b.qy, -b.qz);
+            b.homeX = -b.homeX;
+        }
     }
 
     /**
@@ -666,8 +694,21 @@ final class Builder {
         float up = d / (float) Math.sqrt(2.0);
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++) ballAt((i - 1) * d, BALL_R, (j - 1) * d);
+        if (fill == 2) {
+            // a board laid over the bottom layer, three bottles standing on it
+            float y = put(0, 2f * BALL_R, 0, inner, 0.06f, inner, false);
+            for (int i = -1; i <= 1; i++) bottle(i * 0.34f, y, 0);
+            return;
+        }
         for (int i = 0; i < 2; i++)
             for (int j = 0; j < 2; j++) ballAt((i - 0.5f) * d, BALL_R + up, (j - 0.5f) * d);
+        if (fill == 1) {
+            // a block where the top ball was, lying across the four, and beside the frame a drum on a drum
+            put(0, 2f * BALL_R + up, 0, 0.44f, 0.22f, 0.44f, false);
+            float y = drum(-(inner / 2 + t + 0.25f), 0, 0);
+            drum(-(inner / 2 + t + 0.25f), y, 0);
+            return;
+        }
         ballAt(0, BALL_R + 2 * up, 0);
     }
 
@@ -681,7 +722,21 @@ final class Builder {
         }
         y = put(0, y, 0, 2.3f, 0.12f, 0.42f, false);
         int n = 3 + (size >= 2 ? 1 : 0);
-        for (int i = 0; i < n; i++) nested(-0.85f + 1.7f * i / (n - 1), y, 0);
+        if (fill == 2) {
+            // a ball in its cradle at each end, and between them a stack of two cubes with a ball on top
+            nested(-0.85f, y, 0);
+            nested(0.85f, y, 0);
+            float t = put(0, y, 0, 0.42f, 0.3f, 0.36f, true);
+            t = put(0, t, 0, 0.42f, 0.26f, 0.36f, false);
+            nested(0, t, 0);
+            return;
+        }
+        for (int i = 0; i < n; i++) {
+            float x = -0.85f + 1.7f * i / (n - 1);
+            // the other filling: balls and bottles turn about along the beam
+            if (fill == 1 && (i & 1) == 1) bottle(x, y, 0);
+            else nested(x, y, 0);
+        }
     }
 
     /** Storeys of four posts and a slab, a ball in a cradle on every floor, one on the top. */
@@ -693,12 +748,20 @@ final class Builder {
             float o = w / 2 - post / 2;
             for (int i = 0; i < 4; i++)
                 put((i & 1) == 0 ? -o : o, y, (i & 2) == 0 ? -o : o, post, ph, post, false);
-            if (s > 0) nested(0, y, 0);
+            if (s > 0) {
+                // the other fillings: the ball off to one side, a cube beside it; or a drum
+                if (fill == 1) {
+                    nested(-o * 0.45f, y, 0);
+                    put(o * 0.5f, y, 0, 0.2f, 0.2f, 0.2f, false);
+                } else if (fill == 2) drum(0, y, 0);
+                else nested(0, y, 0);
+            }
             y += ph;
             y = put(0, y, 0, w + 0.1f, 0.1f, w + 0.1f, rnd.nextFloat() < 0.4f);
             w *= 0.86f;
         }
-        nested(0, y, 0);
+        if (fill == 1) bottle(-0.15f, y, 0);
+        else nested(0, y, 0);
     }
 
     /** Bricks in running bond. */
@@ -719,6 +782,17 @@ final class Builder {
                 put(width / 2 - bw * 0.25f, y, 0, bw * 0.5f, bh, bd, stone);
             }
             y += bh;
+        }
+        if (fill == 1) {
+            // on its top: bottles over the left half, a little stack of cubes at the right
+            for (int c = 0; c < cols / 2; c++) bottle(-width / 2 + bw * (c + 0.5f), y, 0);
+            float t = put(width / 2 - bw * 0.6f, y, 0, 0.3f, 0.3f, 0.3f, false);
+            put(width / 2 - bw * 0.6f, t, 0, 0.24f, 0.24f, 0.24f, false);
+        } else if (fill == 2) {
+            // on its top: a ball in its cradle in the middle, a stone block at each end
+            nested(0, y, 0);
+            put(-width / 2 + 0.2f, y, 0, 0.36f, 0.3f, 0.26f, true);
+            put(width / 2 - 0.2f, y, 0, 0.36f, 0.3f, 0.26f, true);
         }
     }
 
@@ -764,13 +838,25 @@ final class Builder {
         int legs = 1 + rnd.nextInt(2);
         for (int i = 0; i < legs; i++) y = put(0, y, 0, 0.3f, 0.55f, 0.3f, true);
         y = put(0, y, 0, 1.3f, 0.1f, 1.0f, true);
-        int n = 3, layers = 2 + Math.min(2, size);
+        int n = 3, layers = 2 + Math.min(2, size) - (fill != 0 ? 1 : 0);
         float c = 0.32f;
         for (int l = 0; l < layers; l++) {
             for (int i = 0; i < n; i++)
                 for (int j = 0; j < n; j++)
                     put((i - 1) * c, y, (j - 1) * c, c, c, c, false);
             y += c;
+        }
+        if (fill == 1) {
+            // a layer less, and on top a bottle at the left and a ball in its cradle at the right
+            bottle(-0.3f, y, 0);
+            nested(0.22f, y, 0);
+            return;
+        }
+        if (fill == 2) {
+            // a layer less, and on top a drum with a block across it
+            float t = drum(0, y, 0);
+            put(0, t, 0, 0.5f, 0.12f, 0.34f, false);
+            return;
         }
         if (water) bottle(0, y, 0);
     }
