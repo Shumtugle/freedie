@@ -1,0 +1,112 @@
+# The 39th, the first blow: the ground shakes, the plinth's near left corner breaks off at
+# its foot and a golden cube rolls out onto the asphalt; it is given on the console.
+screen 1096 2560
+keep level 38
+keep best 39
+keep chip 0
+keep cubes 1
+restart
+skip
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 0.2
+shot c00
+wait 0.2
+shot c01
+wait 0.2
+shot c02
+wait 0.2
+shot c03
+wait 0.2
+shot c04
+wait 0.2
+shot c05
+wait 0.2
+shot c06
+wait 0.2
+shot c07
+wait 0.2
+shot c08
+wait 0.2
+shot c09
+wait 0.2
+shot c10
+wait 0.2
+shot c11
+wait 0.2
+shot c12
+wait 0.2
+shot c13
+wait 0.2
+shot c14
+wait 0.2
+shot c15
+wait 1.0
+shot c_lie
+# then the rest of the round, and the console, where the cube is knocked out
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 2.6
+down 137 420
+wait 1.0
+up 137 420
+wait 0.25
+shot k00
+wait 0.25
+shot k01
+wait 0.25
+shot k02
+wait 0.25
+shot k03
+wait 0.25
+shot k04
+wait 0.25
+shot k05
+wait 0.25
+shot k06
+wait 0.25
+shot k07
+wait 0.25
+shot k08
+wait 0.25
+shot k09
+wait 0.25
+shot k10
+wait 0.25
+shot k11
+wait 0.25
+shot k12
+wait 0.25
+shot k13
+wait 0.25
+shot k14
+wait 0.25
+shot k15
+wait 0.25
+shot k16
+wait 0.25
+shot k17
+wait 0.25
+shot k18
+wait 0.25
+shot k19
+wait 0.25
+shot k20
+wait 0.25
+shot k21
+wait 0.25
+shot k22
+wait 0.25
+shot k23

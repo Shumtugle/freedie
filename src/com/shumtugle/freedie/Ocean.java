@@ -136,13 +136,13 @@ final class Ocean {
         part(d, r, x, y, z, 0f, 1.33f, -0.6f, 0.58f, 0.04f, 0.85f, SNOW, DrawList.GRAIN);
         // the stays from the masthead to the bow and the stern
         float tx = x + r[1] * (0.7f + mh) + r[2] * 0.6f, ty = y + r[4] * (0.7f + mh) + r[5] * 0.6f, tz = z + r[7] * (0.7f + mh) + r[8] * 0.6f;
-        Crane.beam(d, tx, ty, tz, x + r[1] * 0.6f + r[2] * 3.2f, y + r[4] * 0.6f + r[5] * 3.2f, z + r[7] * 0.6f + r[8] * 3.2f,
+        beam(d, tx, ty, tz, x + r[1] * 0.6f + r[2] * 3.2f, y + r[4] * 0.6f + r[5] * 3.2f, z + r[7] * 0.6f + r[8] * 3.2f,
                 0.012f, 0x3A3A3E, DrawList.PLAIN);
-        Crane.beam(d, tx, ty, tz, x + r[1] * 0.7f - r[2] * 2.1f, y + r[4] * 0.7f - r[5] * 2.1f, z + r[7] * 0.7f - r[8] * 2.1f,
+        beam(d, tx, ty, tz, x + r[1] * 0.7f - r[2] * 2.1f, y + r[4] * 0.7f - r[5] * 2.1f, z + r[7] * 0.7f - r[8] * 2.1f,
                 0.012f, 0x3A3A3E, DrawList.PLAIN);
         // the anchor chain going down into the sea from the bow
         float bx = x + r[1] * 0.5f + r[2] * 3.1f, by = y + r[4] * 0.5f + r[5] * 3.1f, bz = z + r[7] * 0.5f + r[8] * 3.1f;
-        Crane.beam(d, bx, by, bz, bx + r[2] * 1.4f, WATER_Y - 0.1f, bz + r[8] * 1.4f, 0.02f, 0x4A4642, DrawList.PLAIN);
+        beam(d, bx, by, bz, bx + r[2] * 1.4f, WATER_Y - 0.1f, bz + r[8] * 1.4f, 0.02f, 0x4A4642, DrawList.PLAIN);
     }
 
     private static void part(DrawList d, float[] r, float x, float y, float z, float lx, float ly, float lz,
@@ -230,5 +230,32 @@ final class Ocean {
 
     private static float frac(float v) {
         return v - (float) Math.floor(v);
+    }
+
+    /** A beam between two points, square in section. */
+    static void beam(DrawList d, float x0, float y0, float z0, float x1, float y1, float z1, float half, int rgb, int mat) {
+        float dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+        float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (len < 1e-4f) return;
+        dx /= len;
+        dy /= len;
+        dz /= len;
+        float ax, ay, az;
+        if (Math.abs(dy) < 0.9f) {
+            ax = -dz;
+            ay = 0f;
+            az = dx;
+        } else {
+            ax = 0f;
+            ay = dz;
+            az = -dy;
+        }
+        float al = (float) Math.sqrt(ax * ax + ay * ay + az * az);
+        ax /= al;
+        ay /= al;
+        az /= al;
+        float bx = dy * az - dz * ay, by = dz * ax - dx * az, bz = dx * ay - dy * ax;
+        float[] r = {ax, bx, dx, ay, by, dy, az, bz, dz};
+        d.box((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, (z0 + z1) * 0.5f, half, half, len * 0.5f, r, rgb, mat);
     }
 }

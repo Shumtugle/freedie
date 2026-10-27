@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.34.1";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.35";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -175,7 +175,7 @@ final class World {
             level = game.level;
             atSea = game.atSea;
             if (game.cubeGift) {
-                // the cube the crane brought, in the rack
+                // the cube knocked out on the console, in the rack
                 game.cubeGift = false;
                 cubes++;
                 host.saveInt("cubes", cubes);
@@ -234,21 +234,6 @@ final class World {
         game.standDeck(verdict);
     }
 
-    /** For the desktop stand: the truck's film between the first episode and the second, at once. */
-    void standTruck() {
-        game.standTruck();
-    }
-
-    /** For the desktop stand: her film between the second episode and the third, at once. */
-    void standShove() {
-        game.standShove();
-    }
-
-    /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */
-    void standCrane() {
-        game.standCrane();
-    }
-
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
     void standTear() {
         game.standTear();
@@ -280,26 +265,20 @@ final class World {
             intro.flat(f, d);
             return;
         }
-        if (game.film != null) {
-            // a film between episodes: its own eye
-            game.film.camera(d, W);
-            view[2] = 1f;
-        } else {
-            float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
-            // as the room closes in, the eye drops a little to the plinth, so it sits on the set
-            float pitch = -0.2f * game.tilt();
-            // far plinths: under an aim the view closes in on the building
-            game.view(yaw, pitch, view);
-            yaw = view[0];
-            pitch = view[1];
-            // in the fight the street jolts as she comes down
-            game.jolt(jolt);
-            yaw += jolt[0] / (W * 1.9f);
-            pitch += jolt[1] / (W * 1.9f);
-            // as the room closes in over the street, the street draws back a little into the set
-            float wide = 1f - 0.15f * game.tilt();
-            d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
-        }
+        float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
+        // as the room closes in, the eye drops a little to the plinth, so it sits on the set
+        float pitch = -0.2f * game.tilt();
+        // far plinths: under an aim the view closes in on the building
+        game.view(yaw, pitch, view);
+        yaw = view[0];
+        pitch = view[1];
+        // in the fight the street jolts as she comes down
+        game.jolt(jolt);
+        yaw += jolt[0] / (W * 1.9f);
+        pitch += jolt[1] / (W * 1.9f);
+        // as the room closes in over the street, the street draws back a little into the set
+        float wide = 1f - 0.15f * game.tilt();
+        d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];
         d.fogScale *= view[2];

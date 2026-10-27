@@ -42,7 +42,7 @@ import java.util.Random;
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7, INSERT = 8,
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7,
             PORTAL = 9;
     static final int STARS = 5;
     /** The last level there is yet: the 109th, out at sea. */
@@ -98,11 +98,20 @@ final class Game implements Physics.Listener {
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
     private float chapterT = -1f;
     private boolean chapterDue;
-    // a film between two episodes, while it plays (see Film); the light rising at its end; the
-    // cube it gave, for the world to put in the rack
-    Film film;
-    private boolean filmOut;
+    // a cube given on the console, for the world to put in the rack
     boolean cubeGift;
+    // the 39th: the first blow that reaches the building shakes the ground, the plinth's near
+    // left corner breaks off at its foot and a golden cube rolls out of it onto the asphalt;
+    // the cube lies there till the round is over and is given on the console; the corner
+    // stays broken from then on, all through the town
+    static final int CHIP_LEVEL = 38;
+    static final float CHIP_X = 0.9f, CHIP_Y = 0.6f, CHIP_Z = 0.8f;
+    static final float CRACK = 0.38f, OUT = 0.3f, CUBE_OUT0 = 0.75f, CUBE_OUT1 = 1.1f;
+    private boolean chipped;
+    private float chipT = -1f;
+    private Body chunk, gift;
+    private boolean giftFree;
+    private final ArrayList<Body> rubble = new ArrayList<Body>();
     // a golden cube won with an episode, to be given on the console
     private boolean cubeDue;
     // once the golden hammer has been given, now and then a golden cube crowns a building; won
@@ -180,6 +189,7 @@ final class Game implements Physics.Listener {
         heavyShown = heavyLeft;
         fails = Math.max(0, host.loadInt("fails"));
         goldSeen = host.loadInt("goldSeen") == 1;
+        chipped = host.loadInt("chip") == 1;
         bank = host.loadInt("bank");
         crest.settle(fails);
         if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
@@ -250,6 +260,10 @@ final class Game implements Physics.Listener {
         }
         // the golden cube on top, once the golden hammer has been seen, on a level not yet won with it
         goldCube = null;
+        chunk = null;
+        gift = null;
+        rubble.clear();
+        chipT = -1f;
         if (goldSeen && cubeLevel(lv) && host.loadInt("cube" + (lv + 1)) == 0) crown(made);
         hammer.ghost = true;
         hammer.asleep = false;
@@ -425,6 +439,12 @@ final class Game implements Physics.Listener {
     void jolt(float[] out) {
         if (fight != null && state == FIGHT) fight.jolt(out);
         else out[0] = out[1] = 0f;
+        // the ground shaking on the 39th
+        if (chipT >= 0f && chipT < 0.7f) {
+            float k = 3.2f * (1f - chipT / 0.7f);
+            out[0] += k * (float) Math.sin(chipT * 71f);
+            out[1] += k * (float) Math.sin(chipT * 53f + 1f);
+        }
     }
 
     /** The hammer away, as the fight throws it: from here, so fast, so long in the air; spun by the side aimed at. */
@@ -478,14 +498,10 @@ final class Game implements Physics.Listener {
 
     /** Whether the hand is free for something else: the hammer in it, no aim begun. */
     boolean handFree() {
-        return hs == HAND && !aiming && film == null;
+        return hs == HAND && !aiming;
     }
 
     void touch(int type, float x, float y) {
-        if (film != null) {
-            if (type == DOWN) film.tap();
-            return;
-        }
         if (type == DOWN) {
             tapX = x;
             tapY = y;
@@ -988,6 +1004,7 @@ final class Game implements Physics.Listener {
         lights(dt);
         drops(dt);
         rolling();
+        if (chipT >= 0f) chip(dt);
         windUp(dt);
         creep(dt);
         zoomStep(dt);
@@ -1037,20 +1054,6 @@ final class Game implements Physics.Listener {
             case VANISH:
                 if (stateTime > 0.5f) start(level, false);
                 break;
-            case INSERT:
-                film.update(dt);
-                if (film.over() && !filmOut) {
-                    // the film ends as it began, in the light
-                    filmOut = true;
-                    chapterT = 0f;
-                    host.sound(Synth.WHOOSH, 0.7f, 0.7f);
-                }
-                if (filmOut && chapterT >= CHAPTER_RISE) {
-                    film = null;
-                    filmOut = false;
-                    start(Math.min(LAST, nextLevel), false);
-                }
-                break;
             case PORTAL:
                 portalStep(dt);
                 break;
@@ -1074,21 +1077,6 @@ final class Game implements Physics.Listener {
                     if (fightNext) {
                         // down out of the sky, into the red street, where she is coming
                         startFight(true);
-                        break;
-                    }
-                    if (chapter && shoveAfter(level, nextLevel)) {
-                        // out of the light onto the street, where she shoves the plinth on herself
-                        startShove();
-                        break;
-                    }
-                    if (chapter && truckAfter(level, nextLevel)) {
-                        // out of the light onto the street, where a truck backs up and tips its load
-                        startTruck();
-                        break;
-                    }
-                    if (chapter && craneAfter(level, nextLevel)) {
-                        // out of the light onto the street, where the crane carries the plinth on
-                        startCrane();
                         break;
                     }
                     if (nextLevel == SEA_FROM && level == SEA_FROM - 1) {
@@ -1382,121 +1370,133 @@ final class Game implements Physics.Listener {
         if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
     }
 
-    /** Whether the truck's film comes between these two levels: from the first episode into the second. */
-    static boolean truckAfter(int lv, int next) {
-        return lv + 1 == Episode.LAST[0] && next == lv + 1;
-    }
-
     /**
-     * The film between the first episode and the second: what was left of the building has
-     * gone in the light, and a tipper truck backs up the street to the plinth and tips out
-     * what the second episode builds with, drums, tyres and cones, onto the road behind it.
+     * The 39th, after the first blow: the ground shakes and rumbles, dust lifts round the
+     * plinth's foot; the near left corner cracks off at the bottom and tips out onto the road;
+     * out of where it was a golden cube rolls onto the asphalt, and lies there burning.
      */
-    private void startTruck() {
-        // the plinth where the next episode has it: the load lands round it and the parked cars
-        clearForFilm();
-        plinthAt(Builder.BASE_CZ + Builder.farther(nextLevel));
-        Truck truck = new Truck(this, Builder.CZ, host.loadInt("ins0") != 1);
-        for (Body b : truck.load) {
-            phys.add(b);
-            pieces.add(b);
+    private void chip(float dt) {
+        float was = chipT;
+        chipT += dt;
+        float x0 = Builder.CX - Builder.PHX, z0 = Builder.CZ - Builder.PHZ;
+        if (was <= 0f) {
+            host.sound(Synth.GROUND, 1f, 0.42f);
+            host.sound(Synth.thunder(3), 0.55f, 0.75f);
+            host.buzz(160);
+            for (int i = 0; i < 26; i++) {
+                float u = fx.nextFloat() * 2f - 1f;
+                boolean side = fx.nextBoolean();
+                float x = side ? Builder.CX + u * Builder.PHX : Builder.CX + (fx.nextBoolean() ? Builder.PHX : -Builder.PHX);
+                float z = side ? Builder.CZ + (fx.nextBoolean() ? Builder.PHZ : -Builder.PHZ) : Builder.CZ + u * Builder.PHZ;
+                spawn(x, 0.06f, z, true, 0xD9CDB8, 1.1f);
+            }
         }
-        film = truck;
-        filmOut = false;
-        crest.fresh();
-        setState(INSERT);
+        if (was < CRACK && chipT >= CRACK) {
+            // the corner goes: for good, and the cube in it is the player's
+            chipped = true;
+            host.saveInt("chip", 1);
+            cubeDue = true;
+            host.sound(Synth.STONE, 1f, 0.55f);
+            host.sound(Synth.CRASH, 0.5f, 0.7f);
+            host.buzz(60);
+            // the corner is only drawn while it leans out; it touches nothing
+            chunk = new Body(CHIP_X * 0.5f, CHIP_Y * 0.5f, CHIP_Z * 0.5f, Body.STONE, 0xE6D8BC);
+            gift = new Body(0.19f, 0.19f, 0.19f, Body.GOLD, 0xFFC81E);
+            gift.ghost = true;
+            giftFree = false;
+            phys.add(gift);
+            for (int i = 0; i < 12; i++)
+                spawn(x0 + fx.nextFloat() * CHIP_X, 0.1f + fx.nextFloat() * CHIP_Y, z0 + fx.nextFloat() * 0.1f, i % 3 == 0, 0xCFC2A8, 1.2f);
+        }
+        if (gift == null) return;
+        // the corner leans out about its outer foot, slowly and then faster, and crumbles
+        if (chunk != null) {
+            float u = Math.min(1f, (chipT - CRACK) / OUT);
+            float a = 0.5f * u * u;
+            // about the bottom edge of its front face: a lean out toward the road
+            float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
+            float ly = CHIP_Y * 0.5f, lz = CHIP_Z * 0.5f;
+            float cy = ly * ca + lz * sa, cz = z0 + lz * ca - ly * sa;
+            chunk.setPose(x0 + CHIP_X * 0.5f, cy, cz, (float) Math.cos(-a * 0.5f), (float) Math.sin(-a * 0.5f), 0f, 0f);
+            if (u >= 1f) {
+                // it comes apart: a heap of stone on the road before the hole, chips and dust
+                chunk = null;
+                host.sound(Synth.STONE, 0.9f, 0.7f);
+                host.sound(Synth.SAND, 0.8f, 0.8f);
+                host.buzz(40);
+                for (int i = 0; i < 7; i++) {
+                    float r = 0.06f + fx.nextFloat() * 0.07f;
+                    Body b = new Body(r, r * (0.6f + fx.nextFloat() * 0.5f), r * (0.8f + fx.nextFloat() * 0.4f), Body.STONE,
+                            fx.nextBoolean() ? 0xE6D8BC : 0xC4B494);
+                    float ang = fx.nextFloat() * 3f;
+                    b.setPose(x0 + 0.1f + fx.nextFloat() * (CHIP_X - 0.2f), 0.15f + fx.nextFloat() * 0.35f, z0 - 0.2f - fx.nextFloat() * 0.3f,
+                            (float) Math.cos(ang), 0.3f, (float) Math.sin(ang), 0.2f);
+                    b.vx = (fx.nextFloat() - 0.5f) * 1.2f;
+                    b.vz = -0.4f - fx.nextFloat() * 1.2f;
+                    b.vy = fx.nextFloat() * 0.6f;
+                    b.wx = (fx.nextFloat() - 0.5f) * 8f;
+                    b.wz = (fx.nextFloat() - 0.5f) * 8f;
+                    b.asleep = false;
+                    phys.add(b);
+                    rubble.add(b);
+                }
+                for (int i = 0; i < 40; i++)
+                    spawn(x0 + fx.nextFloat() * CHIP_X, 0.05f + fx.nextFloat() * CHIP_Y, z0 - 0.1f - fx.nextFloat() * 0.3f, i % 2 == 0,
+                            i % 2 == 0 ? 0xD9CDB8 : 0xC4B494, 1.4f);
+            }
+        }
+        // the cube comes out of the hole after it, rolls a little, and lies there
+        if (!giftFree) {
+            float u = Math.max(0f, Math.min(1f, (chipT - CUBE_OUT0) / (CUBE_OUT1 - CUBE_OUT0)));
+            float cx = x0 + 0.4f, cz = z0 + 0.4f - 0.72f * u, cy = 0.2f + 0.05f * (float) Math.sin(u * Math.PI);
+            gift.setPose(cx, cy, cz, 1f, 0f, 0f, 0f);
+            if (u >= 1f) {
+                giftFree = true;
+                gift.ghost = false;
+                gift.asleep = false;
+                gift.vx = -0.25f;
+                gift.vy = 0.9f;
+                gift.vz = -1.5f;
+                gift.wx = -6f;
+                gift.wy = 1f;
+                host.sound(Synth.CHIME, 0.7f, 1f);
+            }
+        }
     }
 
-    /** For the desktop stand: the truck's film at once, as if the first episode had just been won. */
-    void standTruck() {
-        level = Episode.LAST[0] - 1;
-        nextLevel = level + 1;
-        startTruck();
-    }
-
-    /** Whether her film comes between these two levels: from the second episode into the third. */
-    static boolean shoveAfter(int lv, int next) {
-        return lv + 1 == Episode.LAST[1] && next == lv + 1;
-    }
-
-    /**
-     * The film between the second episode and the third: what was left of the building has
-     * gone in the light, and she sets her shoulder to the empty plinth and shoves it on.
-     */
-    private void startShove() {
-        float from = Builder.CZ, to = Builder.BASE_CZ + Builder.farther(nextLevel);
-        clearForFilm();
-        Shove shove = new Shove(this, from, to, host.loadInt("ins1") != 1);
-        plinthAt(from);
-        film = shove;
-        filmOut = false;
-        crest.fresh();
-        setState(INSERT);
-    }
-
-    /** For the desktop stand: her film at once, as if the second episode had just been won. */
-    void standShove() {
-        level = Episode.LAST[1] - 1;
-        nextLevel = level + 1;
-        Builder.CZ = Builder.BASE_CZ + Builder.farther(level);
-        startShove();
-    }
-
-    /** The street emptied for a film: no building, no hammer in sight, no car coming; the plinth and the parked cars solid. */
-    private void clearForFilm() {
-        phys.clear();
-        pieces.clear();
-        toBurst.clear();
-        toPop.clear();
-        pN = 0;
-        lN = 0;
-        dropN = 0;
-        phys.add(plinth);
-        for (Body c : cars) phys.add(c);
-        hammer.ghost = true;
-        hs = HAND;
-        aiming = false;
-        power = 0f;
-        fromSky = false;
-        traffic.calm = true;
-    }
-
-    /** The plinth set down here along the street, for a film that moves it. */
-    void plinthAt(float z) {
-        Builder.CZ = z;
-        plinth.setPose(Builder.CX, Builder.TOP * 0.5f, z, 1, 0, 0, 0);
-    }
-
-    /** Whether the crane's film comes between these two levels: from the third episode into the fourth. */
-    static boolean craneAfter(int lv, int next) {
-        return lv + 1 == Episode.LAST[2] && next == lv + 1;
-    }
-
-    /**
-     * The film between the third episode and the fourth: what was left of the building has
-     * gone in the light, the plinth stands empty, and the crane comes for it. The first time
-     * it brings a golden cube.
-     */
-    private void startCrane() {
-        float from = Builder.CZ, to = Builder.BASE_CZ + Builder.farther(nextLevel);
-        phys.clear();
-        pieces.clear();
-        toBurst.clear();
-        toPop.clear();
-        pN = 0;
-        lN = 0;
-        dropN = 0;
-        hammer.ghost = true;
-        hs = HAND;
-        aiming = false;
-        power = 0f;
-        fromSky = false;
-        film = new Crane(this, from, to, host.loadInt("ins2") != 1, cubes, nextLevel);
-        // the cars coming down the road keep clear of where it is going
-        Builder.CZ = to;
-        filmOut = false;
-        crest.fresh();
-        setState(INSERT);
+    /** The plinth in town: whole, or with its near left corner broken off at the foot. */
+    private void plinth(DrawList d) {
+        int stone = 0xE6D8BC;
+        if (!chipped) {
+            d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, stone, DrawList.STONE);
+            return;
+        }
+        float x0 = plinth.px - plinth.hx, x1 = plinth.px + plinth.hx, z0 = plinth.pz - plinth.hz, z1 = plinth.pz + plinth.hz;
+        float top = plinth.py + plinth.hy;
+        // above the break, whole; below it, all but the corner
+        d.box(plinth.px, (CHIP_Y + top) * 0.5f, plinth.pz, plinth.hx, (top - CHIP_Y) * 0.5f, plinth.hz, null, stone, DrawList.STONE);
+        d.box((x0 + CHIP_X + x1) * 0.5f, CHIP_Y * 0.5f, plinth.pz, (x1 - x0 - CHIP_X) * 0.5f, CHIP_Y * 0.5f, plinth.hz, null, stone, DrawList.STONE);
+        d.box(x0 + CHIP_X * 0.5f, CHIP_Y * 0.5f, (z0 + CHIP_Z + z1) * 0.5f, CHIP_X * 0.5f, CHIP_Y * 0.5f, (z1 - z0 - CHIP_Z) * 0.5f, null, stone, DrawList.STONE);
+        // the break: the raw stone inside, darker than the weathered face and in shade under
+        // its roof; rough lips round the hole, two rusty rods out of its roof
+        int raw = 0xC4B494, dark = 0x8E8270;
+        d.box(x0 + CHIP_X * 0.5f, CHIP_Y * 0.5f, z0 + CHIP_Z - 0.006f, CHIP_X * 0.5f, CHIP_Y * 0.5f, 0.006f, null, 0x8A7B62, DrawList.STONE);
+        d.box(x0 + CHIP_X - 0.006f, CHIP_Y * 0.5f, z0 + CHIP_Z * 0.5f, 0.006f, CHIP_Y * 0.5f, CHIP_Z * 0.5f, null, 0x97886C, DrawList.STONE);
+        d.box(x0 + CHIP_X * 0.5f, CHIP_Y - 0.006f, z0 + CHIP_Z * 0.5f, CHIP_X * 0.5f, 0.006f, CHIP_Z * 0.5f, null, 0x5E5444, DrawList.STONE);
+        d.box(x0 + CHIP_X - 0.06f, CHIP_Y - 0.05f, z0 + 0.12f, 0.07f, 0.06f, 0.12f, null, raw, DrawList.STONE);
+        d.box(x0 + 0.2f, CHIP_Y - 0.04f, z0 + CHIP_Z - 0.07f, 0.2f, 0.05f, 0.07f, null, raw, DrawList.STONE);
+        d.box(x0 + CHIP_X - 0.05f, 0.14f, z0 + CHIP_Z - 0.1f, 0.06f, 0.14f, 0.1f, null, raw, DrawList.STONE);
+        d.box(x0 + 0.12f, 0.03f, z0 + CHIP_Z - 0.05f, 0.12f, 0.03f, 0.05f, null, raw, DrawList.STONE);
+        d.box(x0 + 0.22f, CHIP_Y - 0.13f, z0 + 0.2f, 0.012f, 0.12f, 0.012f, null, 0x7B4A2C, DrawList.PLAIN);
+        d.box(x0 + 0.44f, CHIP_Y - 0.1f, z0 + 0.33f, 0.012f, 0.09f, 0.012f, null, 0x7B4A2C, DrawList.PLAIN);
+        // a crack up the front from the break toward the top, and one along the side
+        float fz = z0 - 0.004f;
+        d.box(x0 + CHIP_X + 0.03f, CHIP_Y + 0.08f, fz, 0.012f, 0.08f, 0.003f, null, dark, DrawList.PLAIN);
+        d.box(x0 + CHIP_X + 0.08f, CHIP_Y + 0.21f, fz, 0.04f, 0.012f, 0.003f, null, dark, DrawList.PLAIN);
+        d.box(x0 + CHIP_X + 0.12f, CHIP_Y + 0.31f, fz, 0.012f, 0.1f, 0.003f, null, dark, DrawList.PLAIN);
+        float sx = x0 - 0.004f;
+        d.box(sx, CHIP_Y + 0.06f, z0 + CHIP_Z + 0.05f, 0.003f, 0.06f, 0.012f, null, dark, DrawList.PLAIN);
+        d.box(sx, CHIP_Y + 0.13f, z0 + CHIP_Z + 0.16f, 0.003f, 0.012f, 0.11f, null, dark, DrawList.PLAIN);
     }
 
     /** For the desktop stand: the console at once, as after a round with that verdict, and held there. */
@@ -1505,14 +1505,6 @@ final class Game implements Physics.Listener {
         knocks(verdict == OVATION ? Hammer.HEAVY_KIND : -1, level);
         holdFor = 600f;
         setState(SKY_HOLD);
-    }
-
-    /** For the desktop stand: the crane's film at once, as if the third episode had just been won. */
-    void standCrane() {
-        level = Episode.LAST[2] - 1;
-        nextLevel = level + 1;
-        Builder.CZ = Builder.BASE_CZ + Builder.farther(level);
-        startCrane();
     }
 
     /** Into an episode from the bridge: its first building, through the light. */
@@ -1604,6 +1596,9 @@ final class Game implements Physics.Listener {
             journal.line(clock, String.format(java.util.Locale.ROOT, "the hammer hits %s at (%.2f, %.2f, %.2f) m, %.1f m/s",
                     what(other), x, y, z, speed));
         }
+        // the 39th, the first blow to reach the building: the ground shakes
+        if (hammerHit && level == CHIP_LEVEL && !chipped && chipT < 0f && fight == null && other != null && pieces.contains(other))
+            chipT = 0f;
         if (a.material == Body.CAR || (b != null && b.material == Body.CAR)) {
             carKnock(a.material == Body.CAR ? a : b, speed, x, y, z);
             return;
@@ -2099,11 +2094,8 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
-        // the crane's film carries the plinth itself; any other leaves it where it stands
-        if (film != null) film.draw(d);
-        if (film instanceof Crane) {
-        } else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
-        else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
+        if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
+        else if (fight == null) plinth(d);
         else fight.draw(d);
         float st = stagger();
         for (int i = 0; i < pieces.size(); i++) {
@@ -2145,8 +2137,23 @@ final class Game implements Physics.Listener {
             if (pDust[i] && pAge[i] > pLife[i] * 0.6f) s *= 1f - (pAge[i] / pLife[i] - 0.6f) / 0.4f;
             d.box(pX[i], pY[i], pZ[i], s, s, s, null, pCol[i], pWet[i] ? DrawList.GLASS : DrawList.PLAIN);
         }
+        // what broke off the plinth on the 39th, and the cube that came out of it
+        if (chunk != null) {
+            turn[0] = chunk.r00; turn[1] = chunk.r01; turn[2] = chunk.r02;
+            turn[3] = chunk.r10; turn[4] = chunk.r11; turn[5] = chunk.r12;
+            turn[6] = chunk.r20; turn[7] = chunk.r21; turn[8] = chunk.r22;
+            d.box(chunk.px, chunk.py, chunk.pz, chunk.hx, chunk.hy, chunk.hz, turn, 0xE6D8BC, DrawList.STONE);
+        }
+        for (int i = 0; i < rubble.size(); i++) {
+            Body b = rubble.get(i);
+            turn[0] = b.r00; turn[1] = b.r01; turn[2] = b.r02;
+            turn[3] = b.r10; turn[4] = b.r11; turn[5] = b.r12;
+            turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
+            d.box(b.px, b.py, b.pz, b.hx, b.hy, b.hz, turn, b.tint, DrawList.STONE);
+        }
+        if (gift != null) body(d, gift, 1f, 0f);
         drawLights(d);
-        if (film == null) hammer(d);
+        hammer(d);
     }
 
     /**
@@ -2279,10 +2286,6 @@ final class Game implements Physics.Listener {
     }
 
     private void flatBelow(Px f) {
-        if (film != null) {
-            film.flat(f);
-            return;
-        }
         float k = tilt();
         // the corner, while the street is in sight
         if (fight != null && state == FIGHT) {
@@ -2299,6 +2302,7 @@ final class Game implements Physics.Listener {
         if (state == PORTAL) drawPortal(f);
         // the golden cube burns: a warm haze round it, breathing
         if (goldCube != null && !goldCube.gone && (state == PLAY || state == BUILD)) haze(f, goldCube);
+        if (gift != null && giftFree) haze(f, gift);
         // and catches the light now and then: a little star of white
         if (goldCube != null && !goldCube.gone && (state == PLAY || state == BUILD) && project(goldCube.px, goldCube.maxY, goldCube.pz, scr)) {
             float g = (clock * 0.8f) % 1.6f;

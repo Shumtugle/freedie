@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.35
+- No films between episodes any more: the crane, the truck and Freedie at the plinth are
+  gone, and an episode ends in the light and the next building. The game stays in the
+  player's hands.
+- The 39th instead: the first blow that reaches the building shakes the ground; the
+  plinth's near left corner breaks off at its foot, leans out and crumbles onto the road,
+  and out of the hole a golden cube rolls onto the asphalt. It lies there burning till the
+  round is over, and the hammer on the console knocks it out to the player. The corner
+  stays broken from then on, all through the town: raw stone inside, rusty rods out of its
+  roof, a crack up the face.
+- The sounds only the films used are gone with them.
+
 ## 0.34.1
 - The hammer over the console's buttons and on the bridge is one whole block again: its
   top and its striking face were stepped back in two different directions, which left a
