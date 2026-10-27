@@ -105,6 +105,11 @@ final class Game implements Physics.Listener {
     boolean cubeGift;
     // a golden cube won with an episode, to be given on the console
     private boolean cubeDue;
+    // once the golden hammer has been given, now and then a golden cube crowns a building; won
+    // with the building, it goes into the bank, not to the player: the bank pays out in the games
+    Body goldCube;
+    int bank;
+    private boolean bankNew;
     // the console between rounds, and the hammer that knocks it
     private final Console console = new Console();
     private int throwsMade;
@@ -175,6 +180,7 @@ final class Game implements Physics.Listener {
         heavyShown = heavyLeft;
         fails = Math.max(0, host.loadInt("fails"));
         goldSeen = host.loadInt("goldSeen") == 1;
+        bank = host.loadInt("bank");
         crest.settle(fails);
         if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
         readPortal(host.asset("portal.bin"));
@@ -242,6 +248,9 @@ final class Game implements Physics.Listener {
             pieces.add(b);
             totalMass += b.mass;
         }
+        // the golden cube on top, once the golden hammer has been seen, on a level not yet won with it
+        goldCube = null;
+        if (goldSeen && cubeLevel(lv) && host.loadInt("cube" + (lv + 1)) == 0) crown(made);
         hammer.ghost = true;
         hammer.asleep = false;
         phys.add(hammer);
@@ -447,7 +456,7 @@ final class Game implements Physics.Listener {
         if (totalMass <= 0f) return 0f;
         float m = 0f;
         for (Body b : pieces)
-            if (!b.gone && Math.abs(b.px - Builder.CX) < Builder.PHX + 0.05f && Math.abs(b.pz - Builder.CZ) < Builder.PHZ + 0.05f
+            if (!b.gone && b != goldCube && Math.abs(b.px - Builder.CX) < Builder.PHX + 0.05f && Math.abs(b.pz - Builder.CZ) < Builder.PHZ + 0.05f
                     && b.py > Builder.TOP - 0.05f && b.py < Builder.TOP + 8f) m += b.mass;
         return m / totalMass;
     }
@@ -965,7 +974,10 @@ final class Game implements Physics.Listener {
         while (acc >= 1f / 60f && steps < 2) {
             acc -= 1f / 60f;
             steps++;
-            if (state != BUILD && state != VANISH) phys.step(1f / 60f);
+            if (state != BUILD && state != VANISH) {
+                phys.step(1f / 60f);
+                keepGold();
+            }
             bursts();
             pops();
             blast();
@@ -1006,6 +1018,7 @@ final class Game implements Physics.Listener {
                 if (1f - onPlinth() >= CLEAR) {
                     if (!blasted && throwsMade <= 1) host.sound(Synth.THUNDER, 1.1f, 1f);
                     episodeWin();
+                    earnCube();
                     setState(CLEARED);
                 } else if (stars == 0 && hs == HAND && !aiming && (phys.settled() || stateTime > 3f)) {
                     setState(LOST);
@@ -1157,6 +1170,7 @@ final class Game implements Physics.Listener {
         if (fought) {
             // the fight is over: nothing counted, and no fight again at once
         } else if (verdict == GLOOM) {
+            host.saveInt("epClean", 0);
             fails++;
             host.saveInt("fails", fails);
             if (fails == GOLD_AFTER) {
@@ -1201,6 +1215,8 @@ final class Game implements Physics.Listener {
         knockList[n++] = fightNext ? Console.GAME : Console.NEXT;
         int hand = goldOn ? Hammer.GOLDEN : heavyOn && heavyLeft > 0 ? Hammer.HEAVY_KIND : Hammer.PLAIN;
         console.begin(knockList, n, hand, gift, level + 1, next + 1);
+        console.bank(bank, bankNew);
+        bankNew = false;
     }
 
     private final int[] knockList = new int[4];
@@ -1228,6 +1244,95 @@ final class Game implements Physics.Listener {
         }
     }
 
+    // ---- the golden cube on a building ----
+
+    /** One level in every run of four by the plate has the golden cube, which one picked by a hash; never the first. */
+    static boolean cubeLevel(int lv) {
+        int plate = lv + 1;
+        return plate >= 2 && plate % 4 == (int) (mixBits(seedOf(plate / 4) ^ 0x601DL) >>> 62);
+    }
+
+    /** Scrambles all the bits of a number into all the others. */
+    static long mixBits(long z) {
+        z += 0x9E3779B97F4A7C15L;
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
+    }
+
+    /**
+     * Sets the golden cube on the highest flat top of the building that nothing stands on
+     * (a ball or a board on the very top sends it lower down); it does not count as weight.
+     */
+    private void crown(ArrayList<Body> made) {
+        Body top = null;
+        for (Body t : made) {
+            if (t.radius != 0f || t.material == Body.WATER || t.material == Body.CONE || t.hx <= 0.16f || t.hz <= 0.12f) continue;
+            if (top != null && t.maxY <= top.maxY) continue;
+            boolean free = true;
+            for (Body b : made)
+                if (b != t && b.minY > t.maxY - 0.02f && b.minY < t.maxY + 0.45f
+                        && Math.abs(b.px - t.px) < t.hx + b.hx && Math.abs(b.pz - t.pz) < t.hz + b.hz
+                        // nor may anything pass through where the cube would sit
+                        || b != t && b.maxY > t.maxY + 0.01f && b.minY < t.maxY + 0.4f
+                        && Math.abs(b.px - t.px) < b.hx + 0.2f && Math.abs(b.pz - t.pz) < b.hz + 0.2f) {
+                    free = false;
+                    break;
+                }
+            if (free) top = t;
+        }
+        if (top == null) return;
+        float c = 0.19f;
+        Body g = new Body(c, c, c, Body.GOLD, 0xFFC81E);
+        g.setPose(top.px, top.maxY + c + 0.002f, top.pz, 1, 0, 0, 0);
+        g.homeX = g.px;
+        g.homeY = g.py;
+        g.homeZ = g.pz;
+        g.asleep = true;
+        phys.add(g);
+        pieces.add(g);
+        goldCube = g;
+    }
+
+    /** The golden cube's one law: it stays over the plinth, so it can only come down onto it. */
+    private void keepGold() {
+        Body g = goldCube;
+        if (g == null || g.gone) return;
+        float mx = Builder.PHX - g.hx * 0.9f, z0 = Builder.CZ - Builder.PHZ + g.hz * 0.9f, z1 = Builder.CZ + Builder.PHZ - g.hz * 0.9f;
+        boolean moved = false;
+        float cx = Builder.CX;
+        if (g.px < cx - mx || g.px > cx + mx) {
+            g.px = Math.max(cx - mx, Math.min(cx + mx, g.px));
+            g.vx = -g.vx * 0.2f;
+            moved = true;
+        }
+        if (g.pz < z0 || g.pz > z1) {
+            g.pz = Math.max(z0, Math.min(z1, g.pz));
+            g.vz = -g.vz * 0.2f;
+            moved = true;
+        }
+        if (g.py < Builder.TOP + g.hy * 0.5f) {
+            g.py = Builder.TOP + g.hy;
+            g.vy = Math.max(0f, g.vy);
+            moved = true;
+        }
+        if (moved) {
+            g.asleep = false;
+            g.updateR();
+            g.savePrev();
+        }
+    }
+
+    /** A building that wore the golden cube is won: the cube goes into the bank, once a level. */
+    private void earnCube() {
+        if (goldCube == null || host.loadInt("cube" + (level + 1)) != 0) return;
+        host.saveInt("cube" + (level + 1), 1);
+        bank++;
+        bankNew = true;
+        host.saveInt("bank", bank);
+        host.sound(Synth.CHIME, 0.6f, 1.2f);
+    }
+
     // ---- episodes ----
 
     /**
@@ -1240,7 +1345,11 @@ final class Game implements Physics.Listener {
         if (Episode.first(plate)) {
             host.saveInt("epRun", 0);
             host.saveInt("epRunOk", 1);
-        } else if (lv != level && lv != level + 1) host.saveInt("epRunOk", 0);
+            host.saveInt("epClean", 1);
+        } else if (lv != level && lv != level + 1) {
+            host.saveInt("epRunOk", 0);
+            host.saveInt("epClean", 0);
+        }
     }
 
     /** A building down: its stars go to the run; the last of an episode closes it, and the light comes. */
@@ -1248,9 +1357,15 @@ final class Game implements Physics.Listener {
         int plate = level + 1, e = Episode.of(plate);
         int run = host.loadInt("epRun") + Math.max(0, stars);
         host.saveInt("epRun", run);
+        // a building that took more than one throw spoils the clean run
+        if (throwsMade > 1) host.saveInt("epClean", 0);
         if (!Episode.last(plate)) return;
-        // an episode won for the first time: a golden cube, given on the console between rounds
-        if (host.loadInt("ep" + e + "done") != 1) cubeDue = true;
+        // an episode won clean, every building at its first throw, from its first level on: a
+        // golden cube, given on the console between rounds, once an episode
+        if (host.loadInt("epRunOk") == 1 && host.loadInt("epClean") == 1 && host.loadInt("ep" + e + "cube") != 1) {
+            host.saveInt("ep" + e + "cube", 1);
+            cubeDue = true;
+        }
         host.saveInt("ep" + e + "done", 1);
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
         // an episode that ends in the alley goes on through the light too, until the alley is there
@@ -1961,6 +2076,15 @@ final class Game implements Physics.Listener {
             Round.bottle(d, b.px, b.py + drop, b.pz, turn, b.hx * scale, b.hy * scale);
             return;
         }
+        if (b.material == Body.GOLD) {
+            // the golden cube: a glowing heart in a shell of polished gold a little bigger, so it
+            // shines out of the shade of the building and is never taken for a painted block
+            float hs = b.hx * scale;
+            d.box(b.px, b.py + drop, b.pz, hs, hs, hs, turn, 0xE8A820, DrawList.GOLD);
+            float glow = 0.75f + 0.25f * (float) Math.sin(clock * 4f);
+            d.box(b.px, b.py + drop, b.pz, hs * 1.04f, hs * 0.55f, hs * 1.04f, turn, Street.scale(0xFFD84A, glow), DrawList.GLOW);
+            return;
+        }
         float x = b.px, y = b.py + drop, z = b.pz, hx = b.hx * scale, hy = b.hy * scale, hz = b.hz * scale;
         switch (b.material) {
             case Body.CONE:
@@ -2006,7 +2130,8 @@ final class Game implements Physics.Listener {
             Things.wheel(d, x, y, z, turn, Math.min(hx, hy), hz, b.tint);
             return;
         }
-        int mat = b.look == 3 ? DrawList.GRAIN : b.icy ? DrawList.ICE : b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;
+        int mat = b.material == Body.GOLD ? DrawList.GOLD : b.look == 3 ? DrawList.GRAIN : b.icy ? DrawList.ICE
+                : b.material == Body.STONE ? DrawList.STONE : DrawList.WOOD;
         d.box(b.px, b.py + drop, b.pz, b.hx * scale, b.hy * scale, b.hz * scale, turn, b.tint, mat);
     }
 
@@ -2077,6 +2202,18 @@ final class Game implements Physics.Listener {
             return;
         }
         if (state == PORTAL) drawPortal(f);
+        // the golden cube on the building catches the light now and then: a little star of white
+        if (goldCube != null && !goldCube.gone && (state == PLAY || state == BUILD) && project(goldCube.px, goldCube.maxY, goldCube.pz, scr)) {
+            float g = (clock * 0.8f) % 1.6f;
+            if (g < 0.35f) {
+                int r = Math.round(1 + 3 * (float) Math.sin(g / 0.35f * Math.PI));
+                int x = Math.round(scr[0]) + 2, y = Math.round(scr[1]);
+                for (int j = -r; j <= r; j++) {
+                    f.set(x + j, y, 0xFFFFFFF0);
+                    f.set(x, y + j, 0xFFFFFFF0);
+                }
+            }
+        }
         if (k * fh < fh / 8f) hud(f);
         if (wake >= 0f) lids(f);
         if (!aiming) return;
@@ -2281,6 +2418,7 @@ final class Game implements Physics.Listener {
     }
 
     private void openPortal() {
+        goldCube = null;
         for (Body b : pieces)
             if (!b.gone) {
                 b.gone = true;

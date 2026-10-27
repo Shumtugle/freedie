@@ -1,0 +1,25 @@
+# The golden cube on a building: once the golden hammer has been seen, about one building in
+# four wears a golden cube on its highest free top. The 14th: knocked down, the cube stays on
+# the plinth and goes into the bank, which the console shows behind bars; the next round,
+# with two in the bank already, and the bridge shows the bank too.
+screen 1096 2560
+keep level 13
+keep goldSeen 1
+keep fails 0
+keep bank 0
+restart
+skip
+wait 2.6
+shot g0_crowned
+down 137 420
+wait 0.9
+shot g0b_aim
+up 137 420
+wait 2.0
+shot g1_down
+wait 3.4
+shot g2_console
+wait 0.8
+shot g3_console
+wait 3.0
+shot g4_next

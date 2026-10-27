@@ -537,6 +537,9 @@ final class Bridge {
         quad(f, KX + nx * 6 - px * 6, ky + ny * 6 - py * 6, KX - nx * 6 - px * 6, ky - ny * 6 - py * 6,
                 KX - nx * 4 + px * (KR - 12), ky - ny * 4 + py * (KR - 12), KX + nx * 4 + px * (KR - 12), ky + ny * 4 + py * (KR - 12), 0xFFF4F0E6);
         f.disc(KX + px * (KR - 18), ky + py * (KR - 18), 3.5f, 0xFFFFFFFF);
+        // the bank at the right of the front: the golden cubes won from the buildings, behind bars
+        int bank = host.loadInt("bank");
+        if (bank > 0) Console.bankBox(f, 200, FRONT + 14 + oy, 266, FRONT + 64 + oy, bank, 0f);
     }
 
     /** The cube on its way: up from the tray in an arc, into the slit. */

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.32
+- The golden cube for an episode only for an episode played clean: from its first level on,
+  every building felled at its first throw. Lose a try, or take two throws, and the console
+  knocks only the button that goes on.
+- Once the golden hammer has been seen, about one building in four wears a golden cube on its
+  highest free top, a glowing heart in a band of gold that glints now and then. It never
+  falls to the street. Fell the building and the cube goes into the bank, once a level: on
+  the console and on the bridge the bank stands at the right, its cubes behind bars. They are
+  not the player's yet; the games will pay them out.
+
 ## 0.31.1
 - An episode won for the first time gives a golden cube, and it is given where it is shown:
   the console's hammer knocks the cube's button and the cube goes into the rack. Until now

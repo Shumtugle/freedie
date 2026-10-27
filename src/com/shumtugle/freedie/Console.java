@@ -78,6 +78,39 @@ final class Console {
         heard = 0;
     }
 
+    private int bank;
+    private boolean bankFresh;
+
+    /** The bank this time: how many golden cubes are in it, and whether one came in with this round. */
+    void bank(int n, boolean fresh) {
+        bank = n;
+        bankFresh = fresh;
+    }
+
+    /**
+     * The bank, on the desk at the right: golden cubes behind a grille, won with the buildings
+     * that wore them; they are not the player's yet. One come in with this round shines.
+     */
+    static void bankBox(Px f, int x0, int y0, int x1, int y1, int n, float shine) {
+        f.rect(x0 - 2, y0 - 2, x1 + 2, y1 + 2, 0xFF0E0F11);
+        f.rect(x0, y0, x1, y1, 0xFF15171A);
+        int cols = 4, shown = Math.min(8, n);
+        float cw = (x1 - x0) / (float) cols;
+        for (int i = 0; i < shown; i++) {
+            int row = i / cols, col = i % cols;
+            int cx = Math.round(x0 + cw * (col + 0.5f)), cy = y1 - 11 - row * 22;
+            boolean lit = i == shown - 1 && shine > 0f;
+            // a little golden cube: its top light, its two sides darker
+            f.rect(cx - 7, cy - 7, cx + 7, cy - 2, lit ? 0xFFFFF4C0 : 0xFFFFE07A);
+            f.rect(cx - 7, cy - 2, cx, cy + 7, 0xFFE0A82E);
+            f.rect(cx, cy - 2, cx + 7, cy + 7, 0xFFB07E1E);
+        }
+        // the grille over it, thin: they are behind bars, not in the hand
+        for (int x = x0 + 8; x < x1 - 2; x += 17) f.rect(x, y0, x + 1, y1, 0xFF5A626C);
+        f.rect(x0, y0, x1, y0 + 2, 0xFF5A626C);
+        f.rect(x0, y1 - 2, x1, y1, 0xFF3A4048);
+    }
+
     /** How long the knocking and the flick take, seconds. */
     float length() {
         return RISE + presses * KNOCK + FLICK;
@@ -137,6 +170,7 @@ final class Console {
         clock(f, dTop);
         buttons(f, dBot);
         counter(f, dBot);
+        if (bank > 0) bankBox(f, 196, DY + 8 + dBot, 264, DY + 60 + dBot, bank, bankFresh ? 0.5f + 0.5f * (float) Math.sin(t * 9f) : 0f);
         hammer(f, dBot, handUp, fh);
     }
 
