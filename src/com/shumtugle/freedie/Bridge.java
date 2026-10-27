@@ -16,8 +16,8 @@ import java.util.Random;
  * token, and the picture comes clear for good. With no cubes left the slot only clicks.
  *
  * The green button goes into the channel: its episode's first level, or the fight. The key
- * at the left goes back one level from the one being played. HOME, at the left of the desk's
- * front, goes back to the street as it was. Everything a finger touches is big.
+ * at the left, the number of the level the player came from on it, goes back there, to the
+ * street as it was. Everything a finger touches is big.
  *
  * And the room is alive while one sits there: the lamp sways a little and its light with it,
  * a fan's shadow crawls round on the wall, the tube flickers, the eye breathes.
@@ -40,8 +40,7 @@ final class Bridge {
     private static final int KEY_X0 = 16, KEY_Y0 = DY + 4, KEY_X1 = 84, KEY_Y1 = DY + 64;
     private static final int TRAY_X0 = 196, TRAY_Y0 = DY + 10, TRAY_X1 = 262, TRAY_Y1 = DY + 58;
     private static final int FRONT = 548;
-    private static final int KX = 172, KY = 590, KR = 46;
-    private static final int HX0 = 12, HY0 = 562, HX1 = 96, HY1 = 618;
+    private static final int KX = 137, KY = 592, KR = 50;
     private static final float STEP = 0.9f;
     private static final int AMBER = 0xFF8A2A, AMBER_OFF = 0x1A0B04;
 
@@ -175,8 +174,7 @@ final class Bridge {
             leaving = -1;
             if (k == HOME) w.bridgeAct(HOME);
             else if (k == GAME_B) w.bridgeFight();
-            else if (k < 0x100) w.bridgeEnter(k);
-            else w.bridgeLevel(k - 0x100);
+            else w.bridgeEnter(k);
         }
     }
 
@@ -234,20 +232,9 @@ final class Bridge {
             return;
         }
         if (in(x, py, KEY_X0, KEY_Y0, KEY_X1, KEY_Y1)) {
+            // back to the level the player came from, the street as it was
             press(4);
-            if (w.level < 1) {
-                host.sound(Synth.TOCK, 0.8f, 0.45f);
-                return;
-            }
-            host.sound(Synth.LATCH, 0.8f, 0.9f);
-            host.sound(Synth.TV_OFF, 0.8f, 1f);
-            leaving = 0x100 + w.level - 1;
-            leaveT = 0f;
-            return;
-        }
-        if (in(x, py, HX0, HY0, HX1, HY1)) {
-            press(5);
-            host.sound(Synth.LATCH, 0.8f, 0.7f);
+            host.sound(Synth.LATCH, 0.8f, 0.8f);
             host.sound(Synth.TV_OFF, 0.9f, 1f);
             leaving = HOME;
             leaveT = 0f;
@@ -488,7 +475,7 @@ final class Bridge {
         }
     }
 
-    /** The first level of the channel on the counter, and on the back key the level before the one being played. */
+    /** The first level of the channel on the counter, and on the back key the level the player came from. */
     private void counter(Px f, int oy) {
         int c = channel();
         int n = c < Episode.COUNT ? Episode.FIRST[c] : -1;
@@ -496,7 +483,7 @@ final class Bridge {
             int d = n < 0 ? -1 : (n / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
             Console.digit(f, 104 + i * 27, DY + 15 + oy, 21, 38, 4, d, AMBER, AMBER_OFF);
         }
-        int back = w.level;            // the level before the one played, counted from one
+        int back = w.level + 1;        // the level being played, counted from one
         boolean in = pressed == 4 && pressT < 0.15f;
         for (int i = 0; i < 3; i++) {
             int d = back < 1 ? -1 : (back / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
@@ -516,17 +503,10 @@ final class Bridge {
         }
     }
 
-    /** The front of the desk: HOME at the left, the big red knob, the marks of the channels round it. */
+    /** The front of the desk: the big red knob in its middle, the marks of the channels round it. */
     private void front(Px f, int oy) {
         f.rect(0, FRONT + oy, f.w, f.h, 0xFF23272D);
         f.rect(0, FRONT + oy, f.w, FRONT + 1 + oy, 0xFF3E444C);
-        // HOME
-        boolean in = pressed == 5 && pressT < 0.15f;
-        int hy = in ? 2 : 0;
-        f.rect(HX0 - 3, HY0 - 3 + oy, HX1 + 3, HY1 + 3 + oy, 0xFF0E0F11);
-        f.rect(HX0, HY0 + hy + oy, HX1, HY1 + oy, 0xFF3C424A);
-        if (!in) f.rect(HX0, HY0 + oy, HX1, HY0 + 2 + oy, 0xFF5A626C);
-        PixelFont.draw(f, "HOME", (HX0 + HX1) / 2 - PixelFont.width("HOME", 2) / 2, (HY0 + HY1) / 2 - 7 + hy + oy, 2, 0xFFF2F4F6);
         // the marks of the channels reached, the one on now brighter
         for (int c = 0; c < chans; c++) {
             double am = -Math.PI / 2 - STEP * at + STEP * c;

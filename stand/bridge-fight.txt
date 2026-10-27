@@ -18,11 +18,11 @@ wait 0.3
 down 240 325
 up 240 325
 wait 0.8
-down 200 590
-up 200 590
+down 185 592
+up 185 592
 wait 0.6
-down 200 590
-up 200 590
+down 185 592
+up 185 592
 wait 0.9
 shot f0_channel
 down 218 96

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.30.1
+- One way out of the bridge: the key with the back arrow, the number of the level the player
+  came from on it, goes back to the street as it was. HOME is gone; the red knob sits in the
+  middle of the desk's front, bigger.
+
 ## 0.30
 - The bridge is the console room now, the same one seen between rounds, and the player sits
   down at it. One set; the episodes are its channels, and a big red knob on the front of the

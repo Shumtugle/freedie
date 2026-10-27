@@ -21,14 +21,14 @@ down 240 325
 up 240 325
 wait 0.8
 shot b0_room
-down 200 590
-up 200 590
+down 185 592
+up 185 592
 wait 0.08
 shot b1_snow
 wait 0.6
 shot b2_second
-down 200 590
-up 200 590
+down 185 592
+up 185 592
 wait 0.9
 shot b3_scrambled
 down 218 96
@@ -39,13 +39,13 @@ wait 0.6
 shot b5_clearing
 wait 0.8
 shot b6_paid
-down 200 590
-up 200 590
+down 185 592
+up 185 592
 wait 0.05
 shot b7_stop
 wait 0.6
-down 140 590
-up 140 590
+down 90 592
+up 90 592
 wait 0.8
 shot b8_back
 down 33 438
