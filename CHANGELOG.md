@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.33
+- A film between the first episode and the second: out of the light, a tipper truck backs
+  up the road to the plinth, beeping, its beacon turning, and stops with a hiss of air. Its
+  body rises on the ram and the load slides out row by row under the swinging tailgate:
+  steel drums, old tyres, road cones, the things the second episode builds with. They fall
+  for real, tumbling and knocking on the plinth and the road. The body comes down and the
+  truck pulls away in a puff of black smoke. The first time it plays whole; after that a
+  touch cuts it short.
+- New sounds: a diesel, a reversing beeper, air brakes let off.
+- The films between episodes share one frame now, so the next one is a matter of its own scene.
+
 ## 0.32.1
 - Gold as fire: the golden cube on a building, the cube the crane brings and the golden
   hammer's head burn from inside now, white-hot in the middle of a face, deep orange at the

@@ -18,7 +18,7 @@ package com.shumtugle.freedie;
  *
  * The first time it plays whole; after that a touch cuts it short.
  */
-final class Crane {
+final class Crane implements Film {
     // the crane: its mast on the promenade, its jib so high and so long, the counter-jib behind
     static final float MX = -8f, MZ = 22f, MAST = 1.6f, RING_Y = 22.4f, JIB_Y = 24f, JIB = 20f, BACK = 7f;
     static final float TROLLEY_Y = JIB_Y - 0.9f;
@@ -81,12 +81,12 @@ final class Crane {
     }
 
     /** Whether the film has run its course, or was cut short: the light may rise. */
-    boolean over() {
+    public boolean over() {
         return cut || t >= (gift ? GEND : STREET);
     }
 
     /** A touch: after the first time, it cuts the film short. */
-    void tap() {
+    public void tap() {
         if (!gift && t > 1f) cut = true;
     }
 
@@ -111,7 +111,7 @@ final class Crane {
         tz = MZ + rad * (float) Math.sin(ang);
     }
 
-    void update(float dt) {
+    public void update(float dt) {
         was = t;
         t += dt;
         // the slew, and the trolley along the jib
@@ -245,7 +245,7 @@ final class Crane {
             {World.CAM_X, World.CAM_Y, World.CAM_Z}};
     private final float[] p = new float[3], q = new float[3];
 
-    void camera(DrawList d, int w) {
+    public void camera(DrawList d, int w) {
         // where it looks: up at the crane, then the plinth wherever it is, then down the street
         float yaw0 = (float) Math.atan2(-World.CAM_X, World.PLINTH_Z);
         float[][] kl = {{-3f, 15f, 21f}, {0f, 2.2f, fromZ}, {0f, 3.4f, fromZ + 1.2f}, {0f, 0.8f, toZ},
@@ -281,7 +281,7 @@ final class Crane {
 
     static final int YELLOW = 0xF0B428, STEEL = 0x2C2C30, CONCRETE = 0xB9B3A8, PLINTH = 0xE6D8BC;
 
-    void draw(DrawList d) {
+    public void draw(DrawList d) {
         mast(d);
         top(d);
         float k = steady(), hx = tx + ox * k, hz = tz + oz * k;
@@ -516,7 +516,7 @@ final class Crane {
     // ---- the flat layer ----
 
     /** The glint on the cube, and its flight up into the rack, the crest coming down to meet it. */
-    void flat(Px f) {
+    public void flat(Px f) {
         if (!gift || t < GDOWN0) return;
         float hx = tx + ox, hz = tz + oz, cy = hookY - CHAIN - CUBE;
         if (t < GOFF) {

@@ -31,6 +31,8 @@ final class Synth {
     static final int CHIRP = CHIME + 1, HORN = CHIME + 2, WAIL = CHIME + 3;
     // the crane between episodes: its winch motor whining under load, the hook's chain rattling
     static final int WINCH = WAIL + 1, CHAIN = WAIL + 2;
+    // the truck between episodes: its diesel, its reversing beeper, its air brakes let off
+    static final int DIESEL = WAIL + 3, BEEP = WAIL + 4, HISS = WAIL + 5;
     static final float HUM_EVERY = 0.5f;
 
     /** One of the thunders: 0 the plain one, then the others. */
@@ -38,7 +40,7 @@ final class Synth {
         return k <= 0 ? THUNDER : THUNDER_MORE + (k - 1) % (THUNDERS - 1);
     }
 
-    final float[][] bank = new float[CHAIN + 1][];
+    final float[][] bank = new float[HISS + 1][];
 
     Synth() {
         Random r = new Random(7);
@@ -96,6 +98,9 @@ final class Synth {
         bank[WAIL] = wail();
         bank[WINCH] = winch(r);
         bank[CHAIN] = chain(r);
+        bank[DIESEL] = diesel(r);
+        bank[BEEP] = beep();
+        bank[HISS] = hiss(r);
         bank[GLASS] = knock(r, 0.4f, new float[]{1870f, 2950f, 4410f}, new float[]{0.6f, 0.4f, 0.3f},
                 new float[]{9f, 12f, 16f}, 0.4f, 0.8f);
     }
@@ -550,6 +555,73 @@ final class Synth {
             }
             // the links come close together at first, then fall further apart
             at += 0.022f + r.nextFloat() * 0.03f + at * 0.06f;
+        }
+        return s;
+    }
+
+    /**
+     * A diesel at work: the cylinders firing as a run of low dull knocks, each a little
+     * different, a rattle of the valves over them, a dark rumble under all; it swells in and
+     * fades out, so the same sound serves pulling away and backing up.
+     */
+    private static float[] diesel(Random r) {
+        float dur = 2.6f;
+        int n = (int) (dur * RATE);
+        float[] s = new float[n];
+        float ph = 0f, lp = 0f, lp2 = 0f, hp = 0f, prev = 0f;
+        float fire = 26f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            float hz = fire * (1f + 0.04f * (float) Math.sin(t * 3.1f));
+            ph += hz / RATE;
+            float k = ph % 1f;
+            // one firing: a soft blow that dies away before the next, louder every other cylinder
+            int cyl = (int) ph;
+            float blow = (float) Math.exp(-k * 9f) * ((cyl & 1) == 0 ? 1f : 0.72f) * (0.85f + 0.3f * (float) Math.sin(cyl * 2.7f));
+            float nz = r.nextFloat() * 2f - 1f;
+            lp += (nz - lp) * 0.035f;
+            lp2 += (lp - lp2) * 0.035f;
+            // the valves: a thin high clatter, only in the first moment of each firing
+            hp = nz - prev;
+            prev = nz;
+            float clatter = hp * 0.05f * (k < 0.12f ? 1f : 0f);
+            float body = (float) Math.sin(2 * Math.PI * ph * 2f) * blow;
+            float env = Math.min(1f, t / 0.3f) * Math.min(1f, (dur - t) / 0.6f);
+            s[i] = (body * 0.42f + lp2 * blow * 3.2f + lp2 * 0.9f + clatter) * env;
+        }
+        return s;
+    }
+
+    /** A reversing beeper: one short hard square-ish tone, nearly pure, cut off clean. */
+    private static float[] beep() {
+        float dur = 0.26f;
+        int n = (int) (dur * RATE);
+        float[] s = new float[n];
+        float ph = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            ph += 1080f / RATE;
+            float v = (float) (Math.sin(2 * Math.PI * ph) + 0.22 * Math.sin(6 * Math.PI * ph));
+            float env = Math.min(1f, t * 400f) * Math.min(1f, (dur - t) * 300f);
+            s[i] = v * env * 0.42f;
+        }
+        return s;
+    }
+
+    /** Air let out of a brake: a sharp hiss that falls away, brighter at its start. */
+    private static float[] hiss(Random r) {
+        float dur = 0.7f;
+        int n = (int) (dur * RATE);
+        float[] s = new float[n];
+        float prev = 0f, lp = 0f;
+        for (int i = 0; i < n; i++) {
+            float t = i / (float) RATE;
+            float nz = r.nextFloat() * 2f - 1f;
+            float hp = nz - prev;
+            prev = nz;
+            lp += (hp - lp) * (0.55f - 0.35f * t / dur);
+            float env = Math.min(1f, t / 0.01f) * (float) Math.exp(-t * 4.5f);
+            s[i] = lp * env * 0.5f;
         }
         return s;
     }

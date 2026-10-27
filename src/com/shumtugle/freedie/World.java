@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.32.1";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.33";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -234,6 +234,11 @@ final class World {
         game.standDeck(verdict);
     }
 
+    /** For the desktop stand: the truck's film between the first episode and the second, at once. */
+    void standTruck() {
+        game.standTruck();
+    }
+
     /** For the desktop stand: the crane's film between the third episode and the fourth, at once. */
     void standCrane() {
         game.standCrane();
@@ -270,9 +275,9 @@ final class World {
             intro.flat(f, d);
             return;
         }
-        if (game.crane != null) {
+        if (game.film != null) {
             // a film between episodes: its own eye
-            game.crane.camera(d, W);
+            game.film.camera(d, W);
             view[2] = 1f;
         } else {
             float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);

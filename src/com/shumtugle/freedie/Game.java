@@ -98,10 +98,10 @@ final class Game implements Physics.Listener {
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
     private float chapterT = -1f;
     private boolean chapterDue;
-    // a film between two episodes, while it plays (see Crane); the light rising at its end; the
+    // a film between two episodes, while it plays (see Film); the light rising at its end; the
     // cube it gave, for the world to put in the rack
-    Crane crane;
-    private boolean craneOut;
+    Film film;
+    private boolean filmOut;
     boolean cubeGift;
     // a golden cube won with an episode, to be given on the console
     private boolean cubeDue;
@@ -478,12 +478,12 @@ final class Game implements Physics.Listener {
 
     /** Whether the hand is free for something else: the hammer in it, no aim begun. */
     boolean handFree() {
-        return hs == HAND && !aiming && crane == null;
+        return hs == HAND && !aiming && film == null;
     }
 
     void touch(int type, float x, float y) {
-        if (crane != null) {
-            if (type == DOWN) crane.tap();
+        if (film != null) {
+            if (type == DOWN) film.tap();
             return;
         }
         if (type == DOWN) {
@@ -1038,16 +1038,16 @@ final class Game implements Physics.Listener {
                 if (stateTime > 0.5f) start(level, false);
                 break;
             case INSERT:
-                crane.update(dt);
-                if (crane.over() && !craneOut) {
+                film.update(dt);
+                if (film.over() && !filmOut) {
                     // the film ends as it began, in the light
-                    craneOut = true;
+                    filmOut = true;
                     chapterT = 0f;
                     host.sound(Synth.WHOOSH, 0.7f, 0.7f);
                 }
-                if (craneOut && chapterT >= CHAPTER_RISE) {
-                    crane = null;
-                    craneOut = false;
+                if (filmOut && chapterT >= CHAPTER_RISE) {
+                    film = null;
+                    filmOut = false;
                     start(Math.min(LAST, nextLevel), false);
                 }
                 break;
@@ -1074,6 +1074,11 @@ final class Game implements Physics.Listener {
                     if (fightNext) {
                         // down out of the sky, into the red street, where she is coming
                         startFight(true);
+                        break;
+                    }
+                    if (chapter && truckAfter(level, nextLevel)) {
+                        // out of the light onto the street, where a truck backs up and tips its load
+                        startTruck();
                         break;
                     }
                     if (chapter && craneAfter(level, nextLevel)) {
@@ -1372,6 +1377,54 @@ final class Game implements Physics.Listener {
         if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
     }
 
+    /** Whether the truck's film comes between these two levels: from the first episode into the second. */
+    static boolean truckAfter(int lv, int next) {
+        return lv + 1 == Episode.LAST[0] && next == lv + 1;
+    }
+
+    /**
+     * The film between the first episode and the second: what was left of the building has
+     * gone in the light, and a tipper truck backs up the street to the plinth and tips out
+     * what the second episode builds with, drums, tyres and cones, onto the road behind it.
+     */
+    private void startTruck() {
+        Builder.CZ = Builder.BASE_CZ + Builder.farther(nextLevel);
+        phys.clear();
+        pieces.clear();
+        toBurst.clear();
+        toPop.clear();
+        pN = 0;
+        lN = 0;
+        dropN = 0;
+        // the plinth where the next episode has it, and the parked cars, solid: the load lands among them
+        plinth.setPose(Builder.CX, Builder.TOP * 0.5f, Builder.CZ, 1, 0, 0, 0);
+        phys.add(plinth);
+        for (Body c : cars) phys.add(c);
+        hammer.ghost = true;
+        hs = HAND;
+        aiming = false;
+        power = 0f;
+        fromSky = false;
+        // no car comes down the road while the truck is on it
+        traffic.calm = true;
+        Truck truck = new Truck(this, Builder.CZ, host.loadInt("ins0") != 1);
+        for (Body b : truck.load) {
+            phys.add(b);
+            pieces.add(b);
+        }
+        film = truck;
+        filmOut = false;
+        crest.fresh();
+        setState(INSERT);
+    }
+
+    /** For the desktop stand: the truck's film at once, as if the first episode had just been won. */
+    void standTruck() {
+        level = Episode.LAST[0] - 1;
+        nextLevel = level + 1;
+        startTruck();
+    }
+
     /** Whether the crane's film comes between these two levels: from the third episode into the fourth. */
     static boolean craneAfter(int lv, int next) {
         return lv + 1 == Episode.LAST[2] && next == lv + 1;
@@ -1396,10 +1449,10 @@ final class Game implements Physics.Listener {
         aiming = false;
         power = 0f;
         fromSky = false;
-        crane = new Crane(this, from, to, host.loadInt("ins2") != 1, cubes, nextLevel);
+        film = new Crane(this, from, to, host.loadInt("ins2") != 1, cubes, nextLevel);
         // the cars coming down the road keep clear of where it is going
         Builder.CZ = to;
-        craneOut = false;
+        filmOut = false;
         crest.fresh();
         setState(INSERT);
     }
@@ -2004,8 +2057,10 @@ final class Game implements Physics.Listener {
     private final float[] turn = new float[9], pose = new float[12];
 
     void draw(DrawList d) {
-        if (crane != null) crane.draw(d);
-        else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
+        // the crane's film carries the plinth itself; any other leaves it where it stands
+        if (film != null) film.draw(d);
+        if (film instanceof Crane) {
+        } else if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
         else if (fight == null) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
         else fight.draw(d);
         float st = stagger();
@@ -2049,7 +2104,7 @@ final class Game implements Physics.Listener {
             d.box(pX[i], pY[i], pZ[i], s, s, s, null, pCol[i], pWet[i] ? DrawList.GLASS : DrawList.PLAIN);
         }
         drawLights(d);
-        if (crane == null) hammer(d);
+        if (film == null) hammer(d);
     }
 
     /**
@@ -2182,8 +2237,8 @@ final class Game implements Physics.Listener {
     }
 
     private void flatBelow(Px f) {
-        if (crane != null) {
-            crane.flat(f);
+        if (film != null) {
+            film.flat(f);
             return;
         }
         float k = tilt();
