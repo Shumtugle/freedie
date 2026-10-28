@@ -359,12 +359,12 @@ final class Crest {
         // a bounce as one lands
         float b = bounceT >= 0f ? -3f * K * (float) Math.abs(Math.sin(bounceT * 12f)) * (float) Math.exp(-bounceT * 8f) : 0f;
         if (n > 0) {
-            // the one in hand: a glow round it
-            if (heavyOn) g.box(hx - 9 * K, hy - 6 * K + b, hx + 9 * K, hy + 11 * K + b, 4 * K, GOLD_LIT, GOLD_LIT, 5f * K, 0.45f);
             g.blit(hammerSprite, hx - HS * 0.5f, hy - HS * 0.4f + b, 1f);
-            if (count == null || countKey != n) {
-                countKey = n;
-                count = number("x" + n);
+            // the count, golden while the heavy one is in hand
+            int ck = n * 2 + (heavyOn ? 1 : 0);
+            if (count == null || countKey != ck) {
+                countKey = ck;
+                count = number("x" + n, heavyOn ? GOLD_LIT : 0xFFFFFFFF);
             }
             g.blit(count, hx + 9 * K - 2 * K, hy - 4.5f * K - 2 * K, 1f);
         }
@@ -379,10 +379,10 @@ final class Crest {
     }
 
     /** A count in small digits on a layer of its own, two frame pixels of room round it. */
-    private Ink number(String s) {
+    private Ink number(String s, int color) {
         float th = 9f * K;
         Ink sp = beginSprite(Math.round(Ink.digitsWidth(s, th) + 4 * K), Math.round(th + 4 * K));
-        ink.digits(s, 2 * K, 2 * K, th, 0xFFFFFFFF, INK, 0.8f * K, 1f);
+        ink.digits(s, 2 * K, 2 * K, th, color, INK, 0.8f * K, 1f);
         endSprite();
         return sp;
     }
@@ -463,7 +463,7 @@ final class Crest {
         if (n > 7) {
             if (cubeCount == null || cubeCountKey != n) {
                 cubeCountKey = n;
-                cubeCount = number("x" + n);
+                cubeCount = number("x" + n, 0xFFFFFFFF);
             }
             g.blit(cubeCount, x0 + 6 * K - 2 * K, y0 - 4.5f * K - 2 * K, 1f);
         }

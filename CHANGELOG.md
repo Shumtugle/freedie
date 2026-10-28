@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.1
+- The pale box behind the heavy hammer at the top is gone: against the evening sky it
+  read as a frame. While the heavy one is in hand its count is golden instead.
+
 ## 0.38
 - The crest at the top is drawn at the screen's own grain, round and soft-edged, with a
   soft shadow under every part, over the pixel street: gold stars with a light heart and a
