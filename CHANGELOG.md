@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.48
+- No more white light between episodes: the room lets the eye down onto the next building
+  as between any two levels, and the street runs on without a seam. The light is kept for
+  the portal alone, where the hammer pulls the eye into the ring and out onto the ice.
+- Into an episode from the bridge, the street comes on like a set, as it does by the lever,
+  instead of through the light.
+
 ## 0.47
 - The crossroads before the 21st. When the 20th falls, the room lets the eye down onto the
   street without the light, and the plinth stands empty: nothing to aim at, the player is

@@ -95,10 +95,11 @@ final class Game implements Physics.Listener {
     private boolean fightNext, afterFight, throwDue;
     private float dueX, dueY;
     private float winSky = -1f, wake = -1f;
-    // between episodes: a light that rises over the sky and clears onto the next one
+    // through the portal: a light that rises as the hammer pulls the eye into the ring and
+    // clears onto the ice. The light is kept for that alone: between episodes the street goes
+    // on without a cut, and the room is the only door
     static final float CHAPTER_RISE = 0.45f, CHAPTER_FADE = 0.6f;
     private float chapterT = -1f;
-    private boolean chapterDue;
     // a cube given on the console, for the world to put in the rack
     boolean cubeGift;
     // a fight won in the street, the one that came of the lost tries: her heart comes up out of
@@ -1294,14 +1295,7 @@ final class Game implements Physics.Listener {
                 if (stateTime >= TILT) setState(SKY_HOLD);
                 break;
             case SKY_HOLD:
-                // an episode won: the light rises first
-                if (stateTime >= holdFor && chapterDue && chapterT < 0f) {
-                    chapterT = 0f;
-                    host.sound(Synth.WHOOSH, 0.7f, 0.7f);
-                }
-                if (stateTime >= holdFor && (chapterT < 0f || chapterT >= CHAPTER_RISE)) {
-                    boolean chapter = chapterDue;
-                    chapterDue = false;
+                if (stateTime >= holdFor) {
                     if (fightNext) {
                         // down out of the sky, into the red street, where she is coming
                         startFight(true);
@@ -1607,9 +1601,7 @@ final class Game implements Physics.Listener {
         }
         host.saveInt("ep" + e + "done", 1);
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
-        // an episode that ends in the alley goes on through the light too, until the alley is there
-        if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
-        // a crossroads: no light, a stop on the street before the next building
+        // a crossroads: a stop on the street before the next building
         if (Episode.ENDS[e] == Episode.CROSS) crossDue = true;
     }
 
@@ -1810,14 +1802,13 @@ final class Game implements Physics.Listener {
         setState(SKY_HOLD);
     }
 
-    /** Into an episode from the bridge: its first building, through the light. */
+    /** Into an episode from the bridge: its first building, the street coming on like a set. */
     void enter(int lv) {
         fromSky = false;
         start(Math.max(0, Math.min(LAST, lv)), false);
-        chapterT = CHAPTER_RISE;
     }
 
-    /** How white the light between episodes makes the frame, 0 to 1. */
+    /** How white the light through the portal makes the frame, 0 to 1. */
     float light() {
         if (chapterT < 0f) return 0f;
         if (chapterT < CHAPTER_RISE) {

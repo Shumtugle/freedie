@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.47";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.48";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -480,7 +480,7 @@ final class World {
         d.red = game.red();
         d.gold = game.gold();
         d.blur = game.blur();
-        // the flash off the opening, or the light between two episodes
+        // the flash off the opening, or the light through the portal
         d.flash = Math.max(flashOut / FLASH_OUT, game.light());
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
         if (bridge != null) {
@@ -694,12 +694,13 @@ final class World {
         game.fightNow();
     }
 
-    /** A screen with its cube, thrown at: into its episode, through the light; the crossroads not yet. */
+    /** A screen with its cube, thrown at: into its episode, the street coming on like a set, as the lever does it. */
     void bridgeEnter(int which) {
         bridge = null;
         if (which < Episode.COUNT) {
             game.enter(Episode.FIRST[which] - 1);
             level = game.level;
+            tvOn = 0f;
         } else flashOut = FLASH_OUT;
     }
 
