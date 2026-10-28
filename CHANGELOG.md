@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.39
+- A fight won in the street pays: out of the heap, where her heart beat on the last
+  shield, a golden cube comes up, hangs burning, and flies in an arc toward the player; it
+  lands on the red road and lies there while the world goes gold. The console knocks the
+  cube button and it goes into the rack.
+- The heavy hammer is no longer given for a fight won: the cube is the prize. The golden
+  hammer for the same building comes after the fight either way.
+- The fight played from the bridge pays nothing.
+
 ## 0.38.1
 - The pale box behind the heavy hammer at the top is gone: against the evening sky it
   read as a frame. While the heavy one is in hand its count is golden instead.

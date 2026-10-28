@@ -1,0 +1,54 @@
+# The fight won in the street: four buildings lost in a row, the fifth lost too; the console
+# knocks the golden hammer and the fight, and a player brings her down. Her heart comes up out
+# of the heap as a golden cube, hangs burning, drops and rolls toward the player; the world
+# goes gold, the console knocks the cube into the rack, and back to the same building with the
+# golden hammer in hand. No heavy hammer for it.
+screen 1096 2560
+keep level 4
+keep goldSeen 1
+keep fails 4
+keep cubes 1
+restart
+skip
+wait 2.6
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 3.7
+drag 137 500 137 100 0.3
+wait 4.0
+wait 1.6
+wait 1.4
+wait 1.0
+wait 2.0
+shot w0
+fightstate
+bot 60
+fightstate
+shot w1
+wait 0.9
+shot w2
+wait 0.4
+shot w3
+wait 0.4
+shot w4
+wait 0.5
+shot w5
+wait 0.8
+shot w6
+wait 1.0
+shot w7
+wait 0.8
+shot w8
+wait 1.2
+shot w9
+wait 1.2
+shot w10
+wait 1.5
+shot w11
+wait 2.0
+shot w12

@@ -24,7 +24,8 @@ import java.util.Random;
  * hammer in hand, or the one waiting low on the left, swaps one for the other.
  *
  * Lose the same building five times running and the console gives the golden hammer, and in
- * town Freedie herself comes, and the fight (see Fight). Won or lost, the fight ends before the
+ * town Freedie herself comes, and the fight (see Fight). Won, her heart rolls out of the heap
+ * as a golden cube, the player's. Won or lost, the fight ends before the
  * same building, the golden hammer in hand: one throw that scatters the building whatever it
  * hits, as the very first one did. Out at sea she does not come: the golden hammer alone.
  *
@@ -100,6 +101,14 @@ final class Game implements Physics.Listener {
     private boolean chapterDue;
     // a cube given on the console, for the world to put in the rack
     boolean cubeGift;
+    // a fight won in the street, the one that came of the lost tries: her heart comes up out of
+    // the heap as a golden cube, hangs there burning, and drops and rolls toward the player; it
+    // is given on the console. The fight played from the bridge pays nothing
+    static final float PRIZE_AT = 0.8f, PRIZE_GROW = 0.25f, PRIZE_FREE = 1.5f, PRIZE_SEEN = 4.6f, PRIZE_R = 0.34f;
+    // how far short of the player it comes down, metres
+    static final float PRIZE_NEAR = 6.5f;
+    private boolean fightPays, prizeFree, prizeDown;
+    private Body prize;
     /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
     Ink hudInk;
     // the 39th: the first blow that reaches the building shakes the ground, the plinth's near
@@ -264,6 +273,7 @@ final class Game implements Physics.Listener {
         goldCube = null;
         chunk = null;
         gift = null;
+        prize = null;
         rubble.clear();
         chipT = -1f;
         if (goldSeen && cubeLevel(lv) && host.loadInt("cube" + (lv + 1)) == 0) crown(made);
@@ -369,6 +379,10 @@ final class Game implements Physics.Listener {
     void startFight(boolean fromAbove) {
         // down from the sky she has come in the game itself: her screen on the bridge lights up
         if (fromAbove) host.saveInt("fought", 1);
+        fightPays = fromAbove;
+        prize = null;
+        prizeFree = false;
+        prizeDown = false;
         fightNext = false;
         throwDue = false;
         phys.clear();
@@ -1060,7 +1074,8 @@ final class Game implements Physics.Listener {
                 break;
             case FIGHT:
                 fight.step(dt);
-                if (fight.end > 2.8f && fight.won) fightWon();
+                if (fight.won && fightPays) heart();
+                if (fight.won && fight.end > (fightPays ? PRIZE_SEEN : 2.8f)) fightWon();
                 else if (fight.end > 1.3f && !fight.won) fightLost();
                 break;
             case SKY_UP:
@@ -1186,7 +1201,7 @@ final class Game implements Physics.Listener {
             fails = 0;
             host.saveInt("fails", 0);
         }
-        if (verdict == OVATION) {
+        if (verdict == OVATION && !fought) {
             // the watchers give the heavy hammer: it comes down to the player from the sky, and is in
             // the hand only once it has come, when its marks have dropped into the corner
             heavyLeft = Math.min(HEAVY_MAX, heavyLeft + HEAVY_GIFT);
@@ -1369,6 +1384,66 @@ final class Game implements Physics.Listener {
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
         // an episode that ends in the alley goes on through the light too, until the alley is there
         if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
+    }
+
+    /**
+     * A fight won in the street: out of the heap, where her heart beat on the last shield, a
+     * golden cube comes up, grows, hangs a moment burning and turning, then drops and rolls
+     * toward the player, and lies on the red road till the console gives it.
+     */
+    private void heart() {
+        float t = fight.end;
+        if (prize == null) {
+            if (t < PRIZE_AT) return;
+            Giant gi = fight.giant;
+            prize = new Body(PRIZE_R, PRIZE_R, PRIZE_R, Body.GOLD, 0xFFC81E);
+            prize.ghost = true;
+            prize.homeX = gi.x;
+            prize.homeZ = gi.z - 0.6f;
+            prizeFree = false;
+            phys.add(prize);
+            cubeDue = true;
+            host.sound(Synth.BEAT, 1.1f, 1f);
+            host.sound(Synth.CHIME, 0.8f, 0.8f);
+            host.buzz(40);
+            for (int i = 0; i < 20; i++)
+                spawn(prize.homeX + (fx.nextFloat() - 0.5f) * 1.2f, 2.2f + fx.nextFloat() * 0.8f, prize.homeZ + (fx.nextFloat() - 0.5f) * 1.2f,
+                        i % 2 == 0, i % 2 == 0 ? 0xFFB13A : 0xE6DCC8, 2.5f);
+        }
+        if (prizeFree) {
+            // down on the road: it loses most of its way at the first touch, rolls a little, and lies
+            if (!prizeDown && prize.vy <= 0f && prize.py < prize.hy * 1.8f) {
+                prizeDown = true;
+                prize.vx *= 0.22f;
+                prize.vz *= 0.22f;
+                host.sound(Synth.CHIME, 0.6f, 0.7f);
+                host.buzz(30);
+            }
+            return;
+        }
+        float u = Math.min(1f, (t - PRIZE_AT) / (PRIZE_FREE - PRIZE_AT));
+        float a = u * 2.4f;
+        prize.setPose(prize.homeX, 2.4f + 0.5f * (float) Math.sin(u * Math.PI * 0.5f), prize.homeZ,
+                (float) Math.cos(a * 0.5f), 0f, (float) Math.sin(a * 0.5f), 0f);
+        if (u < 1f) return;
+        // let go: up and over in an arc toward the player, down onto the road some way short
+        // of them, and on rolling
+        prizeFree = true;
+        prize.ghost = false;
+        prize.asleep = false;
+        // aimed a little right of the eye, so it lies in the middle of the view
+        float dx = World.CAM_X * 0.3f - prize.px, dz = World.CAM_Z - prize.pz;
+        float l = (float) Math.sqrt(dx * dx + dz * dz);
+        float up = 5.5f, g = -Physics.G, h = prize.py - prize.hy;
+        float air = (up + (float) Math.sqrt(up * up + 2f * g * h)) / g;
+        float go = Math.max(2f, l - PRIZE_NEAR) / air;
+        prize.vx = dx / l * go;
+        prize.vz = dz / l * go;
+        prize.vy = up;
+        prize.wx = -dz / l * 7f;
+        prize.wz = dx / l * 7f;
+        prize.wy = 1.5f;
+        host.sound(Synth.CHIME, 0.7f, 1f);
     }
 
     /**
@@ -2099,7 +2174,17 @@ final class Game implements Physics.Listener {
     void draw(DrawList d) {
         if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
         else if (fight == null) plinth(d);
-        else fight.draw(d);
+        else {
+            fight.draw(d);
+            // her heart, won: it burns in its own gold, in the red street too
+            if (prize != null) {
+                float hs = prize.hx * (prizeFree ? 1f : Math.min(1f, (fight.end - PRIZE_AT) / PRIZE_GROW));
+                turn[0] = prize.r00; turn[1] = prize.r01; turn[2] = prize.r02;
+                turn[3] = prize.r10; turn[4] = prize.r11; turn[5] = prize.r12;
+                turn[6] = prize.r20; turn[7] = prize.r21; turn[8] = prize.r22;
+                d.box(prize.px, prize.py, prize.pz, hs, hs, hs, turn, 0xFFB428, DrawList.material(DrawList.FIRE_GOLD, DrawList.FIRE));
+            }
+        }
         float st = stagger();
         for (int i = 0; i < pieces.size(); i++) {
             Body b = pieces.get(i);

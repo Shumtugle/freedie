@@ -15,7 +15,8 @@ import java.util.Random;
  * the knees and the eyes: a knee struck goes out, and she leaps short; both out, she drags
  * herself on; three blows to the head and she falls apart. If she reaches the player, a
  * sweep of her arm ends it too. Won, the world goes gold and up into the sky, where the watchers
- * cheer; lost, it goes dark, and the player wakes on the street before the same building.
+ * cheer; in the street her heart comes out of the heap as a golden cube first. Lost, it goes
+ * dark, and the player wakes on the street before the same building.
  */
 final class Fight {
     static final int ARMOR = 3, FLY_MAX = 4;
