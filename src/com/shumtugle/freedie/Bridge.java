@@ -118,16 +118,35 @@ final class Bridge {
         stills = s;
     }
 
-    /** The room's picture: width, height, then RGBA rows. */
+    /**
+     * The room's picture: width, height, then RGBA rows, deflated. It is drawn finer than the
+     * frame (see Console); here it is brought down to the frame's own grain, each pixel the
+     * mean of the ones it covers.
+     */
     private static void readArt(byte[] b) {
         if (b == null || b.length < 4) return;
+        if ((b[0] & 0xFF) == 0x78) b = Console.inflate(b);
+        if (b == null || b.length < 4) return;
         int ww = ((b[0] & 0xFF) << 8) | (b[1] & 0xFF), hh = ((b[2] & 0xFF) << 8) | (b[3] & 0xFF);
-        if (b.length < 4 + ww * hh * 4) return;
-        int[] a = new int[ww * hh];
-        for (int k = 0, p = 4; k < a.length; k++, p += 4)
-            a[k] = ((b[p + 3] & 0xFF) << 24) | ((b[p] & 0xFF) << 16) | ((b[p + 1] & 0xFF) << 8) | (b[p + 2] & 0xFF);
-        artW = ww;
-        artH = hh;
+        if ((long) b.length < 4L + (long) ww * hh * 4L) return;
+        int q = Math.max(1, ww / World.W), aw = ww / q, ah = hh / q;
+        int[] a = new int[aw * ah];
+        for (int y = 0; y < ah; y++)
+            for (int x = 0; x < aw; x++) {
+                int sa = 0, sr = 0, sg = 0, sb = 0;
+                for (int j = 0; j < q; j++)
+                    for (int i = 0; i < q; i++) {
+                        int p = 4 + ((y * q + j) * ww + x * q + i) * 4, al = b[p + 3] & 0xFF;
+                        sa += al;
+                        sr += (b[p] & 0xFF) * al;
+                        sg += (b[p + 1] & 0xFF) * al;
+                        sb += (b[p + 2] & 0xFF) * al;
+                    }
+                int al = sa / (q * q);
+                a[y * aw + x] = sa == 0 ? 0 : (al << 24) | (sr / sa << 16) | (sg / sa << 8) | (sb / sa);
+            }
+        artW = aw;
+        artH = ah;
         art = a;
     }
 

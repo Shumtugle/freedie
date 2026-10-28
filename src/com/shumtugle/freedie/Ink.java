@@ -115,10 +115,18 @@ final class Ink {
             int x0 = Math.max(0, ix), y0 = Math.max(0, iy), x1 = Math.min(w, ix + src.w), y1 = Math.min(h, iy + src.h);
             for (int py = y0; py < y1; py++) {
                 int si = (py - iy) * src.w - ix, di = py * w;
-                for (int px = x0; px < x1; px++) {
-                    int c = src.a[si + px];
-                    if (c != 0) put(di + px, c, k);
-                }
+                if (k == 256)
+                    for (int px = x0; px < x1; px++) {
+                        int c = src.a[si + px];
+                        // whole over whatever is there: laid straight down
+                        if ((c >>> 24) == 255) a[di + px] = c;
+                        else if (c != 0) put(di + px, c, k);
+                    }
+                else
+                    for (int px = x0; px < x1; px++) {
+                        int c = src.a[si + px];
+                        if (c != 0) put(di + px, c, k);
+                    }
             }
         } else {
             float ax = place(x, ox, sx), bx = place(x + src.w, ox, sx), ay = place(y, oy, sy), by = place(y + src.h, oy, sy);

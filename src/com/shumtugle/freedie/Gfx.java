@@ -40,6 +40,8 @@ final class Gfx {
     private int frameW, frameH;
     private FloatBuffer inst, ballInst;
     private IntBuffer flat, hudBuf;
+    private final int[] hudTexs = new int[2], hudSizeW = new int[2], hudSizeH = new int[2];
+    private int hudSlot;
     private int[] hudSwizzled;
     private int[] swizzled;
 
@@ -104,6 +106,8 @@ final class Gfx {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0);
         frameW = frameH = 0;
         hudTex = 0;
+        hudTexs[0] = hudTexs[1] = 0;
+        hudSizeW[0] = hudSizeW[1] = hudSizeH[0] = hudSizeH[1] = 0;
     }
 
     /** A vertex array: the cube's corners, and one box after another from the given buffer. */
@@ -187,29 +191,45 @@ final class Gfx {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, flatTex);
         GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 4);
         GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, d.w, d.h, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, flat);
-        // the fine layer over the top, when there is one: smooth, premultiplied
-        boolean newHud = hudTex == 0 || hudW != d.hudW || hudH != d.hudH;
-        if (d.hudRows > 0 && d.hud != null && (d.hudFresh || newHud)) {
+        // the fine layer over the frame, when there is one: smooth, premultiplied. Two are kept,
+        // one for each size it comes in (the crest over the top, the room over all of it), so
+        // going from one to the other between rounds makes nothing new
+        boolean hudNew = false;
+        if (d.hudRows > 0 && d.hud != null) {
+            int slot = hudSizeW[0] == d.hudW && hudSizeH[0] == d.hudH && hudTexs[0] != 0 ? 0
+                    : hudSizeW[1] == d.hudW && hudSizeH[1] == d.hudH && hudTexs[1] != 0 ? 1 : -1;
+            boolean newHud = slot < 0;
             if (newHud) {
-                if (hudTex != 0) GLES30.glDeleteTextures(1, new int[]{hudTex}, 0);
+                slot = hudTexs[0] == 0 ? 0 : hudTexs[1] == 0 ? 1 : 1 - hudSlot;
+                if (hudTexs[slot] != 0) GLES30.glDeleteTextures(1, new int[]{hudTexs[slot]}, 0);
                 int[] t = new int[1];
                 GLES30.glGenTextures(1, t, 0);
-                hudTex = t[0];
-                hudW = d.hudW;
-                hudH = d.hudH;
-                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
-                GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, 1, GLES30.GL_RGBA8, hudW, hudH);
+                hudTexs[slot] = t[0];
+                hudSizeW[slot] = d.hudW;
+                hudSizeH[slot] = d.hudH;
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, t[0]);
+                GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, 1, GLES30.GL_RGBA8, d.hudW, d.hudH);
                 params(GLES30.GL_LINEAR);
-                hudBuf = ByteBuffer.allocateDirect(hudW * hudH * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
-                hudSwizzled = new int[hudW * hudH];
+            }
+            hudNew = newHud;
+            hudSlot = slot;
+            hudTex = hudTexs[slot];
+            hudW = d.hudW;
+            hudH = d.hudH;
+        }
+        if (d.hudRows > 0 && d.hud != null && (d.hudFresh || hudNew)) {
+            int need = hudW * hudH;
+            if (hudSwizzled == null || hudSwizzled.length < need) {
+                hudBuf = ByteBuffer.allocateDirect(need * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
+                hudSwizzled = new int[need];
             }
             int[] hs = d.hud, hd = hudSwizzled;
-            for (int i = 0; i < hd.length; i++) {
+            for (int i = 0; i < need; i++) {
                 int c = hs[i];
                 hd[i] = (c & 0xFF00FF00) | ((c >> 16) & 0xFF) | ((c & 0xFF) << 16);
             }
             hudBuf.clear();
-            hudBuf.put(hd).position(0);
+            hudBuf.put(hd, 0, need).position(0);
             GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
             GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 4);
             GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, hudW, hudH, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, hudBuf);

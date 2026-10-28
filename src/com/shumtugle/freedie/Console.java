@@ -16,8 +16,10 @@ import java.util.Calendar;
  * the next channel, and the room draws back off the street, where the next building is
  * already coming down.
  *
- * All of it is drawn on the flat layer, over the frame; the still parts of the room are a
- * picture read from an asset, the tube in it left clear for the street to show through.
+ * All of it is drawn on a fine layer over the frame, at twice the frame's grain, smooth and
+ * soft-edged as the crest is: the still parts of the room are a picture read from an asset
+ * (deflated), the tube in it left clear for the street to show through; the glass, the digits,
+ * the buttons and the hammer are drawn over it every frame.
  */
 final class Console {
     // the buttons, left to right
@@ -48,16 +50,41 @@ final class Console {
     private int heard;                                // knocks already sounded
     private final java.util.Random rnd = new java.util.Random(11);
 
-    /** Reads the room's picture: width, height, then RGBA rows. */
+    /** Reads the room's picture: width, height, then RGBA rows; deflated, or not. Kept premultiplied. */
     void read(byte[] b) {
+        if (b == null || b.length < 4) return;
+        if ((b[0] & 0xFF) == 0x78) b = inflate(b);
         if (b == null || b.length < 4) return;
         int w = ((b[0] & 0xFF) << 8) | (b[1] & 0xFF), h = ((b[2] & 0xFF) << 8) | (b[3] & 0xFF);
         if (b.length < 4 + w * h * 4) return;
         art = new int[w * h];
-        for (int k = 0, p = 4; k < art.length; k++, p += 4)
-            art[k] = ((b[p + 3] & 0xFF) << 24) | ((b[p] & 0xFF) << 16) | ((b[p + 1] & 0xFF) << 8) | (b[p + 2] & 0xFF);
+        for (int k = 0, p = 4; k < art.length; k++, p += 4) {
+            int al = b[p + 3] & 0xFF;
+            int r = (b[p] & 0xFF) * al / 255, g = (b[p + 1] & 0xFF) * al / 255, bl = (b[p + 2] & 0xFF) * al / 255;
+            art[k] = (al << 24) | (r << 16) | (g << 8) | bl;
+        }
         artW = w;
         artH = h;
+    }
+
+    /** A deflated asset, inflated; null if it will not inflate. */
+    static byte[] inflate(byte[] z) {
+        java.util.zip.Inflater in = new java.util.zip.Inflater();
+        in.setInput(z);
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(z.length * 8);
+        byte[] buf = new byte[1 << 16];
+        try {
+            while (!in.finished()) {
+                int n = in.inflate(buf);
+                if (n == 0 && (in.needsInput() || in.needsDictionary())) break;
+                out.write(buf, 0, n);
+            }
+        } catch (java.util.zip.DataFormatException e) {
+            return null;
+        } finally {
+            in.end();
+        }
+        return out.toByteArray();
     }
 
     /**
@@ -139,66 +166,129 @@ final class Console {
         t = -1f;
     }
 
-    // ---- drawing ----
+    // ---- drawing, on the fine layer ----
+
+    /** Layer pixels to a frame pixel. */
+    static final int Q = 2;
 
     /**
      * The room over the frame, as far as it has closed in (0: not at all, 1: only the tube
-     * left), and the hammer, as far as it is up out of the dark (0 to 1).
+     * left), and the hammer, as far as it is up out of the dark (0 to 1); on the fine layer,
+     * which is cleared for it.
      */
-    void draw(Px f, float cover, float handUp) {
+    void draw(Ink g, int fh, float cover, float handUp) {
         if (art == null || cover <= 0f) return;
-        int fw = f.w, fh = f.h;
-        int oy = (fh - PH) / 2;                         // the picture centred on the frame, cut at the top and bottom
-        int split = SPLIT + oy;
-        float e = cover * cover * (3f - 2f * cover);
-        int top = Math.round(-(1f - e) * split), bot = Math.round((1f - e) * (fh - split));
-        int[] a = f.a;
-        for (int y = 0; y < fh; y++) {
-            boolean upper = y < split + top;
-            boolean lower = y >= split + bot;
+        g.clear();
+        float oy = (fh - PH) / 2f;                      // the picture centred on the frame, cut at the top and bottom
+        float split = SPLIT + oy;
+        float e = ease(cover);
+        float top = -(1f - e) * split, bot = (1f - e) * (fh - split);
+        int topQ = Math.round(top * Q), botQ = Math.round(bot * Q), oyQ = Math.round(oy * Q), splitQ = Math.round(split * Q);
+        int[] a = g.a;
+        int gw = g.w;
+        for (int y = 0; y < g.h; y++) {
+            boolean upper = y < splitQ + topQ, lower = y >= splitQ + botQ;
             if (!upper && !lower) continue;             // the gap between, where the street still shows whole
-            int sy = (upper ? y - top : y - bot) - oy;
-            int row = y * fw;
-            for (int x = 0; x < fw; x++) {
-                int c = sy < 0 || sy >= artH || x >= artW ? 0xFF000000 : art[sy * artW + x];
-                if ((c >>> 24) == 0) continue;
-                a[row + x] = c;
-            }
+            int sy = (upper ? y - topQ : y - botQ) - oyQ, row = y * gw;
+            if (sy < 0 || sy >= artH) java.util.Arrays.fill(a, row, row + gw, 0xFF000000);
+            else System.arraycopy(art, sy * artW, a, row, Math.min(artW, gw));
         }
-        tube(f, oy, e);
-        int dTop = top + oy, dBot = bot + oy;           // where the moving halves are, in frame pixels
-        clock(f, dTop);
-        buttons(f, dBot);
-        counter(f, dBot);
-        if (bank > 0) bankBox(f, 196, DY + 8 + dBot, 264, DY + 60 + dBot, bank, bankFresh ? 0.5f + 0.5f * (float) Math.sin(t * 9f) : 0f);
-        hammer(f, dBot, handUp, fh);
+        g.used = true;
+        tube(g, oyQ, e);
+        float dTop = top + oy, dBot = bot + oy;         // where the moving halves are, in frame pixels
+        clock(g, dTop);
+        buttons(g, dBot);
+        counter(g, dBot);
+        if (bank > 0) bankAt(g, 196, DY + 8 + dBot, 264, DY + 60 + dBot, bank, bankFresh ? 0.5f + 0.5f * (float) Math.sin(t * 9f) : 0f);
+        hammer(g, dBot, handUp, fh);
     }
 
-    /** The glass: its lines, darker at its edges, a sheen at the top; a moment of noise as it flicks. */
-    private void tube(Px f, int oy, float e) {
-        boolean noise = t >= 0f && flicked() && t < RISE + presses * KNOCK + FLICK;
-        int y0 = Math.max(0, SY0 + oy), y1 = Math.min(f.h, SY0 + SH + oy);
-        int x0 = Math.max(0, SX0), x1 = Math.min(f.w, SX0 + SW);
-        for (int y = y0; y < y1; y++) {
-            float v = (y - oy - SY0 - SH * 0.5f) / (SH * 0.5f);
-            for (int x = x0; x < x1; x++) {
-                int k = y * f.w + x;
-                if ((f.a[k] >>> 24) != 0) continue;         // the room, or the corners of the tube
-                float u = (x - SX0 - SW * 0.5f) / (SW * 0.5f);
-                if (noise) {
-                    int g = 60 + rnd.nextInt(170);
-                    f.a[k] = 0xE6000000 | (g << 16) | (g << 8) | g;
-                    continue;
+    // the glass, worked out once for where the tube is: how dark each pixel of it is, and whether white
+    private byte[] glassA;
+    private boolean[] glassW;
+    private int[] glassFull;
+    private int gx0, gy0, gw, gh;
+
+    /** The glass: fine lines, darker at its edges, a sheen at the top; a moment of noise as it flicks. Under the room's edge. */
+    private void tube(Ink g, int oyQ, float e) {
+        int y0 = Math.max(0, SY0 * Q + oyQ), y1 = Math.min(g.h, (SY0 + SH) * Q + oyQ);
+        int x0 = Math.max(0, SX0 * Q), x1 = Math.min(g.w, (SX0 + SW) * Q);
+        if (glassA == null || gx0 != x0 || gy0 != y0 || gw != x1 - x0 || gh != y1 - y0) {
+            gx0 = x0;
+            gy0 = y0;
+            gw = x1 - x0;
+            gh = y1 - y0;
+            glassA = new byte[gw * gh];
+            glassW = new boolean[gw * gh];
+            glassFull = new int[gw * gh];
+            for (int y = y0; y < y1; y++) {
+                float v = (y - oyQ - (SY0 + SH * 0.5f) * Q) / (SH * 0.5f * Q);
+                for (int x = x0; x < x1; x++) {
+                    float u = (x - (SX0 + SW * 0.5f) * Q) / (SW * 0.5f * Q);
+                    float dark = 0.08f + 0.3f * (float) Math.pow(u * u * 0.7f + v * v, 1.4);
+                    if ((y & 1) == 1) dark += 0.1f;
+                    float sheen = Math.max(0f, 1f - (float) Math.hypot(u + 0.5f, v + 0.62f) / 0.5f);
+                    sheen = sheen * sheen * 0.22f;
+                    int k = (y - y0) * gw + (x - x0);
+                    int ai = Math.round(Math.min(1f, dark + sheen) * 255f);
+                    glassA[k] = (byte) ai;
+                    glassW[k] = sheen > dark;
+                    int w = glassW[k] ? ai : 0;
+                    glassFull[k] = (ai << 24) | (w << 16) | (w << 8) | w;
                 }
-                float dark = 0.08f + 0.3f * (float) Math.pow(u * u * 0.7f + v * v, 1.4);
-                if ((y & 1) == 1) dark += 0.16f;
-                float sheen = Math.max(0f, 1f - (float) Math.hypot(u + 0.5f, v + 0.62f) / 0.5f);
-                sheen = sheen * sheen * 0.22f;
-                float al = Math.min(1f, (dark + sheen) * e);
-                int g = sheen > dark ? 255 : 0;
-                f.a[k] = (Math.round(al * 255f) << 24) | (g << 16) | (g << 8) | g;
             }
         }
+        boolean noise = t >= 0f && flicked() && t < RISE + presses * KNOCK + FLICK;
+        int ek = Math.round(e * 256f);
+        int[] a = g.a;
+        for (int y = y0; y < y1; y++) {
+            int row = y * g.w, grow = (y - y0) * gw - x0;
+            for (int x = x0; x < x1; x++) {
+                int k = row + x, d = a[k], da = d >>> 24;
+                if (da == 255) continue;                    // the room
+                int glass;
+                if (da == 0 && ek == 256 && !noise) {
+                    // the room fully closed in, nothing of it here: the glass as it is
+                    a[k] = glassFull[grow + x];
+                    continue;
+                }
+                if (noise) {
+                    int c = (60 + rnd.nextInt(170)) * 0xE6 / 255;
+                    glass = 0xE6000000 | (c << 16) | (c << 8) | c;
+                } else {
+                    int ai = ((glassA[grow + x] & 0xFF) * ek) >> 8, w = glassW[grow + x] ? ai : 0;
+                    glass = (ai << 24) | (w << 16) | (w << 8) | w;
+                }
+                // the glass under whatever of the room's soft edge is there
+                int keep = 255 - da;
+                int ra = da + ((glass >>> 24) * keep + 127) / 255;
+                int rr = ((d >> 16) & 0xFF) + (((glass >> 16) & 0xFF) * keep + 127) / 255;
+                int rg = ((d >> 8) & 0xFF) + (((glass >> 8) & 0xFF) * keep + 127) / 255;
+                int rb = (d & 0xFF) + ((glass & 0xFF) * keep + 127) / 255;
+                a[k] = (Math.min(255, ra) << 24) | (Math.min(255, rr) << 16) | (Math.min(255, rg) << 8) | Math.min(255, rb);
+            }
+        }
+    }
+
+    // ---- what is drawn once and laid down again: digits, keys and their light, the bank, the hammer ----
+
+    private final java.util.HashMap<Integer, Ink> sprites = new java.util.HashMap<Integer, Ink>();
+    private static final float PAD = 6f;
+    // the four kinds of digit: the clock's, the date's, the level's, the key's
+    private static final float[] DW = {22, 11, 21, 12}, DH = {40, 16, 38, 21}, DT = {5, 2.2f, 4, 3};
+
+    /** A digit of a kind, its top left at (x, y) in frame pixels; below 0, all dark. */
+    private void digitAt(Ink g, int kind, int n, float x, float y) {
+        int key = 1000 + kind * 16 + n + 1;
+        Ink sp = sprites.get(key);
+        if (sp == null) {
+            sp = new Ink(Math.round((DW[kind] + 2 * PAD) * Q), Math.round((DH[kind] + 2 * PAD) * Q));
+            int on = kind == 0 ? 0xFF000000 | VFD : kind == 1 ? 0xFF000000 | Street.scale(VFD, 0.8f) : 0xFF000000 | AMBER;
+            int off = kind < 2 ? 0xFF000000 | VFD_OFF : kind == 2 ? 0xFF000000 | AMBER_OFF : 0xFF0C0502;
+            seven(sp, PAD, PAD, DW[kind], DH[kind], DT[kind], n, on, off);
+            sprites.put(key, sp);
+        }
+        g.blit(sp, (x - PAD) * Q, (y - PAD) * Q, 1f);
     }
 
     private static final int VFD = 0x6CF2D8, VFD_OFF = 0x0B1816, AMBER = 0xFF8A2A, AMBER_OFF = 0x1A0B04;
@@ -225,92 +315,174 @@ final class Console {
         digit(f, 78, 117 + dy, 11, 16, 2, mo % 10, dim, VFD_OFF);
     }
 
+    /** The clock and the date over the set: the player's own, in glowing digits. */
+    private void clock(Ink g, float dy) {
+        Calendar c = Calendar.getInstance();
+        int hh = c.get(Calendar.HOUR_OF_DAY), mm = c.get(Calendar.MINUTE);
+        int dd = c.get(Calendar.DAY_OF_MONTH), mo = c.get(Calendar.MONTH) + 1;
+        int on = 0xFF000000 | VFD;
+        digitAt(g, 0, hh / 10, 18, 63 + dy);
+        digitAt(g, 0, hh % 10, 46, 63 + dy);
+        // the colon, blinking with the seconds
+        if (c.get(Calendar.SECOND) % 2 == 0)
+            for (float cy : new float[]{74.5f, 91.5f}) g.disc(79.5f * Q, (cy + dy) * Q, 2.4f * Q, on, 1f, 1f);
+        digitAt(g, 0, mm / 10, 92, 63 + dy);
+        digitAt(g, 0, mm % 10, 120, 63 + dy);
+        int dim = 0xFF000000 | Street.scale(VFD, 0.8f);
+        digitAt(g, 1, dd / 10, 22, 117 + dy);
+        digitAt(g, 1, dd % 10, 37, 117 + dy);
+        g.disc(55.5f * Q, (131.5f + dy) * Q, 1.6f * Q, dim, 1f, 1f);
+        digitAt(g, 1, mo / 10, 63, 117 + dy);
+        digitAt(g, 1, mo % 10, 78, 117 + dy);
+    }
+
+    /**
+     * A digit of seven segments, each a long six-sided bar with pointed ends, a hair apart;
+     * lit ones glow softly round their edges. In frame pixels; n below 0 lights none.
+     */
+    private static void seven(Ink g, float x, float y, float w, float h, float t, int n, int on, int off) {
+        String lit = n >= 0 && n <= 9 ? SEG[n] : "";
+        float gap = t * 0.18f, hf = t * 0.5f, m = y + h * 0.5f;
+        for (int pass = 0; pass < 2; pass++)
+            for (int k = 0; k < 7; k++) {
+                char ch = "agdfbec".charAt(k);
+                boolean l = lit.indexOf(ch) >= 0;
+                if (pass == 0 && !l) continue;
+                float ax, ay, bx, by;
+                switch (ch) {
+                    case 'a': ax = x + hf; ay = y + hf; bx = x + w - hf; by = ay; break;
+                    case 'g': ax = x + hf; ay = m; bx = x + w - hf; by = m; break;
+                    case 'd': ax = x + hf; ay = y + h - hf; bx = x + w - hf; by = ay; break;
+                    case 'f': ax = x + hf; ay = y + hf; bx = ax; by = m; break;
+                    case 'b': ax = x + w - hf; ay = y + hf; bx = ax; by = m; break;
+                    case 'e': ax = x + hf; ay = m; bx = ax; by = y + h - hf; break;
+                    default: ax = x + w - hf; ay = m; bx = ax; by = y + h - hf; break;
+                }
+                bar7(g, ax, ay, bx, by, hf, gap);
+                if (pass == 0) g.polyFill(on, on, t * Q * 1.6f, 0.28f);
+                else g.polyFill(l ? on : off, l ? on : off, 1f, 1f);
+            }
+    }
+
+    /** A segment from (ax, ay) to (bx, by), level or upright, so thick, pointed at its ends and drawn in a little. */
+    private static void bar7(Ink g, float ax, float ay, float bx, float by, float hf, float gap) {
+        if (ay == by) {
+            float x0 = ax + gap, x1 = bx - gap;
+            g.shape(x0 * Q, ay * Q, (x0 + hf) * Q, (ay - hf) * Q, (x1 - hf) * Q, (ay - hf) * Q, x1 * Q, ay * Q,
+                    (x1 - hf) * Q, (ay + hf) * Q, (x0 + hf) * Q, (ay + hf) * Q);
+        } else {
+            float y0 = ay + gap, y1 = by - gap;
+            g.shape(ax * Q, y0 * Q, (ax + hf) * Q, (y0 + hf) * Q, (ax + hf) * Q, (y1 - hf) * Q, ax * Q, y1 * Q,
+                    (ax - hf) * Q, (y1 - hf) * Q, (ax - hf) * Q, (y0 + hf) * Q);
+        }
+    }
+
     /** The row of buttons: dark until knocked, then lit; the one just knocked in and flaring. */
-    private void buttons(Px f, int dy) {
+    private void buttons(Ink g, float dy) {
         for (int i = 0; i < 4; i++) {
-            int x = BX[i], y = BY + dy;
+            float x = BX[i], y = BY + dy;
             float since = t - hitAt[i];
             boolean in = since >= 0f && since < 0.15f;
-            int face = lit[i] ? LIT[i] : Street.scale(LIT[i], 0.25f);
-            // the hammer button takes the colour of the hammer given
-            int iconC = 0;
-            if (i == HAMMER && lit[i] && giftKind >= 0) iconC = HEAD[Math.min(giftKind, HEAD.length - 1)];
-            int y0 = y + (in ? 2 : 0);
-            f.rect(x, y0, x + BW, y0 + BH, 0xFF000000 | face);
-            if (!in) {
-                f.rect(x, y0, x + BW, y0 + 2, 0xFF000000 | Street.scale(face, 1.35f));
-                f.rect(x, y0 + BH - 3, x + BW, y0 + BH, 0xFF000000 | Street.scale(face, 0.55f));
-            } else {
-                f.rect(x, y0, x + BW, y0 + 1, 0xFF000000 | Street.scale(face, 0.5f));
+            int gift = i == HAMMER && lit[i] && giftKind >= 0 ? Math.min(giftKind, HEAD.length - 1) : -1;
+            int key = 2000 + i * 64 + (lit[i] ? 32 : 0) + (in ? 16 : 0) + gift + 1;
+            Ink sp = sprites.get(key);
+            if (sp == null) {
+                sp = new Ink((BW + 4) * Q, (BH + 6) * Q);
+                key(sp, i, lit[i], in, gift);
+                sprites.put(key, sp);
             }
-            int ic = in ? 0xFFFFFF : lit[i] ? Street.scale(face, 1.8f) : Street.scale(face, 1.6f);
-            if (iconC != 0 && !in) ic = iconC;
-            icon(f, i, x + BW / 2, y0 + BH / 2, 0xFF000000 | ic);
+            g.blit(sp, (x - 2) * Q, (y - 2) * Q, 1f);
             // its light, spilling onto the panel and the set as it goes in
-            if (since >= 0f && since < 0.45f) glow(f, x + BW / 2, y + BH / 2, LIT[i], 0.5f * (1f - since / 0.45f));
+            if (since >= 0f && since < 0.45f) {
+                Ink gl = sprites.get(3000 + i);
+                if (gl == null) {
+                    gl = new Ink(116 * Q, 116 * Q);
+                    gl.disc(58f * Q, 58f * Q, 10f * Q, 0xFF000000 | LIT[i], 46f * Q, 1f);
+                    sprites.put(3000 + i, gl);
+                }
+                g.blit(gl, (x + BW / 2f - 58f) * Q, (y + BH / 2f - 58f) * Q, 0.55f * (1f - since / 0.45f));
+            }
         }
     }
 
-    private void icon(Px f, int kind, int cx, int cy, int c) {
+    /** A key, drawn once for how it is: a rounded key lit from above, its edge catching the light, its sign. */
+    private void key(Ink sp, int i, boolean on, boolean in, int gift) {
+        float x = 2f, y0 = 2f + (in ? 2f : 0f);
+        int face = on ? LIT[i] : Street.scale(LIT[i], 0.25f);
+        sp.box(x * Q, y0 * Q, (x + BW) * Q, (y0 + BH) * Q, 5f * Q, 0xFF000000 | Street.scale(face, in ? 0.85f : 1.15f),
+                0xFF000000 | Street.scale(face, in ? 0.7f : 0.68f), 1f, 1f);
+        if (!in) sp.box((x + 3) * Q, (y0 + 1.2f) * Q, (x + BW - 3) * Q, (y0 + 3.2f) * Q, 1f * Q, 0xFFFFFFFF, 0xFFFFFFFF, 1f,
+                on ? 0.35f : 0.12f);
+        int ic = in ? 0xFFFFFF : on ? Street.scale(face, 1.8f) : Street.scale(face, 1.6f);
+        if (gift >= 0 && !in) ic = HEAD[gift];
+        icon(sp, i, x + BW / 2f, y0 + BH / 2f, 0xFF000000 | ic);
+    }
+
+    private void icon(Ink g, int kind, float cx, float cy, int c) {
         switch (kind) {
             case NEXT:
-                for (int r = -7; r <= 7; r++) {
-                    int len = 12 - Math.abs(r) * 12 / 7;
-                    f.rect(cx - 5, cy + r, cx - 5 + len, cy + r + 1, c);
-                }
+                g.shape((cx - 5) * Q, (cy - 7.5f) * Q, (cx + 7.5f) * Q, cy * Q, (cx - 5) * Q, (cy + 7.5f) * Q);
+                g.polyFill(c, c, 1f, 1f);
                 break;
             case CUBE:
-                poly(f, cx, cy - 7, cx + 7, cy - 3, cx, cy + 1, cx - 7, cy - 3, c);
-                poly(f, cx - 7, cy - 3, cx, cy + 1, cx, cy + 8, cx - 7, cy + 4, 0xFF000000 | Street.scale(c, 0.75f));
-                poly(f, cx + 7, cy - 3, cx, cy + 1, cx, cy + 8, cx + 7, cy + 4, 0xFF000000 | Street.scale(c, 0.55f));
+                g.shape(cx * Q, (cy - 7) * Q, (cx + 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, (cx - 7) * Q, (cy - 3) * Q);
+                g.polyFill(c, c, 1f, 1f);
+                int c2 = 0xFF000000 | Street.scale(c, 0.75f), c3 = 0xFF000000 | Street.scale(c, 0.55f);
+                g.shape((cx - 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, cx * Q, (cy + 8) * Q, (cx - 7) * Q, (cy + 4) * Q);
+                g.polyFill(c2, c2, 1f, 1f);
+                g.shape((cx + 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, cx * Q, (cy + 8) * Q, (cx + 7) * Q, (cy + 4) * Q);
+                g.polyFill(c3, c3, 1f, 1f);
                 break;
             case HAMMER:
-                f.rect(cx - 7, cy - 6, cx + 6, cy - 1, c);
-                f.rect(cx - 1, cy - 1, cx + 2, cy + 9, c);
+                g.box((cx - 7.5f) * Q, (cy - 6.5f) * Q, (cx + 6.5f) * Q, (cy - 0.5f) * Q, 1.2f * Q, c, c, 1f, 1f);
+                g.box((cx - 1.6f) * Q, (cy - 1) * Q, (cx + 1.6f) * Q, (cy + 9) * Q, 1.2f * Q, c, c, 1f, 1f);
                 break;
             default:
-                for (int a = 0; a < 40; a++) {
-                    double ang = a * Math.PI * 2 / 40;
-                    f.set(cx + (int) Math.round(Math.cos(ang) * 6), cy + (int) Math.round(Math.sin(ang) * 6), c);
-                }
+                g.ring(cx * Q, cy * Q, 5.2f * Q, 6.8f * Q, 0f, 1f, c, 1f);
         }
-    }
-
-    private void poly(Px f, float x0, float y0, float x1, float y1, float x2, float y2, float x3, float y3, int c) {
-        qx[0] = x0; qy[0] = y0; qx[1] = x1; qy[1] = y1; qx[2] = x2; qy[2] = y2; qx[3] = x3; qy[3] = y3;
-        fill(f, c);
-    }
-
-    /** Light laid over what is there, fading off round a point. */
-    private static void glow(Px f, int cx, int cy, int rgb, float k) {
-        int r = 52;
-        int cr = (rgb >> 16) & 0xFF, cg = (rgb >> 8) & 0xFF, cb = rgb & 0xFF;
-        for (int y = Math.max(0, cy - r); y < Math.min(f.h, cy + r); y++)
-            for (int x = Math.max(0, cx - r * 13 / 10); x < Math.min(f.w, cx + r * 13 / 10); x++) {
-                float d = (float) Math.hypot((x - cx) / 1.3f, y - cy) / r;
-                if (d >= 1f) continue;
-                float a = (1f - d) * (1f - d) * k;
-                int i = y * f.w + x, c = f.a[i];
-                if ((c >>> 24) < 200) continue;          // only on the room, not through the glass
-                int nr = Math.min(255, ((c >> 16) & 0xFF) + Math.round(cr * a));
-                int ng = Math.min(255, ((c >> 8) & 0xFF) + Math.round(cg * a));
-                int nb = Math.min(255, (c & 0xFF) + Math.round(cb * a));
-                f.a[i] = (c & 0xFF000000) | (nr << 16) | (ng << 8) | nb;
-            }
     }
 
     /** The level, big; and on the key the one it would take you back to. */
-    private void counter(Px f, int dy) {
+    private void counter(Ink g, float dy) {
         int n = flicked() ? then : shown;
-        for (int i = 0; i < 3; i++) {
-            int dgt = (n / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
-            digit(f, 104 + i * 27, DY + 15 + dy, 21, 38, 4, dgt, AMBER, AMBER_OFF);
-        }
+        for (int i = 0; i < 3; i++) digitAt(g, 2, (n / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10, 104 + i * 27, DY + 15 + dy);
         int back = n - 1;
-        for (int i = 0; i < 3; i++) {
-            int dgt = (Math.max(0, back) / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
-            digit(f, 28 + i * 16, DY + 40 + dy, 12, 21, 3, back < 1 ? -1 : dgt, AMBER, 0x0C0502);
+        for (int i = 0; i < 3; i++)
+            digitAt(g, 3, back < 1 ? -1 : (Math.max(0, back) / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10, 28 + i * 16, DY + 40 + dy);
+    }
+
+    /** The bank, drawn once for how many and whether the newest shines, laid on the desk. */
+    private void bankAt(Ink g, float x0, float y0, float x1, float y1, int n, float shine) {
+        int key = 4000 + Math.min(8, n) * 2 + (shine > 0.5f ? 1 : 0);
+        Ink sp = sprites.get(key);
+        if (sp == null) {
+            sp = new Ink(Math.round((x1 - x0 + 8) * Q), Math.round((y1 - y0 + 8) * Q));
+            bankBox(sp, 4f, 4f, 4f + x1 - x0, 4f + y1 - y0, n, shine > 0.5f ? 1f : 0f);
+            sprites.put(key, sp);
         }
+        g.blit(sp, (x0 - 4f) * Q, (y0 - 4f) * Q, 1f);
+    }
+
+    /** The bank on the desk: golden cubes behind a thin grille; one come in with this round shines. */
+    private static void bankBox(Ink g, float x0, float y0, float x1, float y1, int n, float shine) {
+        g.box((x0 - 2) * Q, (y0 - 2) * Q, (x1 + 2) * Q, (y1 + 2) * Q, 5f * Q, 0xFF0E0F11, 0xFF15171A, 1f, 1f);
+        g.box(x0 * Q, y0 * Q, x1 * Q, y1 * Q, 4f * Q, 0xFF181B1F, 0xFF101215, 1f, 1f);
+        int cols = 4, shown = Math.min(8, n);
+        float cw = (x1 - x0) / cols;
+        for (int i = 0; i < shown; i++) {
+            int row = i / cols, col = i % cols;
+            float cx = x0 + cw * (col + 0.5f), cy = y1 - 11 - row * 22;
+            boolean on = i == shown - 1 && shine > 0f;
+            g.disc(cx * Q, cy * Q, 6f * Q, 0xFFFF9628, 7f * Q, 0.25f);
+            g.shape(cx * Q, (cy - 7) * Q, (cx + 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, (cx - 7) * Q, (cy - 3.5f) * Q);
+            g.polyFill(on ? 0xFFFFE6A0 : 0xFFFFC24A, on ? 0xFFFFE6A0 : 0xFFFFC24A, 1f, 1f);
+            g.shape((cx - 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, cx * Q, (cy + 7.5f) * Q, (cx - 7) * Q, (cy + 4) * Q);
+            g.polyFill(0xFFF08C1E, 0xFFF08C1E, 1f, 1f);
+            g.shape((cx + 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, cx * Q, (cy + 7.5f) * Q, (cx + 7) * Q, (cy + 4) * Q);
+            g.polyFill(0xFFB85A12, 0xFFB85A12, 1f, 1f);
+        }
+        for (float x = x0 + 8; x < x1 - 2; x += 17) g.line(x * Q, y0 * Q, x * Q, y1 * Q, 1.2f * Q, 0xFF5A626C, 1f);
+        g.line(x0 * Q, (y0 + 1) * Q, x1 * Q, (y0 + 1) * Q, 1.6f * Q, 0xFF5A626C, 1f);
     }
 
     // which segments light for each digit: a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle
@@ -343,13 +515,12 @@ final class Console {
             {0x6CC8EC, 0xA8E4F6, 0xE8FAFF, 0x5AB4DC, 0xE8FAFF}};
     private static final float ANG = (float) Math.toRadians(-24);
     private static final float HL = 122f, HH = 82f, TOP = 14f;
-    private final float[] qx = new float[4], qy = new float[4];
 
     /**
      * Where the hammer's head is now and how near: up out of the dark at the lower right, over
      * the button it is going for, down onto it, up again; back down into the dark at the end.
      */
-    private void hammer(Px f, int dy, float up, int fh) {
+    private void hammer(Ink g, float dy, float up, int fh) {
         if (up <= 0f) return;
         float restX = 300f, restY = fh + 60f;
         float x = restX, y = restY, s = 1f;
@@ -366,7 +537,6 @@ final class Console {
                 y = restY + (hy - restY) * e;
                 s = 1.08f;
             } else if (in < MOVE) {
-                // from over the last button to over this one
                 float px = i == 0 ? hx : BX[press[i - 1]] + BW / 2f + 87f;
                 float e = ease(in / MOVE);
                 x = px + (hx - px) * e;
@@ -388,100 +558,80 @@ final class Console {
                 s = 1f + 0.08f * e;
             }
         }
-        // back down into the dark as the room draws off, or while it closes in
         float e = ease(up);
         x = restX + (x - restX) * e;
         y = restY + (y - restY) * e;
+        // drawn once, then laid down where it is now, a little bigger when nearer
+        float near = s > 1.04f ? 1.08f : 1f;
+        int key = 5000 + Math.max(0, Math.min(HEAD_SET.length - 1, hammerKind)) * 2 + (near > 1f ? 1 : 0);
+        Ink sp = sprites.get(key);
+        if (sp == null) {
+            sp = new Ink(Math.round((HX0 + HX1) * near * Q), Math.round((HY0 + HY1) * near * Q));
+            drawHammer(sp, HX0 * near, HY0 * near, near, hammerKind);
+            sprites.put(key, sp);
+        }
+        g.blit(sp, (x - HX0 * near) * Q, (y - HY0 * near) * Q, 1f);
         // the lower dark takes it, as it takes the room
-        darkFrom = (PH - 4) + (fh - PH) / 2f;
-        drawHammer(f, x, y, s, hammerKind);
-        darkFrom = -1f;
+        darken(g, (PH - 4) + (fh - PH) / 2f);
     }
 
-    // while the hammer is drawn: the row at which the dark below is whole (it fades in over 90 rows before it)
-    private float darkFrom = -1f;
+    // how far the hammer reaches from its head's middle: left, right, up, down
+    private static final float HX0 = 82f, HX1 = 170f, HY0 = 78f, HY1 = 330f;
+
+    /** Everything below a row goes to black, fading in over the 90 rows before it. */
+    private static void darken(Ink g, float dark) {
+        int[] a = g.a;
+        int from = Math.max(0, Math.round((dark - 90f) * Q)), to = g.h;
+        for (int y = from; y < to; y++) {
+            float k = y >= dark * Q ? 0f : (float) Math.pow((dark * Q - y) / (90f * Q), 1.3);
+            int ki = Math.round(k * 256f), add = 255 - Math.round(k * 255f);
+            int row = y * g.w;
+            for (int x = 0; x < g.w; x++) {
+                int c = a[row + x];
+                int al = Math.min(255, (((c >>> 24) * ki) >> 8) + add);
+                a[row + x] = (al << 24) | ((((c >> 16) & 0xFF) * ki >> 8) << 16) | ((((c >> 8) & 0xFF) * ki >> 8) << 8) | ((c & 0xFF) * ki >> 8);
+            }
+        }
+    }
 
     private static float ease(float x) {
         x = Math.max(0f, Math.min(1f, x));
         return x * x * (3f - 2f * x);
     }
 
-    private void drawHammer(Px f, float hx, float hy, float s, int kind) {
+    private void drawHammer(Ink g, float hx, float hy, float s, int kind) {
         int[] col = HEAD_SET[Math.max(0, Math.min(HEAD_SET.length - 1, kind))];
         float c = (float) Math.cos(ANG), sn = (float) Math.sin(ANG);
         float dxh = -sn, dyh = c;                        // down the handle
-        // the handle: short and thick, down and right out of the frame
-        bar(f, hx + dxh * 30 * s, hy + dyh * 30 * s, dxh, dyh, 290 * s, 20 * s, 0xFF5A3416);
-        bar(f, hx + (dxh * 30 - 2 * c) * s, hy + (dyh * 30 - 2 * sn) * s, dxh, dyh, 290 * s, 16 * s, 0xFF9A5E2E);
-        bar(f, hx + (dxh * 30 - 11 * c) * s, hy + (dyh * 30 - 11 * sn) * s, dxh, dyh, 290 * s, 5 * s, 0xFFC0803E);
+        // the handle: short and thick, down and right out of the frame, round where it is cut off
+        float hx0 = hx + dxh * 30 * s, hy0 = hy + dyh * 30 * s;
+        g.line(hx0 * Q, hy0 * Q, (hx0 + dxh * 290 * s) * Q, (hy0 + dyh * 290 * s) * Q, 40f * s * Q, 0xFF5A3416, 1f);
+        float ox = -2 * c * s, oy2 = -2 * sn * s;
+        g.line((hx0 + ox) * Q, (hy0 + oy2) * Q, (hx0 + ox + dxh * 290 * s) * Q, (hy0 + oy2 + dyh * 290 * s) * Q, 32f * s * Q, 0xFF9A5E2E, 1f);
+        float ox2 = -11 * c * s, oy3 = -11 * sn * s;
+        g.line((hx0 + ox2) * Q, (hy0 + oy3) * Q, (hx0 + ox2 + dxh * 290 * s) * Q, (hy0 + oy3 + dyh * 290 * s) * Q, 10f * s * Q, 0xFFC0803E, 1f);
         float hl = HL * s / 2f, hh = HH * s / 2f, tp = TOP * s;
-        // the head is a block seen a little from above and from the left: its top and its
-        // striking face are the side moved back by one and the same step, so they meet at the corner
         float bx = -8f * s, by = -tp;
-        // the top
-        quad(f, hx, hy, c, sn, -hl, -hh, hl, -hh, hl + bx, -hh + by, -hl + bx, -hh + by, 0xFF000000 | col[1]);
-        // the side
-        quad(f, hx, hy, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0xFF000000 | col[0]);
-        // grain along it
-        for (float g = -hh + 4 * s; g < hh - 2 * s; g += 5 * s)
-            quad(f, hx, hy, c, sn, -hl + 2, g, hl - 2, g, hl - 2, g + 1, -hl + 2, g + 1, 0xFF000000 | col[3]);
-        // the bands, down the side and across the top
+        // a soft shadow it casts on the room below it
+        quad(g, hx + 6, hy + 10, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0x66000000, 10f);
+        // the top, the side, the grain, the bands, the striking face, the shaded lower edge
+        quad(g, hx, hy, c, sn, -hl, -hh, hl, -hh, hl + bx, -hh + by, -hl + bx, -hh + by, 0xFF000000 | col[1], 1f);
+        quad(g, hx, hy, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0xFF000000 | col[0], 1f);
+        for (float gr = -hh + 4 * s; gr < hh - 2 * s; gr += 5 * s)
+            quad(g, hx, hy, c, sn, -hl + 2, gr, hl - 2, gr, hl - 2, gr + 0.8f, -hl + 2, gr + 0.8f, 0xB0000000 | col[3], 1f);
         for (float b : new float[]{-hl + 16 * s, hl - 16 * s}) {
-            quad(f, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s, hh, b - 5 * s, hh, 0xFF000000 | col[4]);
-            quad(f, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s + bx, -hh + by, b - 5 * s + bx, -hh + by, 0xFF000000 | col[4]);
+            quad(g, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s, hh, b - 5 * s, hh, 0xFF000000 | col[4], 1f);
+            quad(g, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s + bx, -hh + by, b - 5 * s + bx, -hh + by, 0xFF000000 | col[4], 1f);
         }
-        // the striking face, at the left end, lit
-        quad(f, hx, hy, c, sn, -hl, -hh, -hl, hh, -hl + bx, hh + by, -hl + bx, -hh + by, 0xFF000000 | col[2]);
-        // its shadowed lower edge
-        quad(f, hx, hy, c, sn, -hl, hh - 2, hl, hh - 2, hl, hh, -hl, hh, 0xFF000000 | Street.scale(col[0], 0.66f));
+        quad(g, hx, hy, c, sn, -hl, -hh, -hl, hh, -hl + bx, hh + by, -hl + bx, -hh + by, 0xFF000000 | col[2], 1f);
+        quad(g, hx, hy, c, sn, -hl, hh - 3, hl, hh - 3, hl, hh, -hl, hh, 0xFF000000 | Street.scale(col[0], 0.66f), 1f);
     }
 
-    /** A bar from a point along a direction, so long and wide. */
-    private void bar(Px f, float x, float y, float dx, float dy, float len, float half, int c) {
-        float nx = -dy * half, ny = dx * half;
-        qx[0] = x + nx; qy[0] = y + ny;
-        qx[1] = x - nx; qy[1] = y - ny;
-        qx[2] = x - nx + dx * len; qy[2] = y - ny + dy * len;
-        qx[3] = x + nx + dx * len; qy[3] = y + ny + dy * len;
-        fill(f, c);
-    }
-
-    /** A four-cornered shape in the head's own frame (turned by c, s about hx, hy). */
-    private void quad(Px f, float hx, float hy, float c, float s, float x0, float y0, float x1, float y1, float x2, float y2,
-                      float x3, float y3, int col) {
-        float[] lx = {x0, x1, x2, x3}, ly = {y0, y1, y2, y3};
-        for (int i = 0; i < 4; i++) {
-            qx[i] = hx + lx[i] * c - ly[i] * s;
-            qy[i] = hy + lx[i] * s + ly[i] * c;
-        }
-        fill(f, col);
-    }
-
-    /** Fills the convex four-cornered shape in qx, qy, hard-edged. */
-    private void fill(Px f, int col) {
-        float minY = Math.min(Math.min(qy[0], qy[1]), Math.min(qy[2], qy[3]));
-        float maxY = Math.max(Math.max(qy[0], qy[1]), Math.max(qy[2], qy[3]));
-        int y0 = Math.max(0, (int) Math.ceil(minY - 0.5f)), y1 = Math.min(f.h - 1, (int) Math.floor(maxY - 0.5f));
-        for (int y = y0; y <= y1; y++) {
-            float py = y + 0.5f, lo = 1e9f, hi = -1e9f;
-            for (int i = 0; i < 4; i++) {
-                int j = (i + 1) & 3;
-                float ya = qy[i], yb = qy[j];
-                if ((py < ya) == (py < yb)) continue;
-                float xh = qx[i] + (py - ya) / (yb - ya) * (qx[j] - qx[i]);
-                lo = Math.min(lo, xh);
-                hi = Math.max(hi, xh);
-            }
-            if (hi < lo) continue;
-            int xa = Math.max(0, (int) Math.ceil(lo - 0.5f)), xb = Math.min(f.w - 1, (int) Math.floor(hi - 0.5f));
-            int c = col;
-            if (darkFrom > 0f) {
-                float k = Math.max(0f, Math.min(1f, (darkFrom - y) / 90f));
-                k = (float) Math.pow(k, 1.3);
-                c = 0xFF000000 | (Math.round(((col >> 16) & 0xFF) * k) << 16) | (Math.round(((col >> 8) & 0xFF) * k) << 8)
-                        | Math.round((col & 0xFF) * k);
-            }
-            for (int x = xa; x <= xb; x++) f.a[y * f.w + x] = c;
-        }
+    /** A four-cornered shape in the head's own frame (turned by c, s about hx, hy), soft at its edge by so much. */
+    private static void quad(Ink g, float hx, float hy, float c, float s, float x0, float y0, float x1, float y1, float x2, float y2,
+                             float x3, float y3, int col, float soft) {
+        g.shape((hx + x0 * c - y0 * s) * Q, (hy + x0 * s + y0 * c) * Q, (hx + x1 * c - y1 * s) * Q, (hy + x1 * s + y1 * c) * Q,
+                (hx + x2 * c - y2 * s) * Q, (hy + x2 * s + y2 * c) * Q, (hx + x3 * c - y3 * s) * Q, (hy + x3 * s + y3 * c) * Q);
+        g.polyFill(col, col, soft * Q, 1f);
     }
 }

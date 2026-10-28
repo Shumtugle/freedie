@@ -119,6 +119,8 @@ final class Game implements Physics.Listener {
     boolean yardDue;
     /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
     Ink hudInk;
+    /** The fine layer over the whole frame the room between rounds is drawn on, set by the world every frame. */
+    Ink roomInk;
     // the 39th: the first blow that reaches the building shakes the ground, the plinth's near
     // left corner breaks off at its foot and a golden cube rolls out of it onto the asphalt;
     // the cube lies there till the round is over and is given on the console; the corner
@@ -2465,7 +2467,7 @@ final class Game implements Physics.Listener {
         // between rounds, the room over all of it
         float k = state == SKY_UP ? Math.min(1f, stateTime / TILT) : state == SKY_HOLD ? 1f
                 : fromSky ? 1f - Math.min(1f, backT / TILT) : 0f;
-        if (k > 0f) console.draw(f, k, fromSky ? k : 1f);
+        if (k > 0f && roomInk != null) console.draw(roomInk, fh, k, fromSky ? k : 1f);
     }
 
     private void flatBelow(Px f) {

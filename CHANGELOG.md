@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.44
+- The room between rounds is drawn smooth, as the crest is: on a fine layer over all of
+  the frame at twice its grain, soft-edged. The still room is a new picture (deflated in
+  the game): steel ribs with round rivets, panels with rounded corners and screws, glass
+  over the clock and the counter, the lamp with its glow, the cube in its slot with a warm
+  light round it, the set's olive metal in a gradient, a stepped bezel, round knobs, a
+  green lamp that glows, the key back with a smooth arrow.
+- The digits are seven bars with pointed ends, a hair apart, the lit ones glowing softly;
+  the buttons are rounded keys lit from above, their signs smooth; the bank's cubes and
+  grille smooth; the hammer that knocks the buttons is smooth-edged, with a soft shadow.
+- The glass over the street has finer lines.
+- The parts that change are drawn once and laid down again, so the room costs little a
+  frame; the renderer keeps a texture for the crest and one for the room and goes from one
+  to the other without making anything new.
+- The bridge reads the new picture too, brought down to the frame's own grain.
+
 ## 0.43
 - Freedie no longer leaps. She flows up the street, never leaving the ground: swaying
   side to side, dipping and rising like a spring at every step, her feet sliding forward

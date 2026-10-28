@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.43";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.44";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -46,7 +46,7 @@ final class World {
     float sceneTime;
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
-    private Ink hudInk;
+    private Ink hudInk, roomInk;
     private final People people = new People(20, 0x5EE7L, 1.2f);   // up and down the street, and right by the eye
     private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
@@ -317,6 +317,9 @@ final class World {
         d.hudH = hudInk.h;
         d.hudRows = 0;
         game.hudInk = hudInk;
+        if (roomInk == null || roomInk.w != W * Console.Q || roomInk.h != h * Console.Q) roomInk = new Ink(W * Console.Q, h * Console.Q);
+        roomInk.used = false;
+        game.roomInk = roomInk;
         if (intro != null) {
             intro.frame(d, W);
             intro.draw(d);
@@ -400,7 +403,16 @@ final class World {
         if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
         if (game.gateReady() && gateAt[0] > -50f) gateGlow(f);
-        if (hudInk.used) {
+        if (roomInk.used) {
+            // the room between rounds, smooth, over all of the frame (the crest under it is not shown)
+            d.hud = roomInk.a;
+            d.hudW = roomInk.w;
+            d.hudH = roomInk.h;
+            d.hudRows = h;
+            d.hudFresh = roomInk.fresh;
+            roomInk.fresh = false;
+            game.crest.dirty();
+        } else if (hudInk.used) {
             d.hudRows = Crest.ROWS;
             d.hudFresh = hudInk.fresh;
             hudInk.fresh = false;
