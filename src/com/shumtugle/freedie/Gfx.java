@@ -289,8 +289,18 @@ final class Gfx {
         GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, n);
         if (nb > 0) {
             lit(ballP, d, viewProj, eye, inCube);
+            GLES30.glUniform1f(u(ballP, "uClear"), 0f);
             GLES30.glBindVertexArray(ballVao);
             GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, nb);
+            // then clear plastic, laid over all of it: tested against the depth, not written to it
+            GLES30.glUniform1f(u(ballP, "uClear"), 1f);
+            GLES30.glEnable(GLES30.GL_BLEND);
+            GLES30.glBlendFunc(GLES30.GL_ONE, GLES30.GL_ONE_MINUS_SRC_ALPHA);
+            GLES30.glDepthMask(false);
+            GLES30.glDrawArraysInstanced(GLES30.GL_TRIANGLES, 0, 36, nb);
+            GLES30.glDepthMask(true);
+            GLES30.glDisable(GLES30.GL_BLEND);
+            GLES30.glUniform1f(u(ballP, "uClear"), 0f);
         }
     }
 

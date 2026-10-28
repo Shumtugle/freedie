@@ -34,6 +34,8 @@ final class DrawList {
     static final int FIRE_GOLD = 25;
     // a ball of plain cloth or skin, without shine (people); it goes into the dark with the world
     static final int MATTE = 26;
+    // clear plastic: a water bottle's skin, drawn last, over what is behind it (see Round.bottle)
+    static final int CLEAR = 27;
     // per box: middle (3), half sizes (3), the turn as three columns (9), color (3), material (1)
     static final int STRIDE = 19;
 

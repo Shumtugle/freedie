@@ -251,8 +251,18 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
     gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, frame.count);
     if (nb > 0) {
       lit(ballP, viewProj, eye, inCube);
+      gl.uniform1f(u(ballP, 'uClear'), 0);
       gl.bindVertexArray(ballVao);
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+      // then clear plastic, laid over all of it: tested against the depth, not written to it
+      gl.uniform1f(u(ballP, 'uClear'), 1);
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.depthMask(false);
+      gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, nb);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+      gl.uniform1f(u(ballP, 'uClear'), 0);
     }
   };
 

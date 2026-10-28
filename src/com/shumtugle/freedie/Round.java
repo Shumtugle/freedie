@@ -95,16 +95,18 @@ final class Round {
         }
     }
 
-    // a water bottle's profile, up its half height from -1 to 1: where each part ends, and its radius
-    private static final float[] BOTTLE_Y = {-1f, 0.42f, 0.58f, 0.74f, 0.8f, 1f};
-    private static final float[] BOTTLE_R = {1f, 0.8f, 0.56f, 0.36f, 0.42f};
+    // a water bottle, up its half height from -1 to 1: the water in it up to here, the cap from here
+    private static final float WATER_TOP = 0.38f, CAP0 = 0.8f;
 
-    /** A plastic water bottle standing on its base: pale blue, a blue cap. */
+    /**
+     * A plastic water bottle standing on its base: clear pale blue plastic (drawn last, over
+     * what is behind it), the water in it up to the shoulder, a blue cap. The water is solid:
+     * it is what casts the bottle's shadow.
+     */
     static void bottle(DrawList d, float x, float y, float z, float[] rot, float r, float hh) {
-        for (int k = 0; k + 1 < BOTTLE_Y.length; k++) {
-            boolean cap = k == BOTTLE_R.length - 1;
-            cylinder(d, x, y, z, rot, BOTTLE_Y[k] * hh, BOTTLE_Y[k + 1] * hh, BOTTLE_R[k] * r,
-                    cap ? 0x2F7FD0 : 0x9FD0F0, cap ? DrawList.PAINT : DrawList.GLASS);
-        }
+        float[] R = rot == null ? UPRIGHT : rot;
+        cylinder(d, x, y, z, rot, -0.95f * hh, WATER_TOP * hh, r * 0.93f, 0x4F8FC4, DrawList.GLASS);
+        cylinder(d, x, y, z, rot, CAP0 * hh, hh, r * 0.42f, 0x2F7FD0, DrawList.PAINT);
+        d.ellipsoid(x, y, z, r, hh, r, R, 0xA8D6F2, DrawList.CLEAR);
     }
 }

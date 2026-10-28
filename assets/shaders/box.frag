@@ -32,6 +32,7 @@ uniform float uGoldGlow;      // how much gold keeps its own light in the dark
 uniform float uTime;          // seconds, for what moves on its own: the swell
 uniform float uNight;         // how far into the night: windows lit, glass showing a dark sky
 uniform float uOvercast;      // out at sea: the low grey winter sky
+uniform float uClear;         // the see-through pass: only clear plastic is drawn, over what is there
 uniform float uInCube;        // drawing what the mirror up in the sky sees, from its middle
 
 out vec4 outColor;
@@ -39,7 +40,7 @@ out vec4 outColor;
 const float PLAIN = 0.0, GRAIN = 1.0, STONE = 2.0, ASPHALT = 3.0, WOOD = 4.0, PAVING = 5.0, PAINT = 6.0, GOLD = 7.0;
 const float FACADE = 8.0, FROND = 9.0, TRUNK = 10.0, ROAD = 11.0, GLASS = 12.0, GLOW = 13.0, SEA = 14.0, RAIL = 15.0;
 const float PROMENADE = 16.0, AWNING = 17.0, SQUARE = 18.0, LANE = 19.0;
-const float POLISHED = 20.0, RUBBER = 21.0, MATTE = 26.0;
+const float POLISHED = 20.0, RUBBER = 21.0, MATTE = 26.0, CLEAR = 27.0;
 const float ICE = 22.0, WINTER_SEA = 23.0;
 const float MIRROR = 24.0;
 const float FIRE_GOLD = 25.0;
@@ -217,7 +218,94 @@ const vec3 HOLE0 = vec3(0.0, 0.96, 0.28), HOLE1 = vec3(-0.24, 0.95, -0.2), HOLE2
  * it and a small hard shine; a rubber one is plain with a broader, softer shine; a matte one
  * (people) is plain cloth and skin, and goes into the dark with the world.
  */
+// a water bottle's outline, in its own frame squeezed to -1..1 every way: the radius at a
+// height (the base rounded in a little, the body, the shoulder narrowing, the neck)
+float bottleR(float y) {
+    if (y < -0.92) return 0.9 + (y + 1.0) * 1.25;
+    if (y < 0.42) return 1.0;
+    if (y < 0.74) return mix(1.0, 0.38, (y - 0.42) / 0.32);
+    return 0.38;
+}
+
+bool inBottle(vec3 p) {
+    return p.y > -1.0 && p.y < 0.86 && length(p.xz) < bottleR(p.y);
+}
+
+/**
+ * Clear plastic: the bottle's outline found along the eye's ray inside its cube, and only its
+ * near skin drawn, laid over whatever is behind it (the water in it, the street): pale blue,
+ * clearer where it faces the eye, whiter at the rims, ribbed round its body, with a hard
+ * glint of the sun and a long soft streak down it.
+ */
+void clearShell() {
+    vec3 hs = vHalf;
+    mat3 vTurn = mat3(vTurn0, vTurn1, vTurn2);
+    mat3 back = transpose(vTurn);
+    vec3 ro = back * (uEye - vCenter) / hs;
+    vec3 rd = normalize(back * (vWorld - uEye) / hs);
+    // through the cube
+    vec3 inv = 1.0 / rd;
+    vec3 ta = (-1.0 - ro) * inv, tb = (1.0 - ro) * inv;
+    vec3 tn = min(ta, tb), tf = max(ta, tb);
+    float t0 = max(max(tn.x, tn.y), max(tn.z, 0.0)), t1 = min(min(tf.x, tf.y), tf.z);
+    if (t1 <= t0) discard;
+    float dt = (t1 - t0) / 40.0, t = t0;
+    bool hit = false;
+    for (int i = 0; i < 40; i++) {
+        if (inBottle(ro + rd * t)) { hit = true; break; }
+        t += dt;
+    }
+    if (!hit) discard;
+    // back to the edge, finely
+    float lo = t - dt, hi = t;
+    for (int i = 0; i < 6; i++) {
+        float m = (lo + hi) * 0.5;
+        if (inBottle(ro + rd * m)) hi = m; else lo = m;
+    }
+    vec3 l = ro + rd * hi;
+    // the skin's facing: the base, or round the side and up the shoulder's slope
+    vec3 nl;
+    if (l.y < -0.985) nl = vec3(0.0, -1.0, 0.0);
+    else {
+        float slope = (l.y > 0.42 && l.y < 0.74) ? 0.62 / 0.32 : 0.0;
+        vec2 r = normalize(l.xz);
+        nl = vec3(r.x, slope * bottleR(l.y), r.y);
+    }
+    vec3 world = vCenter + vTurn * (l * hs);
+    vec4 clip = uViewProj * vec4(world, 1.0);
+    gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
+    vec3 n = normalize(vTurn * (nl / hs));
+    vec3 v = normalize(uEye - world);
+    float facing = max(dot(n, v), 0.0);
+    float fres = pow(1.0 - facing, 3.0);
+    float sh = shadowAt(uLight * vec4(world + n * 0.04, 1.0));
+    float ndl = max(dot(n, uSun), 0.0);
+    vec3 tint = lin(rgb(0xA8D6F2));
+    // ribs round the body, a little darker every other one
+    if (l.y > -0.85 && l.y < 0.36 && fract(atan(l.z, l.x) * 6.0 / 3.14159) < 0.5) tint *= 0.9;
+    vec3 amb = mix(uAmbGround, uAmbSky, n.y * 0.5 + 0.5);
+    vec3 c = tint * (amb * 0.9 + uSunColor * ndl * sh * 0.7);
+    // the sun glancing off it, hard, and a long soft streak where the side turns to the light
+    float sp = max(dot(n, normalize(uSun + v)), 0.0);
+    vec3 shine = uSunColor * (pow(sp, 80.0) * 2.2 + pow(sp, 8.0) * 0.25) * sh;
+    float a = 0.16 + 0.6 * fres;
+    c = c * a + shine;
+    a = clamp(a + dot(shine, vec3(0.33)), 0.0, 1.0);
+    float dist = length(world - uEye);
+    float haze = 1.0 - exp(-max(dist - uFogStart, 0.0) / uFogScale);
+    c = mix(c, lin(uFog) * a, haze);
+    c *= 1.0 - uDark;
+    // premultiplied: laid over what is already there
+    outColor = vec4(pow(tone(c / max(a, 1e-3)), vec3(1.0 / 2.2)) * a, a);
+}
+
 void sphere(float mat) {
+    // the clear plastic is drawn in its own pass, over everything else
+    if ((mat == CLEAR) != (uClear > 0.5)) discard;
+    if (mat == CLEAR) {
+        clearShell();
+        return;
+    }
     vec3 hs = vHalf;
     mat3 vTurn = mat3(vTurn0, vTurn1, vTurn2);
     mat3 back = transpose(vTurn);

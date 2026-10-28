@@ -37,6 +37,8 @@ void main() {
 #ifdef SPHERE
     // the mirror up in the sky casts nothing on the street
     if (floor(vMaterial + 0.001) == 24.0) discard;
+    // nor does clear plastic: what is in it does
+    if (floor(vMaterial + 0.001) == 27.0) discard;
     // a ball: the sun's ray through this point of the cube, followed to the sphere inside
     // (drawn out longer one way, as a limb: squeezed to a unit sphere first)
     mat3 turn = mat3(vTurn0, vTurn1, vTurn2);

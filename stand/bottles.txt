@@ -1,0 +1,32 @@
+# Water bottles of clear plastic, close, by day and by night: the 3rd, the 7th, the 91st.
+screen 1096 2560
+keep level 2
+keep best 3
+restart
+skip
+wait 3.0
+down 137 420
+wait 0.7
+shot b02
+up 137 420
+wait 0.3
+keep level 6
+keep best 7
+restart
+skip
+wait 3.0
+down 137 420
+wait 0.7
+shot b06
+up 137 420
+wait 0.3
+keep level 90
+keep best 91
+restart
+skip
+wait 3.0
+down 137 420
+wait 0.7
+shot b90
+up 137 420
+wait 0.3

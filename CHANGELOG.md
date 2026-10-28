@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37
+- Water bottles of clear plastic: the street shows through their pale blue skin, whiter at
+  the rims, ribbed round the body, with a hard glint of the sun and a soft streak down the
+  side; inside, the water stands up to the shoulder; a blue cap on top. The water is what
+  casts the bottle's shadow.
+- Clear plastic is drawn in a pass of its own, last, laid over what is behind it.
+
 ## 0.36
 - People drawn round, as balls drawn out along the limbs: legs in shorts, trousers or a
   skirt, shoes, a body flatter front to back, arms swinging against the legs, neck, head
