@@ -69,6 +69,100 @@ final class Hammer {
         }
     }
 
+    /** The parts of a kind of hammer, in its own frame: middle, half sizes, in meters. */
+    static float[][] parts(int kind) {
+        return kind == HEAVY_KIND || kind == DIAMOND ? HEAVY : PARTS;
+    }
+
+    /** The colours of a kind's parts, as 0xRRGGBB: handle, grip, head, the hoops. */
+    static int[] colours(int kind) {
+        return kind == HEAVY_KIND ? HEAVY_COL : kind == GOLDEN ? GOLD_COL : kind == DIAMOND ? DIAMOND_COL : COL;
+    }
+
+    /** The colour of a kind's head, the one the eye takes it by. */
+    static int head(int kind) {
+        return colours(kind)[2];
+    }
+
+    private static final float[] C3 = new float[3], P2 = new float[2], ALL = new float[16];
+
+    /**
+     * Where a hammer lies in the frame: the outline of each of its parts (a box seen from
+     * anywhere is a convex shape, the hull of its eight corners), as x and y in turn, so many
+     * corners each. A part with a corner behind the eye is left out. Returns how many parts.
+     */
+    static int outline(DrawList d, float[] pose, int kind, float scale, float[] pts, int[] counts) {
+        float[][] parts = parts(kind);
+        int n = 0;
+        for (float[] p : parts) {
+            boolean seen = true;
+            for (int k = 0; k < 8; k++) {
+                float ox = (p[0] + ((k & 1) == 0 ? -p[3] : p[3])) * scale;
+                float oy = (p[1] + ((k & 2) == 0 ? -p[4] : p[4])) * scale;
+                float oz = (p[2] + ((k & 4) == 0 ? -p[5] : p[5])) * scale;
+                C3[0] = pose[0] + pose[3] * ox + pose[4] * oy + pose[5] * oz;
+                C3[1] = pose[1] + pose[6] * ox + pose[7] * oy + pose[8] * oz;
+                C3[2] = pose[2] + pose[9] * ox + pose[10] * oy + pose[11] * oz;
+                if (!d.project(C3[0], C3[1], C3[2], P2)) {
+                    seen = false;
+                    break;
+                }
+                ALL[k * 2] = P2[0];
+                ALL[k * 2 + 1] = P2[1];
+            }
+            if (!seen) continue;
+            counts[n] = hull(ALL, 8, pts, n * 16);
+            n++;
+        }
+        return n;
+    }
+
+    /** The convex hull of so many points, its corners in turn written from an offset; how many corners. */
+    private static int hull(float[] p, int m, float[] out, int at) {
+        // the lowest-leftmost point, then a wrap round the rest
+        int start = 0;
+        for (int i = 1; i < m; i++)
+            if (p[i * 2] < p[start * 2] || p[i * 2] == p[start * 2] && p[i * 2 + 1] < p[start * 2 + 1]) start = i;
+        int cur = start, n = 0;
+        do {
+            out[at + n * 2] = p[cur * 2];
+            out[at + n * 2 + 1] = p[cur * 2 + 1];
+            n++;
+            int next = (cur + 1) % m;
+            for (int i = 0; i < m; i++) {
+                float cross = (p[next * 2] - p[cur * 2]) * (p[i * 2 + 1] - p[cur * 2 + 1])
+                        - (p[next * 2 + 1] - p[cur * 2 + 1]) * (p[i * 2] - p[cur * 2]);
+                if (cross < 0f) next = i;
+            }
+            cur = next;
+        } while (cur != start && n < 8);
+        return n;
+    }
+
+    /**
+     * A hammer as a sign, drawn flat on a fine layer: the same parts seen from above, the head
+     * across the handle, turned so the head is up and to the right, so long overall; in its own
+     * colours (one below 0), or all in one colour given (a sign on a key, a shadow).
+     */
+    static void icon(Ink g, float cx, float cy, float length, int kind, int one, float cover) {
+        float[][] parts = parts(kind);
+        int[] col = colours(kind);
+        float s = length / 0.88f;
+        float a = (float) Math.toRadians(52);
+        float dx = (float) Math.cos(a), dy = -(float) Math.sin(a);   // along the handle, toward the head
+        float zx = -dy, zy = dx;                                       // across it, along the head
+        for (int i = 0; i < parts.length; i++) {
+            float[] p = parts[i];
+            float mx = cx + (p[0] * dx + p[2] * zx) * s, my = cy + (p[0] * dy + p[2] * zy) * s;
+            float hx = p[3] * s, hz = p[5] * s;
+            g.shape(mx - dx * hx - zx * hz, my - dy * hx - zy * hz, mx + dx * hx - zx * hz, my + dy * hx - zy * hz,
+                    mx + dx * hx + zx * hz, my + dy * hx + zy * hz, mx - dx * hx + zx * hz, my - dy * hx + zy * hz);
+            int c = 0xFF000000 | (one >= 0 ? one : col[i]);
+            int low = one >= 0 ? c : 0xFF000000 | Street.scale(col[i], 0.72f);
+            g.polyFill(c, low, 1f, cover);
+        }
+    }
+
     /** The pose of a body, as a hammer pose. */
     static void of(Body b, float[] pose) {
         pose[0] = b.px; pose[1] = b.py; pose[2] = b.pz;

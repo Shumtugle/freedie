@@ -19,8 +19,11 @@ import java.util.Calendar;
  * The room is a place in the world, not writing over it, so it is drawn at the world's own
  * grain, as the street is, and laid on the flat layer: the still parts are a picture read
  * from an asset (deflated, drawn finer and brought down here, so its forms are clean), the
- * tube in it left clear for the street to show through; the glass, the digits, the buttons
- * and the hammer are drawn over it every frame with clean edges, a pixel soft.
+ * tube in it left clear for the street to show through; the glass, the digits and the
+ * buttons are drawn over it every frame with clean edges, a pixel soft. The hammer is not
+ * drawn here: it is the world's own, the one in the hand on the street, drawn with the
+ * street; the room works out where it goes and leaves a way through for it, the shape of it,
+ * with the shadow it casts on the room.
  */
 final class Console {
     // the buttons, left to right
@@ -43,7 +46,7 @@ final class Console {
     private int artW, artH;
     private final int[] press = new int[4];
     private int presses;
-    private int hammerKind, giftKind = -1;
+    private int giftKind = -1;
     private int shown, then;                          // the level on the counter now, and after the flick
     private final boolean[] lit = new boolean[4];
     private final float[] hitAt = new float[4];
@@ -126,7 +129,6 @@ final class Console {
     void begin(int[] buttons, int n, int handKind, int gift, int levelNow, int levelThen) {
         presses = Math.min(n, press.length);
         System.arraycopy(buttons, 0, press, 0, presses);
-        hammerKind = handKind;
         giftKind = gift;
         shown = levelNow;
         then = levelThen;
@@ -231,7 +233,17 @@ final class Console {
         buttons(g, dBot);
         counter(g, dBot);
         if (bank > 0) bankAt(g, 196, DY + 8 + dBot, 264, DY + 60 + dBot, bank, bankFresh ? 0.5f + 0.5f * (float) Math.sin(t * 9f) : 0f);
-        hammer(g, dBot, handUp, fh);
+        if (handUp > 0f) {
+            holes(g);
+            // the lower dark takes it, as it takes the room
+            darken(g, (PH - 4) + (fh - PH) / 2f);
+        }
+    }
+
+    /** Where the lower half of the room is, in frame pixels, as far as it has closed in. */
+    private static float lowerAt(int fh, float cover) {
+        float oy = (fh - PH) / 2f;
+        return (1f - ease(cover)) * (fh - SPLIT - oy) + oy;
     }
 
     // the glass, worked out once for where the tube is: how dark each pixel of it is, and whether white
@@ -414,7 +426,7 @@ final class Console {
             float x = BX[i], y = BY + dy;
             float since = t - hitAt[i];
             boolean in = since >= 0f && since < 0.15f;
-            int gift = i == HAMMER && lit[i] && giftKind >= 0 ? Math.min(giftKind, HEAD.length - 1) : -1;
+            int gift = i == HAMMER && lit[i] && giftKind >= 0 ? Math.min(giftKind, Hammer.DIAMOND) : -1;
             int key = 2000 + i * 64 + (lit[i] ? 32 : 0) + (in ? 16 : 0) + gift + 1;
             Ink sp = sprites.get(key);
             if (sp == null) {
@@ -445,7 +457,7 @@ final class Console {
         if (!in) sp.box((x + 3) * Q, (y0 + 1.2f) * Q, (x + BW - 3) * Q, (y0 + 3.2f) * Q, 1f * Q, 0xFFFFFFFF, 0xFFFFFFFF, 1f,
                 on ? 0.35f : 0.12f);
         int ic = in ? 0xFFFFFF : on ? Street.scale(face, 1.8f) : Street.scale(face, 1.6f);
-        if (gift >= 0 && !in) ic = HEAD[gift];
+        if (gift >= 0 && !in) ic = Hammer.head(gift);
         icon(sp, i, x + BW / 2f, y0 + BH / 2f, 0xFF000000 | ic);
     }
 
@@ -465,8 +477,8 @@ final class Console {
                 g.polyFill(c3, c3, 1f, 1f);
                 break;
             case HAMMER:
-                g.box((cx - 7.5f) * Q, (cy - 6.5f) * Q, (cx + 6.5f) * Q, (cy - 0.5f) * Q, 1.2f * Q, c, c, 1f, 1f);
-                g.box((cx - 1.6f) * Q, (cy - 1) * Q, (cx + 1.6f) * Q, (cy + 9) * Q, 1.2f * Q, c, c, 1f, 1f);
+                // the hammer's own shape, as a sign
+                Hammer.icon(g, cx * Q, (cy + 1f) * Q, 19f * Q, Hammer.HEAVY_KIND, c & 0xFFFFFF, 1f);
                 break;
             default:
                 g.ring(cx * Q, cy * Q, 5.2f * Q, 6.8f * Q, 0f, 1f, c, 1f);
@@ -537,77 +549,119 @@ final class Console {
 
     // ---- the hammer ----
 
-    // the head's colours by kind (plain, heavy, golden, diamond): side, top, striking face, grain, bands
-    private static final int[] HEAD = {0xE8B45E, 0x4A4C52, 0xF59A26, 0x6CC8EC};
-    private static final int[][] HEAD_SET = {
-            {0xE8B45E, 0xF4D490, 0xFBE3A6, 0xDCA552, 0x4A423A},
-            {0x4A4C52, 0x6A6D74, 0x8A8E96, 0x42444A, 0xC08A34},
-            {0xF59A26, 0xFFC24A, 0xFFE6A0, 0xD8781A, 0xC88A2E},
-            {0x6CC8EC, 0xA8E4F6, 0xE8FAFF, 0x5AB4DC, 0xE8FAFF}};
-    private static final float ANG = (float) Math.toRadians(-24);
-    private static final float HL = 122f, HH = 82f, TOP = 14f;
-
     /**
-     * Where the hammer's head is now and how near: up out of the dark at the lower right, over
-     * the button it is going for, down onto it, up again; back down into the dark at the end.
+     * Where the hand's hammer goes in the room, for the world to draw it there: its head's
+     * middle in the frame, and how near (1, or a little more as it comes up off a button). Up
+     * out of the dark at the lower right, over the button it is going for, down onto it, up
+     * again; back down into the dark at the end. False while the room does not have it.
      */
-    private void hammer(Ink g, float dy, float up, int fh) {
-        if (up <= 0f) return;
+    boolean hand(int fh, float cover, float handUp, float[] out) {
+        if (art == null || cover <= 0f || handUp <= 0f || t < 0f || presses == 0) return false;
+        float dy = lowerAt(fh, cover);
         float restX = 300f, restY = fh + 60f;
-        float x = restX, y = restY, s = 1f;
-        if (t >= 0f && presses > 0) {
-            float k = t - RISE;
-            int i = k < 0f ? 0 : Math.min(presses - 1, (int) (k / KNOCK));
-            float in = k < 0f ? 0f : k - i * KNOCK;
-            int b = press[i];
-            float ax = BX[b] + BW / 2f + 87f, ay = BY + dy - 2f;     // its head on the button
-            float hx = ax, hy = ay - 30f;                               // over it, a little nearer
-            if (k < 0f) {
-                float e = ease(t / RISE);
-                x = restX + (hx - restX) * e;
-                y = restY + (hy - restY) * e;
-                s = 1.08f;
-            } else if (in < MOVE) {
-                float px = i == 0 ? hx : BX[press[i - 1]] + BW / 2f + 87f;
-                float e = ease(in / MOVE);
-                x = px + (hx - px) * e;
-                y = hy;
-                s = 1.08f;
-            } else if (in < MOVE + DOWN) {
-                float e = (in - MOVE) / DOWN;
-                x = hx;
-                y = hy + (ay - hy) * e * e;
-                s = 1.08f - 0.08f * e;
-            } else if (in < MOVE + DOWN + STAY) {
-                x = ax;
-                y = ay;
-                s = 1f;
-            } else {
-                float e = ease((in - MOVE - DOWN - STAY) / (KNOCK - MOVE - DOWN - STAY));
-                x = ax;
-                y = ay + (hy - ay) * e;
-                s = 1f + 0.08f * e;
-            }
+        float x, y, s;
+        float k = t - RISE;
+        int i = k < 0f ? 0 : Math.min(presses - 1, (int) (k / KNOCK));
+        float in = k < 0f ? 0f : k - i * KNOCK;
+        int b = press[i];
+        float ax = BX[b] + BW / 2f + HEAD_DX, ay = BY + dy + HEAD_DY;     // its head on the button
+        float hx = ax, hy = ay - 30f;                                     // over it, a little nearer
+        if (k < 0f) {
+            float e = ease(t / RISE);
+            x = restX + (hx - restX) * e;
+            y = restY + (hy - restY) * e;
+            s = 1.08f;
+        } else if (in < MOVE) {
+            float px = i == 0 ? hx : BX[press[i - 1]] + BW / 2f + HEAD_DX;
+            float e = ease(in / MOVE);
+            x = px + (hx - px) * e;
+            y = hy;
+            s = 1.08f;
+        } else if (in < MOVE + DOWN) {
+            float e = (in - MOVE) / DOWN;
+            x = hx;
+            y = hy + (ay - hy) * e * e;
+            s = 1.08f - 0.08f * e;
+        } else if (in < MOVE + DOWN + STAY) {
+            x = ax;
+            y = ay;
+            s = 1f;
+        } else {
+            float e = ease((in - MOVE - DOWN - STAY) / (KNOCK - MOVE - DOWN - STAY));
+            x = ax;
+            y = ay + (hy - ay) * e;
+            s = 1f + 0.08f * e;
         }
-        float e = ease(up);
-        x = restX + (x - restX) * e;
-        y = restY + (y - restY) * e;
-        // drawn once, then laid down where it is now, a little bigger when nearer
-        float near = s > 1.04f ? 1.08f : 1f;
-        int key = 5000 + Math.max(0, Math.min(HEAD_SET.length - 1, hammerKind)) * 2 + (near > 1f ? 1 : 0);
-        Ink sp = sprites.get(key);
-        if (sp == null) {
-            sp = new Ink(Math.round((HX0 + HX1) * near * Q), Math.round((HY0 + HY1) * near * Q));
-            drawHammer(sp, HX0 * near, HY0 * near, near, hammerKind);
-            sprites.put(key, sp);
-        }
-        g.blit(sp, (x - HX0 * near) * Q, (y - HY0 * near) * Q, 1f);
-        // the lower dark takes it, as it takes the room
-        darken(g, (PH - 4) + (fh - PH) / 2f);
+        float e = ease(handUp);
+        out[0] = restX + (x - restX) * e;
+        out[1] = restY + (y - restY) * e;
+        out[2] = s;
+        return true;
     }
 
-    // how far the hammer reaches from its head's middle: left, right, up, down
-    private static final float HX0 = 82f, HX1 = 170f, HY0 = 78f, HY1 = 330f;
+    // where the head's middle sits when it knocks a key, from the key's middle
+    private static final float HEAD_DX = 0f, HEAD_DY = 0f;
+
+    // the hammer's outline in the frame, part by part, as the world worked it out this frame
+    private float[] cutPts;
+    private int[] cutN;
+    private int cuts;
+
+    /** The hammer's outline for this frame (see Hammer.outline), or none. */
+    void cut(float[] pts, int[] counts, int parts) {
+        cutPts = pts;
+        cutN = counts;
+        cuts = parts;
+    }
+
+    /**
+     * The way through the room for the hammer: first the shadow it casts, a little down and to
+     * the right, then a hole the shape of it, a little inside its edge so no street shows round it.
+     */
+    private void holes(Ink g) {
+        for (int pass = 0; pass < 2; pass++)
+            for (int p = 0; p < cuts; p++)
+                fillHull(g, cutPts, p * 16, cutN[p], pass == 0 ? 4f : 0f, pass == 0 ? 6f : 0f, pass == 0 ? 0.4f : -1f);
+    }
+
+    /** Fills a convex outline, moved by (ox, oy): darkened by so much (premultiplied), or, below 0, cleared. */
+    private static void fillHull(Ink g, float[] p, int at, int n, float ox, float oy, float dark) {
+        if (n < 3) return;
+        float y0 = Float.MAX_VALUE, y1 = -Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            y0 = Math.min(y0, p[at + i * 2 + 1] + oy);
+            y1 = Math.max(y1, p[at + i * 2 + 1] + oy);
+        }
+        int keep = Math.round((1f - Math.max(0f, dark)) * 256f);
+        float inset = dark < 0f ? 0.35f : 0f;
+        for (int y = Math.max(0, (int) Math.floor(y0 * Q)); y < Math.min(g.h, (int) Math.ceil(y1 * Q)); y++) {
+            float cy = (y + 0.5f) / Q;
+            float xl = Float.MAX_VALUE, xr = -Float.MAX_VALUE;
+            for (int i = 0; i < n; i++) {
+                int j = (i + 1) % n;
+                float ax = p[at + i * 2] + ox, ay = p[at + i * 2 + 1] + oy, bx = p[at + j * 2] + ox, by = p[at + j * 2 + 1] + oy;
+                if ((ay <= cy && by > cy) || (by <= cy && ay > cy)) {
+                    float x = ax + (cy - ay) / (by - ay) * (bx - ax);
+                    xl = Math.min(xl, x);
+                    xr = Math.max(xr, x);
+                }
+            }
+            if (xl > xr) continue;
+            int row = y * g.w;
+            for (int x = Math.max(0, (int) Math.floor(xl * Q)); x < Math.min(g.w, (int) Math.ceil(xr * Q)); x++) {
+                float cx = (x + 0.5f) / Q;
+                if (cx < xl + inset || cx > xr - inset) continue;
+                if (dark < 0f) {
+                    g.a[row + x] = 0;
+                    continue;
+                }
+                // premultiplied: the room under the shadow, darker, as solid as it was
+                int c = g.a[row + x];
+                g.a[row + x] = (c & 0xFF000000) | ((((c >> 16) & 0xFF) * keep >> 8) << 16) | ((((c >> 8) & 0xFF) * keep >> 8) << 8)
+                        | ((c & 0xFF) * keep >> 8);
+            }
+        }
+    }
 
     /** Everything below a row goes to black, fading in over the 90 rows before it. */
     private static void darken(Ink g, float dark) {
@@ -628,41 +682,5 @@ final class Console {
     private static float ease(float x) {
         x = Math.max(0f, Math.min(1f, x));
         return x * x * (3f - 2f * x);
-    }
-
-    private void drawHammer(Ink g, float hx, float hy, float s, int kind) {
-        int[] col = HEAD_SET[Math.max(0, Math.min(HEAD_SET.length - 1, kind))];
-        float c = (float) Math.cos(ANG), sn = (float) Math.sin(ANG);
-        float dxh = -sn, dyh = c;                        // down the handle
-        // the handle: short and thick, down and right out of the frame, round where it is cut off
-        float hx0 = hx + dxh * 30 * s, hy0 = hy + dyh * 30 * s;
-        g.line(hx0 * Q, hy0 * Q, (hx0 + dxh * 290 * s) * Q, (hy0 + dyh * 290 * s) * Q, 40f * s * Q, 0xFF5A3416, 1f);
-        float ox = -2 * c * s, oy2 = -2 * sn * s;
-        g.line((hx0 + ox) * Q, (hy0 + oy2) * Q, (hx0 + ox + dxh * 290 * s) * Q, (hy0 + oy2 + dyh * 290 * s) * Q, 32f * s * Q, 0xFF9A5E2E, 1f);
-        float ox2 = -11 * c * s, oy3 = -11 * sn * s;
-        g.line((hx0 + ox2) * Q, (hy0 + oy3) * Q, (hx0 + ox2 + dxh * 290 * s) * Q, (hy0 + oy3 + dyh * 290 * s) * Q, 10f * s * Q, 0xFFC0803E, 1f);
-        float hl = HL * s / 2f, hh = HH * s / 2f, tp = TOP * s;
-        float bx = -8f * s, by = -tp;
-        // a soft shadow it casts on the room below it
-        quad(g, hx + 6, hy + 10, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0x66000000, 10f);
-        // the top, the side, the grain, the bands, the striking face, the shaded lower edge
-        quad(g, hx, hy, c, sn, -hl, -hh, hl, -hh, hl + bx, -hh + by, -hl + bx, -hh + by, 0xFF000000 | col[1], 1f);
-        quad(g, hx, hy, c, sn, -hl, -hh, hl, -hh, hl, hh, -hl, hh, 0xFF000000 | col[0], 1f);
-        for (float gr = -hh + 4 * s; gr < hh - 2 * s; gr += 5 * s)
-            quad(g, hx, hy, c, sn, -hl + 2, gr, hl - 2, gr, hl - 2, gr + 0.8f, -hl + 2, gr + 0.8f, 0xB0000000 | col[3], 1f);
-        for (float b : new float[]{-hl + 16 * s, hl - 16 * s}) {
-            quad(g, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s, hh, b - 5 * s, hh, 0xFF000000 | col[4], 1f);
-            quad(g, hx, hy, c, sn, b - 5 * s, -hh, b + 5 * s, -hh, b + 5 * s + bx, -hh + by, b - 5 * s + bx, -hh + by, 0xFF000000 | col[4], 1f);
-        }
-        quad(g, hx, hy, c, sn, -hl, -hh, -hl, hh, -hl + bx, hh + by, -hl + bx, -hh + by, 0xFF000000 | col[2], 1f);
-        quad(g, hx, hy, c, sn, -hl, hh - 3, hl, hh - 3, hl, hh, -hl, hh, 0xFF000000 | Street.scale(col[0], 0.66f), 1f);
-    }
-
-    /** A four-cornered shape in the head's own frame (turned by c, s about hx, hy), soft at its edge by so much. */
-    private static void quad(Ink g, float hx, float hy, float c, float s, float x0, float y0, float x1, float y1, float x2, float y2,
-                             float x3, float y3, int col, float soft) {
-        g.shape((hx + x0 * c - y0 * s) * Q, (hy + x0 * s + y0 * c) * Q, (hx + x1 * c - y1 * s) * Q, (hy + x1 * s + y1 * c) * Q,
-                (hx + x2 * c - y2 * s) * Q, (hy + x2 * s + y2 * c) * Q, (hx + x3 * c - y3 * s) * Q, (hy + x3 * s + y3 * c) * Q);
-        g.polyFill(col, col, soft * Q, 1f);
     }
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.50
+- One hammer, one look, everywhere in the game. The room between rounds no longer paints a
+  hammer of its own: the hammer in the hand on the street, the same model with the same
+  light, goes up to the keys and knocks them; the room leaves a way through for it, the
+  shape of it, with the shadow it casts on the room. Going back to the street, the hand
+  takes it back from the room as the room draws off.
+- The heavy hammer's sign in the crest and on the room's key is drawn from the same model,
+  in its own proportions and colours; a key lit by a gift takes the given hammer's head.
+- The second hammer waiting in the lower left is full size, as every hammer is, farther off
+  rather than smaller; it looks as it did.
+
 ## 0.49
 - At the crossroads the head shows it can turn: once the eye is down, a moment's pause,
   then of itself it looks 65 degrees to the right, holds, sweeps across to 65 to the left,

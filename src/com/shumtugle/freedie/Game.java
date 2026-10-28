@@ -2604,7 +2604,7 @@ final class Game implements Physics.Listener {
             // looking up into the sky, the hand drops out of sight
             // closed in, it is held as far again as the view is narrower, and so looks the same
             float m = zoomMul();
-            Hammer.held(d, 0.3f, -0.7f + bob - 0.9f * tilt(), 1.35f * m, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
+            Hammer.held(d, 0.3f, -0.7f + bob - 0.9f * tilt(), HELD_Z * m, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
             if (aiming) pose[1] += 0.06f * m;
             // the handle runs down off the screen: move the hammer along its own axis
             pose[0] -= pose[3] * 0.05f * m;
@@ -2623,24 +2623,67 @@ final class Game implements Physics.Listener {
         boolean gold = hs == HAND ? goldOn : goldThrow;
         if (fight != null) {
             Hammer.draw(d, pose, Hammer.DIAMOND, 1f);
+            if (console != null) console.cut(cutPts, cutN, 0);
             return;
         }
-        Hammer.draw(d, pose, gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN, 1f);
+        int kind = gold ? Hammer.GOLDEN : heavy ? Hammer.HEAVY_KIND : Hammer.PLAIN;
+        // between rounds the room has the hand: the same hammer goes to its keys, and the room
+        // leaves a way through for it
+        int cut = 0;
+        float cover = roomCover();
+        if (hs == HAND && console.hand(Math.round(d.h), cover, 1f, roomHand)) {
+            // going back to the street, the hand takes it back from the room as the room draws off
+            float w = fromSky ? cover * cover * (3f - 2f * cover) : 1f;
+            System.arraycopy(pose, 0, handPose, 0, 3);
+            roomPose(d, roomHand[0], roomHand[1], roomHand[2]);
+            for (int k = 0; k < 3; k++) pose[k] = handPose[k] + (pose[k] - handPose[k]) * w;
+            cut = Hammer.outline(d, pose, kind, 1f, cutPts, cutN);
+        }
+        console.cut(cutPts, cutN, cut);
+        Hammer.draw(d, pose, kind, 1f);
         // the other hammer waits at the lower left, in sight and in reach of a tap
         if (heavyShown > 0 || heavy) {
-            Hammer.held(d, -0.38f, -0.88f - 0.9f * tilt(), 1.65f * zoomMul(), 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
-            Hammer.draw(d, other, !heavy, 0.62f);
+            // full size, as every hammer is everywhere: farther off rather than smaller, so it
+            // looks as it did in the corner
+            float far = 1f / OTHER_LOOKS;
+            Hammer.held(d, -0.38f * far, (-0.88f - 0.9f * tilt()) * far, 1.65f * far * zoomMul(), 0.5f, 0.8f, 0.2f, 0.94f, -0.2f, 0.28f, other);
+            Hammer.draw(d, other, !heavy, 1f);
         }
     }
 
     private final float[] other = new float[12];
+    // how big the other hammer looks in the corner, against one at its distance
+    private static final float OTHER_LOOKS = 0.62f;
+    private final float[] roomHand = new float[3], handPose = new float[3], cutPts = new float[5 * 16];
+    private final int[] cutN = new int[5];
+
+    /** How far the room has closed in over the street between rounds, 0 to 1, as it is drawn. */
+    private float roomCover() {
+        return state == SKY_UP ? Math.min(1f, stateTime / TILT) : state == SKY_HOLD ? 1f
+                : fromSky ? 1f - Math.min(1f, backT / TILT) : 0f;
+    }
+
+    /**
+     * The hand's hammer posed where the room wants it: held as in the hand, turned the same,
+     * its head's middle under a point of the frame, as far off as in the hand, nearer by so much.
+     */
+    private void roomPose(DrawList d, float sx, float sy, float near) {
+        float vz = HELD_Z / near;
+        float vx = (sx - d.w * 0.5f) * vz / d.focal, vy = -(sy - d.h * 0.5f) * vz / d.focal;
+        Hammer.held(d, 0f, 0f, 1f, -0.42f, 0.86f, 0.28f, 0.94f, 0.2f, -0.28f, pose);
+        float hx = Hammer.PARTS[2][0];
+        for (int k = 0; k < 3; k++)
+            pose[k] = d.eye[k] + d.right[k] * vx + d.up[k] * vy + d.ahead[k] * vz - pose[3 + k * 3] * hx;
+    }
+
+    // how far ahead of the eye the hand holds the hammer
+    static final float HELD_Z = 1.35f;
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {
         flatBelow(f);
         // between rounds, the room over all of it
-        float k = state == SKY_UP ? Math.min(1f, stateTime / TILT) : state == SKY_HOLD ? 1f
-                : fromSky ? 1f - Math.min(1f, backT / TILT) : 0f;
+        float k = roomCover();
         if (k > 0f && roomInk != null) console.draw(roomInk, fh, k, fromSky ? k : 1f);
     }
 

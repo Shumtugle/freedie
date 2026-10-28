@@ -363,7 +363,7 @@ final class Crest {
         float hx = (CX - R - 40) * K, hy = (CY + 12) * K;
         if (hammerSprite == null) {
             hammerSprite = beginSprite(HS, HS);
-            hammer(HS * 0.5f, HS * 0.4f, 1f);
+            hammer(HS * 0.5f, HS * 0.5f, 1f);
             endSprite();
         }
         // a bounce as one lands
@@ -397,14 +397,10 @@ final class Crest {
         return sp;
     }
 
-    /** A little heavy hammer: an iron head with two copper bands, a short handle down. */
+    /** A little heavy hammer: the hammer's own model as a sign, its shadow under it. */
     private void hammer(float hx, float hy, float cover) {
-        Ink g = ink;
-        g.box(hx - 7 * K + 3, hy - 4 * K + 7, hx + 7 * K + 3, hy + 3 * K + 7, 1.6f * K, SHADOW, SHADOW, 6f, 0.3f * cover);
-        g.box(hx - 1.3f * K, hy + K, hx + 1.3f * K, hy + 9 * K, K, 0xFFB0703A, 0xFF7A4A22, 1f, cover);
-        g.box(hx - 7 * K, hy - 4 * K, hx + 7 * K, hy + 3 * K, 1.6f * K, 0xFF6A6E7A, 0xFF34363E, 1f, cover);
-        for (int s = -1; s <= 1; s += 2) g.box(hx + s * 4.5f * K - 1.1f * K, hy - 4 * K, hx + s * 4.5f * K + 1.1f * K, hy + 3 * K, 0f, 0xFFE8A048, 0xFFB8701E, 1f, cover);
-        g.box(hx - 6.2f * K, hy - 3.4f * K, hx + 6.2f * K, hy - 2.5f * K, 0.4f * K, 0xFFA8ACB8, 0xFFA8ACB8, 1f, 0.7f * cover);
+        Hammer.icon(ink, hx + 1.2f * K, hy + 1.8f * K, 17f * K, Hammer.HEAVY_KIND, 0x000000, 0.3f * cover);
+        Hammer.icon(ink, hx, hy, 17f * K, Hammer.HEAVY_KIND, -1, cover);
     }
 
     // ---- the way through the level ----
