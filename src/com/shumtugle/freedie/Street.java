@@ -43,6 +43,83 @@ final class Street {
         palms(d, new Random(7), solid);
     }
 
+    // ---- behind the player ----
+
+    // where the street behind meets the shore road, and where the beach begins beyond it
+    static final float SHORE_Z = -48f, SHORE_HALF = 4f, BEACH_Z = SHORE_Z - SHORE_HALF;
+
+    /**
+     * What lies behind the player, seen when he turns round: the street running on a little
+     * way, houses on the one hand and the promenade on the other, out to the shore road
+     * across its end; beyond it a strip of beach and the sea. Kept apart from the rest, with
+     * a chance of its own, so the street ahead stays exactly as it was; and in a list of its
+     * own, drawn only while the eye can turn that way.
+     */
+    static void behind(DrawList d, Solid solid) {
+        Random rnd = new Random(17);
+        float z0 = BEACH_Z + 0.5f, z1 = -40f, zc = (z0 + z1) * 0.5f, zh = (z1 - z0) * 0.5f;
+        d.box(0f, -0.25f, zc, CURB_IN, 0.25f, zh, null, 0x6E6862, DrawList.ROAD);
+        for (int s = -1; s <= 1; s += 2)
+            d.box(s * (CURB_IN + CURB_OUT) * 0.5f, (CURB_TOP - 0.25f) * 0.5f, zc,
+                    (CURB_OUT - CURB_IN) * 0.5f, (CURB_TOP + 0.25f) * 0.5f, zh, null, 0xC9BFAE, DrawList.STONE);
+        float wx0 = CURB_OUT, wx1 = HOUSES_X + 0.2f;
+        d.box((wx0 + wx1) * 0.5f, (WALK_TOP - 0.25f) * 0.5f, zc, (wx1 - wx0) * 0.5f, (WALK_TOP + 0.25f) * 0.5f, zh,
+                null, 0xCDBFA6, DrawList.PAVING);
+        float px0 = PARAPET_X + 0.3f, px1 = -CURB_OUT;
+        d.box((px0 + px1) * 0.5f, (WALK_TOP - 1.5f) * 0.5f, zc, (px1 - px0) * 0.5f, (WALK_TOP + 1.5f) * 0.5f, zh,
+                null, 0xDCCDB2, DrawList.PROMENADE);
+        d.box(PARAPET_X, -0.3f, zc, 0.3f, 1.2f, zh, null, 0xE2D4BA, DrawList.STONE);
+        d.box(PARAPET_X, 0.95f, zc, 0.38f, 0.06f, zh, null, 0xEDE2CC, DrawList.PLAIN);
+        // the shore road, across the end of the street, from the parapet into the town
+        d.box(20f, -0.25f, SHORE_Z, 35f, 0.25f, SHORE_HALF, null, 0x6A645E, DrawList.ASPHALT);
+        d.box(20f, (CURB_TOP - 0.25f) * 0.5f, BEACH_Z - 0.2f, 35f, (CURB_TOP + 0.25f) * 0.5f, 0.2f, null, 0xC9BFAE, DrawList.STONE);
+        // the beach, pale sand to the water, and the sea round from the left
+        d.box(20f, -0.35f, BEACH_Z - 10f, 35f, 0.25f, 9.6f, null, 0xE8D6B0, DrawList.GRAIN);
+        d.box(0f, -0.85f, BEACH_Z - 140f, 220f, 0.25f, 120f, null, 0x2D6990, DrawList.SEA);
+        // the houses go on behind, from the first one ahead back to the corner on the shore road
+        float z = -12f;
+        int n = 50;
+        while (z > SHORE_Z + SHORE_HALF + 4f) {
+            int bays = 3 + rnd.nextInt(3);
+            float len = Math.min(bays * 2.9f, z - (SHORE_Z + SHORE_HALF));
+            bays = Math.max(1, Math.round(len / 2.9f));
+            int storeys = 4 + rnd.nextInt(2);
+            float height = 3.3f * (storeys + 1) + 0.5f;
+            int tint = WALLS[rnd.nextInt(WALLS.length)];
+            int seed = n++;
+            float zs = z - len;
+            d.box(HOUSES_X + 7f, height * 0.5f, zs + len * 0.5f, 7f, height * 0.5f, len * 0.5f, null, tint,
+                    DrawList.material(DrawList.FACADE, seed));
+            d.box(HOUSES_X - 0.15f, height - 0.2f, zs + len * 0.5f, 0.25f, 0.2f, len * 0.5f, null, scale(tint, 1.05f),
+                    DrawList.PLAIN);
+            fronts(d, zs, bays, storeys, seed);
+            roof(d, HOUSES_X + 7f, height, zs + len * 0.5f, 7f, len * 0.5f, seed);
+            z = zs;
+        }
+        // lamp posts on the same beat as ahead, and palms on the promenade
+        for (float lz = -26f; lz > SHORE_Z + SHORE_HALF; lz -= 14f)
+            for (int side = -1; side <= 1; side += 2) {
+                float x = side * LAMP_X, y = WALK_TOP;
+                if (solid != null) solid.fixed(x, lz, 0.12f);
+                d.box(x, y + 2.1f, lz, 0.06f, 2.1f, 0.06f, null, 0x2E2D2F, DrawList.PLAIN);
+                d.box(x, y + 4.18f, lz, 0.1f, 0.04f, 0.1f, null, 0x3A3836, DrawList.PLAIN);
+                d.box(x, y + 4.4f, lz, 0.13f, 0.18f, 0.13f, null, 0xF3E2B4, DrawList.PLAIN);
+                d.box(x, y + 4.62f, lz, 0.2f, 0.05f, 0.2f, null, 0x3A3836, DrawList.PLAIN);
+            }
+        for (int i = 1; i <= 5; i++)
+            for (float rx : PALM_ROWS) {
+                if (rx > 0f) continue;
+                float x = rx + (rnd.nextFloat() - 0.5f) * 0.3f;
+                float pz = 7f - i * 7.5f + (rx < -8f ? 3.7f : 0f) + (rnd.nextFloat() - 0.5f) * 0.6f;
+                if (pz < SHORE_Z + SHORE_HALF + 1f) continue;
+                float height = 7.2f + rnd.nextFloat() * 2.6f;
+                float lean = (rnd.nextFloat() - 0.5f) * 0.6f;
+                if (solid != null) solid.fixed(x, pz, 0.65f);
+                d.box(x, WALK_TOP + 0.01f, pz, 0.7f, 0.01f, 0.6f, null, 0x8C6E4C, DrawList.GRAIN);
+                palm(d, rnd, x, WALK_TOP, pz, height, lean, false);
+            }
+    }
+
     // ---- the ground ----
 
     private static void ground(DrawList d) {

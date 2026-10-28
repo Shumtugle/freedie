@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.47
+- The crossroads before the 21st. When the 20th falls, the room lets the eye down onto the
+  street without the light, and the plinth stands empty: nothing to aim at, the player is
+  between levels. A quick swipe sideways turns the view round, half a turn, the way the
+  finger sweeps; behind, the street runs on to the shore road and the sea, and she waits in
+  the road, breathing, a hand up now and then, where the alley will be. A swipe turns back.
+  A while after the crossroads comes, the empty plinth glows; a tap on it and the watchers
+  throw the 21st down. Closed at the crossroads, the game opens there again.
+- The chevrons at the edges no longer turn the view in the middle of a level: in a level
+  the player aims. At a crossroads they show until the first swipe, and a tap on one turns
+  as a swipe does.
+- The gate into the yard stays shut: the way in will be another crossroads, before the 40th.
+- What lies behind the player is drawn only at a crossroads.
+
 ## 0.46
 - Looking round. From the 21st level two pale chevrons sit at the edges of the frame,
   breathing; a tap on one turns the view a quarter: to the right the houses, to the left

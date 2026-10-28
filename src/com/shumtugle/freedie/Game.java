@@ -44,7 +44,7 @@ import java.util.Random;
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
     static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, FIGHT = 7,
-            PORTAL = 9;
+            PORTAL = 9, CROSS = 10;
     static final int STARS = 5;
     /** The last level there is yet: the 109th, out at sea. */
     static final int LAST = 108;
@@ -109,20 +109,24 @@ final class Game implements Physics.Listener {
     static final float PRIZE_NEAR = 6.5f;
     private boolean fightPays, prizeFree, prizeDown;
     private Body prize;
-    // the gate into the yard, in the houses on the right: shut until the player has reached the
-    // tenth level, then ajar. A touch on it sends the hammer to knock it wide, at no cost, and
-    // the world takes the player into the yard (see Yard) once the gate has swung
-    static final int YARD_FROM = 10;
+    // the gate into the yard, in the houses on the right: shut. The way in is to come from a
+    // crossroads (the one before the 40th, still to be made); till then the yard is reached on
+    // the stand alone. Once open, a touch on it sends the hammer to knock it wide, at no cost,
+    // and the world takes the player into the yard (see Yard) once the gate has swung
+    static final int YARD_FROM = 40;
     static final float GATE_AJAR = 0.3f, GATE_SWING = 0.6f, GATE_IN = 1.15f;
     private float gateT = -1f;
     private boolean gateFlight;
     boolean yardDue;
-    // looking round: from the 21st level the player can turn a quarter to either side between
-    // throws, by a touch on the marks at the edges of the frame; to the right the houses and the
-    // gate into the yard, to the left the promenade and the sea. Behind is not open yet
-    static final int TURN_FROM = 21;
-    static final float TURN_T = 0.55f;
-    private int facing;                        // -1 the sea, 0 the building, 1 the houses
+    // the crossroads: where an episode ends at one (see Episode), the room lets the eye down
+    // onto the street without the light, and the plinth stands empty. Nothing to aim at: the
+    // player may look round, half a turn by a swipe, and behind him she waits where the alley
+    // will be. A touch on the empty plinth, facing it, and the next building is thrown down
+    private boolean crossDue;
+    private float crossT;
+    static final float TURN_T = 0.9f;          // half a turn
+    static final float PLINTH_CALL = 2.5f;     // how long before the empty plinth begins to glow
+    private int facing;                        // 0 the plinth, 2 behind
     private float faceFrom, faceTo, faceT = -1f;
     private float faceYaw;                     // the turn now, radians, eased
     /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
@@ -224,7 +228,10 @@ final class Game implements Physics.Listener {
         if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
         readPortal(host.asset("portal.bin"));
         console.read(host.asset("console.bin"));
+        // closed at a crossroads: back at it
+        boolean cross = host.loadInt("cross") == this.level + 1 && Episode.first(this.level + 1);
         start(this.level, false);
+        if (cross) enterCross();
     }
 
     // ---- the level ----
@@ -238,6 +245,8 @@ final class Game implements Physics.Listener {
      * the sky, its pieces are thrown down by the watchers; else they come down just above the plinth.
      */
     void start(int lv, boolean thrown) {
+        // whatever brings a building, the crossroads is behind (it sets itself again after this)
+        host.saveInt("cross", 0);
         if (lv != level) {
             // a new building: the count of lost tries starts again
             fails = 0;
@@ -619,9 +628,9 @@ final class Game implements Physics.Listener {
 
     // ---- the gate into the yard ----
 
-    /** Whether the gate is ajar: in town, once the player has got as far as the tenth level. */
+    /** Whether the gate is ajar: not yet; it will be, from the crossroads before the 40th. */
     boolean yardOpen() {
-        return !atSea && level < SEA_FROM && Math.max(level + 1, host.loadInt("best")) >= YARD_FROM;
+        return false;
     }
 
     /** How far the gate stands open, 0 to 1. */
@@ -679,44 +688,75 @@ final class Game implements Physics.Listener {
         beginReturn();
     }
 
-    // ---- looking round ----
+    // ---- the crossroads ----
 
-    /** Whether the player may look round: in town, once the 21st level has been reached. */
-    boolean turnOpen() {
-        return !atSea && level < SEA_FROM && Math.max(level + 1, host.loadInt("best")) >= TURN_FROM;
+    /** Whether the game stands at a crossroads, between two episodes, the plinth empty. */
+    boolean atCross() {
+        return state == CROSS;
     }
 
-    /** Whether a touch on a mark would turn the view now: a round on, the hammer in hand, nothing under way. */
+    /** How long the crossroads has been there. */
+    float crossTime() {
+        return crossT;
+    }
+
+    /** Onto the crossroads: the next building is made but not shown; the eye is free. */
+    private void enterCross() {
+        setState(CROSS);
+        crossT = 0f;
+        facing = 0;
+        faceYaw = 0f;
+        faceT = -1f;
+        host.saveInt("cross", level + 1);
+        journal.line(clock, "a crossroads: the plinth empty, the eye free");
+    }
+
+    /** A touch on the empty plinth: the watchers throw the building down, and the round begins. */
+    void leaveCross() {
+        if (state != CROSS || facing != 0 || faceT >= 0f) return;
+        host.saveInt("cross", 0);
+        buildFromSky = true;
+        lastBuildTime = 0f;
+        setState(BUILD);
+        host.sound(Synth.TOCK, 0.8f, 0.8f);
+        host.buzz(20);
+        journal.line(clock, "the plinth touched: the building comes down");
+    }
+
+    /** Whether a swipe would turn the view now: at a crossroads, nothing under way. */
     boolean turnReady() {
-        return turnOpen() && fight == null && state == PLAY && hs == HAND && !aiming && gateT < 0f && tilt() == 0f && faceT < 0f;
+        return state == CROSS && faceT < 0f && !fromSky && tilt() == 0f;
     }
 
-    /** Which way the view faces now, or is turning to: -1 the sea, 0 the building, 1 the houses. */
+    /** Which way the view faces now, or is turning to: 0 the plinth, 2 behind. */
     int facing() {
         return facing;
     }
 
-    /** Whether the view looks anywhere but at the building, or is on its way. */
+    /** Whether the view looks anywhere but at the plinth, or is on its way. */
     boolean turned() {
         return facing != 0 || faceT >= 0f || faceYaw != 0f;
     }
 
-    /** A quarter turn to the right (1) or the left (-1), as far as the sides. */
-    void turn(int dir) {
-        int to = Math.max(-1, Math.min(1, facing + dir));
-        if (to == facing) return;
-        facing = to;
+    /** Half a turn about the player's own upright, by the right (1) or by the left (-1). */
+    void turnAround(int dir) {
+        facing = facing == 0 ? 2 : 0;
         faceFrom = faceYaw;
-        faceTo = to * (float) Math.PI * 0.5f;
+        // the shorter way round is not asked: the swipe says which, and the turn goes that way
+        float goal = facing == 0 ? 0f : behind(), full = 2f * (float) Math.PI;
+        while (dir > 0 && goal <= faceYaw) goal += full;
+        while (dir < 0 && goal >= faceYaw) goal -= full;
+        faceTo = goal;
         faceT = 0f;
-        host.sound(Synth.WHOOSH, 0.35f, 0.7f);
+        host.sound(Synth.WHOOSH, 0.4f, 0.6f);
         host.buzz(8);
-        journal.line(clock, "the view turns " + (to == 0 ? "back to the building" : to > 0 ? "to the houses" : "to the sea"));
+        journal.line(clock, facing == 0 ? "turned back to the plinth" : "turned round, to what is behind");
     }
 
-    /** The turn eased along; anything but a quiet round brings the view back to the building. */
+    /** The turn eased along; off the crossroads the view goes back to the plinth. */
     private void turnStep(float dt) {
-        if (facing != 0 && faceT < 0f && (fight != null || state != PLAY || tilt() > 0f)) turn(-facing);
+        if (state == CROSS) crossT += dt;
+        if (state != CROSS && facing != 0 && faceT < 0f) turnAround(1);
         if (faceT < 0f) return;
         faceT += dt;
         float k = Math.min(1f, faceT / TURN_T);
@@ -724,14 +764,31 @@ final class Game implements Physics.Listener {
         float e = k * k * (3f - 2f * k);
         faceYaw = faceFrom + (faceTo - faceFrom) * e;
         if (k >= 1f) {
-            faceYaw = faceTo;
+            faceYaw = facing == 0 ? 0f : behind();
             faceT = -1f;
         }
     }
 
-    /** The turn of the view away from the building, radians, to the right. */
+    /** How far round from the plinth the eye turns to look at her, waiting behind. */
+    static float behind() {
+        float base = (float) Math.atan2(-World.CAM_X, World.PLINTH_Z);
+        float back = (float) Math.atan2(World.WAIT_X - World.CAM_X, World.WAIT_Z - World.CAM_Z);
+        return back - base;
+    }
+
+    /** The turn of the view away from the plinth, radians, to the right. */
     float faceYaw() {
         return faceYaw;
+    }
+
+    /** The empty plinth's corners, low near and high far, for a touch on it and its glow. */
+    void plinthBox(float[] lo, float[] hi) {
+        lo[0] = Builder.CX - Builder.PHX;
+        lo[1] = 0f;
+        lo[2] = Builder.CZ - Builder.PHZ;
+        hi[0] = Builder.CX + Builder.PHX;
+        hi[1] = Builder.TOP;
+        hi[2] = Builder.CZ - Builder.PHZ;
     }
 
     /** Back from the yard: the gate ajar again, the hammer in hand, the round as it was. */
@@ -1159,7 +1216,7 @@ final class Game implements Physics.Listener {
         while (acc >= 1f / 60f && steps < 2) {
             acc -= 1f / 60f;
             steps++;
-            if (state != BUILD && state != VANISH) {
+            if (state != BUILD && state != VANISH && state != CROSS) {
                 phys.step(1f / 60f);
                 keepGold();
             }
@@ -1258,7 +1315,11 @@ final class Game implements Physics.Listener {
                         break;
                     }
                     // the watchers have thrown the blocks: the next building falls into place as the eye comes down
+                    boolean cross = crossDue && Episode.first(Math.min(LAST, nextLevel) + 1) && nextLevel == level + 1;
+                    crossDue = false;
                     start(Math.min(LAST, nextLevel), true);
+                    // or, at a crossroads, waits up there till the player comes back to the plinth
+                    if (cross) enterCross();
                     fromSky = true;
                     backT = 0f;
                 }
@@ -1548,6 +1609,8 @@ final class Game implements Physics.Listener {
         if (host.loadInt("epRunOk") == 1 && run > host.loadInt("ep" + e + "stars")) host.saveInt("ep" + e + "stars", run);
         // an episode that ends in the alley goes on through the light too, until the alley is there
         if (Episode.ENDS[e] == Episode.NEW || Episode.ENDS[e] == Episode.ALLEY) chapterDue = true;
+        // a crossroads: no light, a stop on the street before the next building
+        if (Episode.ENDS[e] == Episode.CROSS) crossDue = true;
     }
 
     /**
@@ -2350,7 +2413,8 @@ final class Game implements Physics.Listener {
             }
         }
         float st = stagger();
-        for (int i = 0; i < pieces.size(); i++) {
+        // at a crossroads the building is not there yet
+        for (int i = 0; i < pieces.size() && state != CROSS; i++) {
             Body b = pieces.get(i);
             if (b.gone) continue;
             float scale = 1f, drop = 0f;

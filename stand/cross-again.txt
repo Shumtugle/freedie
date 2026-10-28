@@ -1,0 +1,14 @@
+# Closed at the crossroads and opened again: back at the empty plinth, not at a building.
+screen 1096 2560
+keep level 20
+keep best 21
+keep cross 21
+restart
+skip
+wait 2.0
+shot ca0_cross
+down 110 345
+wait 0.1
+up 110 345
+wait 3.0
+shot ca1_21st

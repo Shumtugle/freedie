@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.46";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.47";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -51,6 +51,7 @@ final class World {
     private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
     private final DrawList still = new DrawList();   // the street, built once
+    private final DrawList back = new DrawList();    // what lies behind the player, built once, drawn when he can turn
     private final DrawList sea = new DrawList();     // the winter ocean beyond the portal, built once
     private boolean built;
     private final Traffic traffic = new Traffic(PLINTH_Z);
@@ -78,11 +79,18 @@ final class World {
 
     private Prelude intro;
     private boolean swallow;                  // the touch that skipped the opening, until it lifts
-    // a touch on a mark at the edge of the frame, held back until it shows itself: lifted at
-    // once it turns the view; moved or held, it was the start of an aim after all
-    static final float MARK_TAP = 0.25f, MARK_STILL = 6f;
-    private int markSide;
-    private float markAt, markX, markY;
+    // a touch at a crossroads, from where and when it came down: a quick wide sweep sideways
+    // turns the view round, a tap on the empty plinth brings the building, a tap on a mark turns
+    static final float SWIPE = 0.22f, SWIPE_T = 0.7f, TAP_STILL = 8f, TAP_T = 0.5f;
+    private float crossX, crossY, crossAt;
+    private boolean crossDown;
+    // the empty plinth in the frame: middle and half sizes
+    private final float[] plinthAt = {-99f, -99f, 0f, 0f};
+    private final float[] p0 = new float[3], p1 = new float[3];
+    // she waits behind, where the alley will be
+    private Frida waiting;
+    private Flow waitFlow;
+    static final float WAIT_X = 0.4f, WAIT_Z = -17f, WAIT_SIZE = 1.1f;
     private float flashOut;                   // the flash fading off the game, seconds left
 
     World(Host host) {
@@ -160,44 +168,59 @@ final class World {
             swallow = true;
             return;
         }
-        // a touch on a mark at the edge: wait and see whether it is a tap
-        if (type == DOWN && game.turnReady() && markOn(x, y) != 0) {
-            markSide = markOn(x, y);
-            markAt = time;
-            markX = x;
-            markY = y;
+        if (game.atCross()) {
+            crossTouch(type, x, y);
             return;
         }
-        if (markSide != 0) {
-            boolean still = Math.hypot(x - markX, y - markY) < MARK_STILL;
-            if (type == UP && still && time - markAt < MARK_TAP) {
-                game.turn(markSide);
-                host.saveInt("looked", 1);
-                markSide = 0;
-                return;
-            }
-            if (type == MOVE && still) return;
-            // moved off, or lifted late: an aim begun on the mark
-            markLetGo();
-        }
-        // turned away from the building, the hammer is not thrown
-        if (game.turned()) return;
         game.touch(type, x, y);
     }
 
-    /** A touch held on a mark is no tap: it goes to the game as the aim it is, from where it came down. */
-    private void markLetGo() {
-        markSide = 0;
-        if (!game.turned()) game.touch(DOWN, markX, markY);
+    /**
+     * A touch at a crossroads. Nothing is aimed here: a quick sweep sideways across a good
+     * part of the frame turns the view round (the finger to the left, round by the right, as
+     * if the street were dragged), a tap on a mark does the same, and a tap on the empty plinth,
+     * facing it, brings the next building.
+     */
+    private void crossTouch(int type, float x, float y) {
+        if (type == DOWN) {
+            crossDown = true;
+            crossX = x;
+            crossY = y;
+            crossAt = time;
+            return;
+        }
+        if (type != UP || !crossDown) return;
+        crossDown = false;
+        float dx = x - crossX, dy = y - crossY, dt = time - crossAt;
+        if (Math.abs(dx) > W * SWIPE && Math.abs(dx) > 1.4f * Math.abs(dy) && dt < SWIPE_T) {
+            if (game.turnReady()) {
+                game.turnAround(dx < 0f ? 1 : -1);
+                host.saveInt("swiped", 1);
+            }
+            return;
+        }
+        if (Math.hypot(dx, dy) > TAP_STILL || dt > TAP_T) return;
+        int side = markOn(crossX, crossY);
+        if (side != 0 && game.turnReady()) {
+            game.turnAround(side);
+            return;
+        }
+        if (game.facing() == 0 && !game.turned() && plinthAt[0] > -50f
+                && Math.abs(x - plinthAt[0]) < plinthAt[2] + 12f && Math.abs(y - plinthAt[1]) < plinthAt[3] + 16f)
+            game.leaveCross();
     }
 
-    /** Which mark a touch is on: -1 the left, 1 the right, 0 none; only the marks shown count. */
+    /** Which mark a touch is on: -1 the left, 1 the right, 0 none; only while the marks are shown. */
     private int markOn(float x, float y) {
-        if (Math.abs(y - h * MARK_Y) > MARK_HALF) return 0;
-        int face = game.facing();
-        if (x < MARK_ZONE && face > -1) return -1;
-        if (x > W - MARK_ZONE && face < 1) return 1;
+        if (!marksShown() || Math.abs(y - h * MARK_Y) > MARK_HALF) return 0;
+        if (x < MARK_ZONE) return -1;
+        if (x > W - MARK_ZONE) return 1;
         return 0;
+    }
+
+    /** The marks teach the turn: shown at a crossroads until the player has turned by a swipe. */
+    private boolean marksShown() {
+        return game.turnReady() && host.loadInt("swiped") == 0;
     }
 
     // the marks: where they sit, as a share of the frame's height, half their height to the touch,
@@ -205,22 +228,16 @@ final class World {
     static final float MARK_Y = 0.6f, MARK_HALF = 44f, MARK_ZONE = 38f;
 
     /**
-     * The marks for looking round, at either edge of the frame where a turn is open: a pale
-     * chevron pointing out, breathing; until the player has looked round once, it beckons,
-     * nudging toward the edge.
+     * The marks for turning round, at both edges of the frame: a pale chevron pointing out,
+     * breathing and nudging toward the edge, until the player has turned by a swipe.
      */
     private void marks(Px f) {
-        if (!game.turnReady()) return;
-        boolean first = host.loadInt("looked") == 0;
-        float breath = 0.72f + 0.28f * (float) Math.sin(time * (first ? 4.2f : 2.4f));
-        int face = game.facing();
+        if (!marksShown()) return;
+        float breath = 0.72f + 0.28f * (float) Math.sin(time * 4.2f);
+        float nudge = 2.5f * Math.max(0f, (float) Math.sin(time * 4.2f));
         int cy = Math.round(h * MARK_Y);
-        for (int side = -1; side <= 1; side += 2) {
-            if (side < 0 && face == -1 || side > 0 && face == 1) continue;
-            float nudge = first ? 2.5f * Math.max(0f, (float) Math.sin(time * 4.2f)) : 0f;
-            int cx = side < 0 ? Math.round(7 - nudge) : Math.round(W - 8 + nudge);
-            chevron(f, cx, cy, side, breath * (first ? 1f : 0.75f));
-        }
+        chevron(f, Math.round(7 - nudge), cy, -1, breath);
+        chevron(f, Math.round(W - 8 + nudge), cy, 1, breath);
     }
 
     /** A chevron of the world's grain pointing to one side, its tip at (cx, cy), a dark edge round it. */
@@ -248,8 +265,19 @@ final class World {
     void update(float dt) {
         time += dt;
         frameDt = dt;
-        // a finger resting on a mark is the start of an aim, not a tap
-        if (markSide != 0 && time - markAt >= MARK_TAP) markLetGo();
+        // she waits behind at a crossroads, breathing, a hand up now and then
+        if (game.atCross()) {
+            if (waiting == null) {
+                waiting = new Frida();
+                waiting.size = WAIT_SIZE;
+                waitFlow = new Flow(waiting, new java.util.Random(21));
+                waitFlow.x = WAIT_X;
+                waitFlow.z = WAIT_Z;
+                waitFlow.fx = 0f;
+                waitFlow.fz = 1f;
+            }
+            waitFlow.update(dt, 0f, 0f);
+        } else waiting = null;
         // the street on the set is a still: while the room is all closed in, nothing on it moves
         boolean still = game.tilt() >= 1f;
         if (!still) {
@@ -386,6 +414,7 @@ final class World {
     void draw(DrawList d) {
         if (!built) {
             Street.build(still, solid);
+            Street.behind(back, solid);
             Ocean.build(sea);
             built = true;
         }
@@ -472,8 +501,16 @@ final class World {
             Ocean.button(time, callAt3);
         } else {
             d.append(still);
+            if (game.atCross() || game.turned()) d.append(back);
             Street.gate(d, game.gateOpen(), game.yardOpen());
             gateSeen(d);
+            plinthSeen(d);
+            if (waiting != null) {
+                waitFlow.pose();
+                beckon(waiting, game.crossTime());
+                waiting.pose();
+                waiting.draw(d);
+            }
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
@@ -495,6 +532,11 @@ final class World {
         game.flat(f);
         if (game.gateReady() && gateAt[0] > -50f) gateGlow(f);
         marks(f);
+        // the empty plinth glows, a while after the crossroads came, to say it is waiting
+        if (game.atCross() && !game.turned() && plinthAt[0] > -50f && game.crossTime() > Game.PLINTH_CALL) {
+            float k = Math.min(1f, (game.crossTime() - Game.PLINTH_CALL) / 1.2f);
+            glow(f, plinthAt[0], plinthAt[1], plinthAt[2] + 6f, plinthAt[3] + 6f, k);
+        }
         // the room between rounds, at the world's own grain, over all of the frame
         if (roomInk.used) Console.over(f, roomInk);
         if (hudInk.used) {
@@ -513,8 +555,12 @@ final class World {
 
     /** The gate ajar calls: a warm light breathing round it, over the open street only. */
     private void gateGlow(Px f) {
-        float cx = gateAt[0], cy = gateAt[1], ax = gateAt[2] + 9f, ay = gateAt[3] + 9f;
-        float breath = 0.6f + 0.4f * (float) Math.sin(time * 2.4f);
+        glow(f, gateAt[0], gateAt[1], gateAt[2] + 9f, gateAt[3] + 9f, 1f);
+    }
+
+    /** A warm ring of light breathing round a box of the frame, k its strength, on what is empty of the flat layer. */
+    private void glow(Px f, float cx, float cy, float ax, float ay, float strength) {
+        float breath = (0.6f + 0.4f * (float) Math.sin(time * 2.4f)) * strength;
         for (int y = (int) (cy - ay * 1.6f); y <= cy + ay * 1.6f; y++)
             for (int x = (int) (cx - ax * 1.6f); x <= cx + ax * 1.6f; x++) {
                 if (x < 0 || y < 0 || x >= f.w || y >= f.h || f.a[y * f.w + x] != 0) continue;
@@ -524,6 +570,30 @@ final class World {
                 int al = Math.round(120f * k * k * breath);
                 if (al > 0) f.a[y * f.w + x] = (al << 24) | 0xFFB858;
             }
+    }
+
+    /** Where the empty plinth is in the frame now, for a touch on it and its glow. */
+    private void plinthSeen(DrawList d) {
+        plinthAt[0] = plinthAt[1] = -99f;
+        plinthAt[2] = plinthAt[3] = 0f;
+        if (!game.atCross() || game.tilt() > 0f) return;
+        game.plinthBox(p0, p1);
+        if (!d.project(p0[0], p0[1], p0[2], g0) || !d.project(p1[0], p1[1], p1[2], g1)) return;
+        plinthAt[0] = (g0[0] + g1[0]) * 0.5f;
+        plinthAt[1] = (g0[1] + g1[1]) * 0.5f;
+        plinthAt[2] = Math.abs(g1[0] - g0[0]) * 0.5f;
+        plinthAt[3] = Math.abs(g1[1] - g0[1]) * 0.5f;
+    }
+
+    /** Her free hand up over her head and waving, a few times, then down a while; again. */
+    private static void beckon(Frida f, float t) {
+        float cycle = t % 4.2f;
+        if (cycle > 2.2f) return;
+        float up = Math.min(1f, cycle / 0.35f) * Math.min(1f, (2.2f - cycle) / 0.35f);
+        f.az[Frida.ARM_B] += (-2.5f - f.az[Frida.ARM_B]) * up;
+        f.ax[Frida.ARM_B] += (0f - f.ax[Frida.ARM_B]) * up;
+        f.az[Frida.FORE_B] = up * 0.45f * (float) Math.sin(t * 9f);
+        f.ax[Frida.FORE_B] *= 1f - up;
     }
 
     /** Where the gate is in the frame now, for a touch on it. */
@@ -551,7 +621,7 @@ final class World {
     /** The street lamps lit, as night comes: their glass heads glowing warm. */
     private void lamps(DrawList d) {
         int c = Street.mix(0xF3E2B4, 0xFFC878, Math.min(1f, d.night * 1.4f));
-        for (float z = -12f; z < 120f; z += 14f)
+        for (float z = -40f; z < 120f; z += 14f)
             for (int side = -1; side <= 1; side += 2)
                 d.box(side * Street.LAMP_X, Street.WALK_TOP + 4.4f, z, 0.135f, 0.185f, 0.135f, null, c, DrawList.GLOW);
     }
