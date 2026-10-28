@@ -33,7 +33,11 @@ final class Hammer {
     // the watchers' hammer for the fight: the heavy one's shape, its head of pale blue diamond
     private static final int[] DIAMOND_COL = {0x7A5A3A, 0x3E2618, 0x6CC8EC, 0xE8FAFF, 0xE8FAFF};
     private static final int[] DIAMOND_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.GLASS, DrawList.GLASS, DrawList.GLASS};
-    static final int PLAIN = 0, HEAVY_KIND = 1, GOLDEN = 2, DIAMOND = 3;
+    // the other hammer at the table in the yard: the plain one's shape, a head of dark stone
+    // bound in brick red, so it is never taken for the player's
+    private static final int[] RIVAL_COL = {0x5A3A26, 0x2A1A12, 0x4A464E, 0xB5553A, 0xB5553A};
+    private static final int[] RIVAL_MAT = {DrawList.WOOD, DrawList.PLAIN, DrawList.STONE, DrawList.PAINT, DrawList.PAINT};
+    static final int PLAIN = 0, HEAVY_KIND = 1, GOLDEN = 2, DIAMOND = 3, RIVAL = 4;
 
     private static final float[] T = new float[9];
 
@@ -52,8 +56,8 @@ final class Hammer {
     /** The plain hammer, the heavy one, the golden one or the diamond one, so big. */
     static void draw(DrawList d, float[] pose, int kind, float scale) {
         float[][] parts = kind == HEAVY_KIND || kind == DIAMOND ? HEAVY : PARTS;
-        int[] col = kind == HEAVY_KIND ? HEAVY_COL : kind == GOLDEN ? GOLD_COL : kind == DIAMOND ? DIAMOND_COL : COL;
-        int[] mat = kind == HEAVY_KIND ? HEAVY_MAT : kind == GOLDEN ? GOLD_MAT : kind == DIAMOND ? DIAMOND_MAT : MAT;
+        int[] col = kind == HEAVY_KIND ? HEAVY_COL : kind == GOLDEN ? GOLD_COL : kind == DIAMOND ? DIAMOND_COL : kind == RIVAL ? RIVAL_COL : COL;
+        int[] mat = kind == HEAVY_KIND ? HEAVY_MAT : kind == GOLDEN ? GOLD_MAT : kind == DIAMOND ? DIAMOND_MAT : kind == RIVAL ? RIVAL_MAT : MAT;
         T[0] = pose[3]; T[1] = pose[4]; T[2] = pose[5];
         T[3] = pose[6]; T[4] = pose[7]; T[5] = pose[8];
         T[6] = pose[9]; T[7] = pose[10]; T[8] = pose[11];

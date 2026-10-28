@@ -260,6 +260,25 @@ public final class Stand implements World.Host {
             shotDown = p[1];
         } else if (c.equals("fightstate")) {
             System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
+        } else if (c.equals("yard")) {
+            // through the gate into the yard at once
+            world.standYard();
+            step();
+        } else if (c.equals("gatetap")) {
+            // a finger on the gate into the yard, where it is in the frame now
+            float[] g = world.standGate();
+            world.touch(World.DOWN, g[0], g[1]);
+            step();
+            world.touch(World.UP, g[0], g[1]);
+            step();
+            System.out.println(String.format(java.util.Locale.ROOT, "%7.2fs  gate at %.0f,%.0f, %.0f x %.0f", time, g[0], g[1], g[2] * 2, g[3] * 2));
+        } else if (c.equals("yardbot")) {
+            // yardbot 1|0: the player's hammer in the yard played by the stand's own hand
+            if (world.yard != null) world.yard.auto = !p[1].equals("0");
+        } else if (c.equals("yardstate")) {
+            System.out.println(String.format("%7.2fs  %s", time, world.yard == null ? "street"
+                    : String.format(java.util.Locale.ROOT, "yard %d:%d puck %.2f,%.2f v %.2f,%.2f", world.yard.mine, world.yard.theirs,
+                    world.yard.px, world.yard.pz, world.yard.vx, world.yard.vz)));
         } else if (c.equals("shot")) {
             shot(p[1]);
         } else {

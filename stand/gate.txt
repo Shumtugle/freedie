@@ -1,0 +1,17 @@
+# The gate into the yard, ajar, from the street: its lantern lit, the warm light breathing
+# round it; and shut, before the tenth level.
+screen 1096 2560
+keep level 11
+keep best 12
+restart
+skip
+wait 4
+shot g0
+wait 0.4
+shot g1
+keep level 3
+keep best 4
+restart
+skip
+wait 4
+shot g2

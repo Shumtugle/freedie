@@ -15,6 +15,9 @@ final class Street {
     static final float ROAD = 3.75f, CURB_IN = 4.05f, CURB_OUT = 4.3f, CURB_TOP = 0.15f, WALK_TOP = 0.14f;
     static final float HOUSES_X = 12.5f, PARAPET_X = -14.6f;
     static final float LAMP_X = 4.55f;
+    // the gate into the yard, in the right-hand houses where the curb is kept clear: its middle
+    // along the street, half its width, its height
+    static final float GATE_Z = 32.5f, GATE_HALF = 1.6f, GATE_H = 4.4f;
     // the call box on the lamp post to the right, and its button
     static final float CALL_X = LAMP_X - 0.2f, CALL_Y = 1.45f + WALK_TOP, CALL_Z = 16f;
 
@@ -137,7 +140,9 @@ final class Street {
         for (int b = 0; b < bays; b++) {
             float c = start + b * 2.9f + 1.45f;
             int h0 = nz(b, 0, seed);
-            if ((h0 & 3) != 0) {
+            // no awning over the gate into the yard
+            boolean gate = !alongX && wall == HOUSES_X && Math.abs(c - GATE_Z) < GATE_HALF + 1.6f;
+            if ((h0 & 3) != 0 && !gate) {
                 boolean stripes = (h0 & 4) != 0;
                 int cloth = (h0 & 8) != 0 ? 0xB5523E : 0x4F7A5E;
                 awning(d, alongX, wall, out, 2.75f, c, 1.15f, cloth, stripes);
@@ -160,6 +165,54 @@ final class Street {
                     }
                 }
             }
+        }
+    }
+
+    private static final float[] LEAF = new float[9];
+
+    /**
+     * The gate into the yard: a stone surround, a dark way in, two wooden leaves bound with
+     * iron that swing out toward the street, open from 0 (shut) to 1 (wide), and a lantern
+     * over it, lit while the yard can be entered. Through the gap, the yard's light.
+     */
+    static void gate(DrawList d, float open, boolean lit) {
+        float x = HOUSES_X, gz = GATE_Z, gh = GATE_HALF, top = GATE_H;
+        int stone = 0xD8CBB0;
+        d.box(x - 0.12f, top + 0.28f, gz, 0.14f, 0.28f, gh + 0.32f, null, stone, DrawList.STONE);
+        for (int e = -1; e <= 1; e += 2)
+            d.box(x - 0.1f, top * 0.5f, gz + e * (gh + 0.16f), 0.12f, top * 0.5f, 0.16f, null, stone, DrawList.STONE);
+        // the way in, dark; and the yard's evening light at the end of it
+        d.box(x - 0.02f, top * 0.5f, gz, 0.03f, top * 0.5f, gh, null, 0x17120E, DrawList.PLAIN);
+        if (open > 0.02f)
+            d.box(x - 0.04f, top * 0.4f, gz, 0.004f, top * 0.36f, Math.min(gh * 0.6f, gh * open * 2.4f), null, 0xF2B66A, DrawList.GLOW);
+        float a = open * 1.75f, ca = (float) Math.cos(a), sa = (float) Math.sin(a);
+        float hx = x - 0.08f, w = gh * 0.5f;
+        for (int e = -1; e <= 1; e += 2) {
+            // a leaf hangs on its outer edge and swings out: across it (z), through it (x)
+            float zx = -sa, zz = -e * ca;
+            float xx = -e * ca, xz = e * sa;
+            if (e < 0) {
+                xx = ca;
+                xz = sa;
+            }
+            LEAF[0] = xx; LEAF[1] = 0f; LEAF[2] = zx;
+            LEAF[3] = 0f; LEAF[4] = 1f; LEAF[5] = 0f;
+            LEAF[6] = xz; LEAF[7] = 0f; LEAF[8] = zz;
+            float hz = gz + e * gh;
+            float cx = hx + zx * w, cz = hz + zz * w;
+            d.box(cx, top * 0.5f, cz, 0.05f, top * 0.5f - 0.02f, w - 0.01f, LEAF, 0x6B4428, DrawList.WOOD);
+            // the iron straps, on the face toward the street
+            float sx = e < 0 ? -xx : xx, sz = e < 0 ? -xz : xz;
+            for (int k = -1; k <= 1; k += 2)
+                d.box(cx + sx * 0.03f, top * 0.5f + k * top * 0.3f, cz + sz * 0.03f, 0.05f, 0.05f, w * 0.96f, LEAF, 0x2E2B2A,
+                        DrawList.PLAIN);
+        }
+        // a lantern on each post of the gate, lit while the yard can be entered
+        for (int e = -1; e <= 1; e += 2) {
+            float lz = gz + e * (gh + 0.16f);
+            d.box(x - 0.3f, top * 0.62f, lz, 0.12f, 0.2f, 0.12f, null, lit ? 0xFFC878 : 0x5A5048, lit ? DrawList.GLOW : DrawList.PLAIN);
+            d.box(x - 0.3f, top * 0.62f + 0.23f, lz, 0.15f, 0.03f, 0.15f, null, 0x2B2A2C, DrawList.PLAIN);
+            d.box(x - 0.2f, top * 0.62f + 0.1f, lz, 0.1f, 0.02f, 0.02f, null, 0x2B2A2C, DrawList.RAIL);
         }
     }
 

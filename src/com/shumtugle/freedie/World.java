@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.39";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.40";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -58,6 +58,8 @@ final class World {
     private final Solid solid = new Solid();
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
+    // the gate into the yard in the frame, as last drawn: its middle, half its width and height
+    private final float[] gateAt = {-99f, -99f, 0f, 0f};
     private final float[] jolt = new float[2], view = new float[3], callAt3 = new float[3];
     private float lightPlate = -1f, frameDt;
 
@@ -68,6 +70,8 @@ final class World {
 
     // the dispatcher's bridge, while it is open; the presses that call it; the picture coming back
     Bridge bridge;
+    // the yard behind the gate, while the player is in it
+    Yard yard;
     private int calls;
     private float callAt = -9f;
     private float tvOn = -1f;
@@ -131,12 +135,23 @@ final class World {
             bridge.touch(type, x, y);
             return;
         }
+        if (yard != null) {
+            if (type == BACK) leaveYard();
+            else yard.touch(type, x, y);
+            return;
+        }
         if (type == BACK) return;
         // the red button, pressed with the hammer in hand, before it can be taken for an aim
         if (type == DOWN && game.handFree() && Math.hypot(x - button[0], y - button[1]) < 11f) {
             pressedAt = time;
             host.sound(Synth.TOCK, 0.8f, 1f);
             call();
+            swallow = true;
+            return;
+        }
+        // a touch on the gate, ajar: the hammer goes to knock it open
+        if (type == DOWN && game.gateReady() && Math.abs(x - gateAt[0]) < gateAt[2] + 6f && Math.abs(y - gateAt[1]) < gateAt[3] + 6f) {
+            game.throwAtGate();
             swallow = true;
             return;
         }
@@ -167,9 +182,13 @@ final class World {
         }
         flashOut = Math.max(0f, flashOut - dt);
         // birds and planes keep their own time, counted only while the street is in sight
-        fliers.update(dt, bridge == null && game.fight == null && !game.atSea && game.tilt() == 0f);
+        fliers.update(dt, bridge == null && yard == null && game.fight == null && !game.atSea && game.tilt() == 0f);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
+        if (yard != null) {
+            yard.update(dt);
+            return;
+        }
         if (bridge == null) {
             game.cubes = cubes;
             game.update(dt);
@@ -181,12 +200,40 @@ final class World {
                 cubes++;
                 host.saveInt("cubes", cubes);
             }
+            if (game.yardDue) openYard();
         }
+    }
+
+    /** Through the gate, once it has swung wide: into the yard, out of a flash of light. */
+    void openYard() {
+        game.cancel();
+        game.fromYard();
+        yard = new Yard(this, host);
+        flashOut = FLASH_OUT;
+        host.sound(Synth.WHOOSH, 0.6f, 0.7f);
+    }
+
+    /** Out of the yard: back on the street, before the same building, the hammer in hand. */
+    void leaveYard() {
+        yard = null;
+        game.fromYard();
+        flashOut = FLASH_OUT;
+        host.sound(Synth.DOOR, 0.8f, 1f);
     }
 
     /** Whether the back key means something here, rather than leaving the game. */
     boolean wantsBack() {
-        return bridge != null;
+        return bridge != null || yard != null;
+    }
+
+    /** For the desktop stand: where the gate is in the frame: its middle, half its width and height. */
+    float[] standGate() {
+        return gateAt;
+    }
+
+    /** For the desktop stand: into the yard at once. */
+    void standYard() {
+        openYard();
     }
 
     /** For the desktop stand: the cars on the move, the people's solids. */
@@ -275,6 +322,12 @@ final class World {
             intro.flat(f, d);
             return;
         }
+        if (yard != null) {
+            yard.draw(d, f);
+            d.flash = flashOut / FLASH_OUT;
+            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
+            return;
+        }
         float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
         // as the room closes in, the eye drops a little to the plinth, so it sits on the set
         float pitch = -0.2f * game.tilt();
@@ -318,6 +371,8 @@ final class World {
             Ocean.button(time, callAt3);
         } else {
             d.append(still);
+            Street.gate(d, game.gateOpen(), game.yardOpen());
+            gateSeen(d);
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
@@ -337,6 +392,7 @@ final class World {
         // the flat layer: snow at sea, the aim, the version in the corner, and the cost of a frame while the engine is young
         if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
+        if (game.gateReady() && gateAt[0] > -50f) gateGlow(f);
         if (hudInk.used) {
             d.hudRows = Crest.ROWS;
             d.hudFresh = hudInk.fresh;
@@ -347,6 +403,35 @@ final class World {
             String ms = String.valueOf(Math.round(frameMs));
             PixelFont.draw(f, ms, 4, h - 10, 1, 0xCCFFFFFF);
         }
+    }
+
+    private final float[] g0 = new float[2], g1 = new float[2];
+
+    /** The gate ajar calls: a warm light breathing round it, over the open street only. */
+    private void gateGlow(Px f) {
+        float cx = gateAt[0], cy = gateAt[1], ax = gateAt[2] + 9f, ay = gateAt[3] + 9f;
+        float breath = 0.6f + 0.4f * (float) Math.sin(time * 2.4f);
+        for (int y = (int) (cy - ay * 1.6f); y <= cy + ay * 1.6f; y++)
+            for (int x = (int) (cx - ax * 1.6f); x <= cx + ax * 1.6f; x++) {
+                if (x < 0 || y < 0 || x >= f.w || y >= f.h || f.a[y * f.w + x] != 0) continue;
+                float ex = (x + 0.5f - cx) / ax, ey = (y + 0.5f - cy) / ay, r = (float) Math.sqrt(ex * ex + ey * ey);
+                if (r >= 1.6f || r < 0.55f) continue;
+                float k = r < 1f ? (r - 0.55f) / 0.45f : 1f - (r - 1f) / 0.6f;
+                int al = Math.round(120f * k * k * breath);
+                if (al > 0) f.a[y * f.w + x] = (al << 24) | 0xFFB858;
+            }
+    }
+
+    /** Where the gate is in the frame now, for a touch on it. */
+    private void gateSeen(DrawList d) {
+        gateAt[0] = gateAt[1] = -99f;
+        if (game.tilt() > 0f) return;
+        float x = Street.HOUSES_X - 0.1f;
+        if (!d.project(x, 0f, Street.GATE_Z - Street.GATE_HALF, g0) || !d.project(x, Street.GATE_H, Street.GATE_Z + Street.GATE_HALF, g1)) return;
+        gateAt[0] = (g0[0] + g1[0]) * 0.5f;
+        gateAt[1] = (g0[1] + g1[1]) * 0.5f;
+        gateAt[2] = Math.abs(g1[0] - g0[0]) * 0.5f;
+        gateAt[3] = Math.abs(g1[1] - g0[1]) * 0.5f;
     }
 
     /** The number on the plate of the level being played, eased while one turns into the next, for the light. */

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.40
+- The yard. In the houses on the right, where the curb is kept clear, there is a wooden
+  gate. It stays shut until the player has reached the tenth level; then it stands ajar,
+  a lantern lit on each of its posts, a warm light breathing round it. A touch on it sends
+  the hammer flying to knock it wide, at no cost to the round, and the player goes in out
+  of a flash of light.
+- In the yard, an air hockey table. The player's hammer lies flat with its head across the
+  table and the finger slides it about the near half; its head turns with the way it is
+  moved, so a sideways stroke sends the puck off at an angle. Across the table another
+  hammer, dark stone bound in brick red, plays on its own: it guards its goal while the
+  puck is away, gets behind the puck and strikes it at the goal, now and then off a rail.
+- First to five; then the next game at once, as long as the player likes. The score is at
+  the top, the player's on the left. The key in the corner, or the back key, leads out onto
+  the street before the same building, the hammer in hand.
+
 ## 0.39
 - A fight won in the street pays: out of the heap, where her heart beat on the last
   shield, a golden cube comes up, hangs burning, and flies in an arc toward the player; it

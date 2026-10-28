@@ -1,0 +1,53 @@
+# The gate into the yard: the tenth level reached, the gate stands ajar in the houses on the
+# right, its lantern lit; a touch on it, the hammer flies to it, the knock, the leaves swing
+# wide, and in out of a flash of light. At the table the finger slides the hammer about its half and
+# strikes the puck; then the stand's own hand plays on against the other hammer to a few goals;
+# the key in the corner leads back to the street.
+screen 1096 2560
+keep level 11
+keep best 12
+restart
+skip
+wait 2.6
+shot y0
+gatetap
+wait 0.4
+shot y1
+wait 0.5
+shot y2
+wait 0.4
+shot y3
+wait 0.5
+shot y4
+wait 1.4
+yardstate
+shot y5
+down 137 560
+wait 0.3
+move 140 470
+move 145 420
+shot y6
+wait 0.2
+shot y7
+up 145 420
+wait 1
+yardstate
+yardbot 1
+wait 4
+yardstate
+shot y8
+wait 6
+yardstate
+shot y9
+wait 20
+yardstate
+shot y10
+wait 30
+yardstate
+shot y11
+yardbot 0
+down 30 610
+up 30 610
+wait 0.5
+shot y12
+yardstate

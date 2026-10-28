@@ -109,6 +109,14 @@ final class Game implements Physics.Listener {
     static final float PRIZE_NEAR = 6.5f;
     private boolean fightPays, prizeFree, prizeDown;
     private Body prize;
+    // the gate into the yard, in the houses on the right: shut until the player has reached the
+    // tenth level, then ajar. A touch on it sends the hammer to knock it wide, at no cost, and
+    // the world takes the player into the yard (see Yard) once the gate has swung
+    static final int YARD_FROM = 10;
+    static final float GATE_AJAR = 0.3f, GATE_SWING = 0.6f, GATE_IN = 1.15f;
+    private float gateT = -1f;
+    private boolean gateFlight;
+    boolean yardDue;
     /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
     Ink hudInk;
     // the 39th: the first blow that reaches the building shakes the ground, the plinth's near
@@ -506,7 +514,7 @@ final class Game implements Physics.Listener {
 
     /** Whether the hammer is in hand and a finger may aim. */
     boolean ready() {
-        if (hs != HAND) return false;
+        if (hs != HAND || gateT >= 0f) return false;
         if (state == FIGHT) return fight != null && fight.live();
         if (state == PORTAL) return portalIn < 0f && stateTime > PORTAL_RISE;
         return state == PLAY && stars > 0;
@@ -597,6 +605,83 @@ final class Game implements Physics.Listener {
                 }
             } else throwHammer();
         }
+    }
+
+    // ---- the gate into the yard ----
+
+    /** Whether the gate is ajar: in town, once the player has got as far as the tenth level. */
+    boolean yardOpen() {
+        return !atSea && level < SEA_FROM && Math.max(level + 1, host.loadInt("best")) >= YARD_FROM;
+    }
+
+    /** How far the gate stands open, 0 to 1. */
+    float gateOpen() {
+        if (!yardOpen()) return 0f;
+        if (gateT < 0f) return GATE_AJAR;
+        float k = Math.min(1f, gateT / GATE_SWING);
+        return GATE_AJAR + (1f - GATE_AJAR) * k * k * (3f - 2f * k);
+    }
+
+    /** Whether a touch on the gate would go in: the gate ajar, a round on, the hammer in hand. */
+    boolean gateReady() {
+        return yardOpen() && fight == null && state == PLAY && hs == HAND && !aiming && gateT < 0f && tilt() == 0f;
+    }
+
+    /** The hammer thrown at the gate: free, the plain hammer whatever is in hand, at the middle of the gate. */
+    void throwAtGate() {
+        float tx = Street.HOUSES_X - 0.15f, ty = Street.GATE_H * 0.5f, tz = Street.GATE_Z;
+        handPoint(tmp);
+        float sx = tmp[0], sy = tmp[1], sz = tmp[2];
+        float dx = tx - sx, dy = ty - sy, dz = tz - sz;
+        // far down the street: it flies hard and flat, like the diamond hammer
+        float t = Math.max(0.7f, (float) Math.sqrt(dx * dx + dy * dy + dz * dz) / 36f);
+        hammer.ghost = true;
+        hammer.asleep = false;
+        float yaw = (float) Math.atan2(ahead[0], ahead[2]);
+        hammer.setPose(sx, sy, sz, (float) Math.cos(yaw / 2), 0f, (float) Math.sin(yaw / 2), 0f);
+        hammer.vx = dx / t;
+        hammer.vy = dy / t - 0.5f * Physics.G * t;
+        hammer.vz = dz / t;
+        spinSign = -1f;
+        hammer.wy = -15f;
+        hammer.wx = 0.6f;
+        hammer.savePrev();
+        flightTime = t;
+        gateFlight = true;
+        goldThrow = false;
+        heavyThrow = false;
+        journal.line(clock, String.format(java.util.Locale.ROOT, "throw at the gate into the yard, %.2f s in the air", t));
+        hs = FLY;
+        hsTime = 0f;
+        power = 0f;
+        host.sound(Synth.WHOOSH, 0.9f, 1.4f);
+        host.buzz(12);
+    }
+
+    /** The hammer meets the gate: a knock on the wood, the leaves swing wide, the hammer comes back. */
+    private void knockGate() {
+        gateFlight = false;
+        gateT = 0f;
+        host.sound(Synth.WOOD, 1.1f, 0.55f);
+        host.sound(Synth.DOOR, 0.9f, 0.9f);
+        host.buzz(50);
+        hammer.px = Math.min(hammer.px, Street.HOUSES_X - 0.3f);
+        beginReturn();
+    }
+
+    /** Back from the yard: the gate ajar again, the hammer in hand, the round as it was. */
+    void fromYard() {
+        gateT = -1f;
+        gateFlight = false;
+        yardDue = false;
+        if (hs != HAND) {
+            hammer.ghost = true;
+            hammer.vx = hammer.vy = hammer.vz = hammer.wx = hammer.wy = hammer.wz = 0f;
+            hs = HAND;
+            hsTime = 0f;
+        }
+        aiming = false;
+        power = 0f;
     }
 
     /** Where the hammer in hand is on screen, the other one at the lower left, and the marks. */
@@ -999,6 +1084,7 @@ final class Game implements Physics.Listener {
         if (winSky >= 0f && (winSky += dt) > 2.4f) winSky = -1f;
         if (wake >= 0f && (wake += dt) > 1.8f) wake = -1f;
         clock += dt;
+        if (gateT >= 0f && (gateT += dt) >= GATE_IN) yardDue = true;
         stateTime += dt;
         acc += dt;
         int steps = 0;
@@ -1117,6 +1203,15 @@ final class Game implements Physics.Listener {
         if (hs == FLY && fight != null) {
             // the diamond hammer comes back at once from whatever it met, or missed
             if (hsTime > flightTime + 0.35f || hammer.py < 0.25f || hammer.pz > fight.giant.z + 4f) beginReturn();
+        } else if (hs == FLY && gateFlight) {
+            // the hammer flies through the air to the gate, nothing in its way
+            hammer.vy += Physics.G * dt;
+            hammer.px += hammer.vx * dt;
+            hammer.py += hammer.vy * dt;
+            hammer.pz += hammer.vz * dt;
+            hammer.rotateBy(0f, spinSign * 15f * dt, 0f);
+            hammer.updateR();
+            if (hammer.px >= Street.HOUSES_X - 0.3f || hsTime > flightTime + 1f) knockGate();
         } else if (hs == FLY) {
             if (hsTime > flightTime + 0.6f && (hammer.speed2() < 4f || hammer.py < 0.4f || hammer.pz > Builder.CZ + 4f)
                     || hsTime > flightTime + 2.2f || hammer.pz > Builder.CZ + 16f) beginReturn();
