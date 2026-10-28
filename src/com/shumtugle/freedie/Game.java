@@ -126,7 +126,11 @@ final class Game implements Physics.Listener {
     private boolean crossDue;
     private float crossT;
     static final float TURN_T = 0.9f;          // half a turn
-    static final float PLINTH_CALL = 2.5f;     // how long before the empty plinth begins to glow
+    static final float PLINTH_CALL = 2.0f;     // how long after the glance the empty plinth begins to glow
+    // the glance that shows the head turns: once the eye is down at a crossroads, a moment's
+    // pause, then a look to the right and a hold, across to the left and a hold, and back
+    static final float GLANCE = 65f * (float) Math.PI / 180f, GLANCE_WAIT = 0.5f, GLANCE_SWEEP = 0.6f, GLANCE_HOLD = 0.45f;
+    private float glanceT = -1f;
     private int facing;                        // 0 the plinth, 2 behind
     private float faceFrom, faceTo, faceT = -1f;
     private float faceYaw;                     // the turn now, radians, eased
@@ -705,6 +709,7 @@ final class Game implements Physics.Listener {
     private void enterCross() {
         setState(CROSS);
         crossT = 0f;
+        glanceT = 0f;
         facing = 0;
         faceYaw = 0f;
         faceT = -1f;
@@ -729,6 +734,11 @@ final class Game implements Physics.Listener {
         return state == CROSS && faceT < 0f && !fromSky && tilt() == 0f;
     }
 
+    /** Whether the crossroads is quiet: the head not turning, nor glancing of itself. */
+    boolean crossStill() {
+        return turnReady() && glanceT < 0f;
+    }
+
     /** Which way the view faces now, or is turning to: 0 the plinth, 2 behind. */
     int facing() {
         return facing;
@@ -739,8 +749,40 @@ final class Game implements Physics.Listener {
         return facing != 0 || faceT >= 0f || faceYaw != 0f;
     }
 
+    /** Whether the head is still glancing round of itself. */
+    boolean glancing() {
+        return glanceT >= 0f;
+    }
+
+    private float glanceEnd() {
+        return GLANCE_WAIT + 2f * GLANCE_SWEEP + 1.6f * GLANCE_SWEEP + 2f * GLANCE_HOLD;
+    }
+
+    /**
+     * The glance's turn at a time: right, a hold, across to the left (a longer sweep, as far
+     * again), a hold, and back; each sweep eased, a soft rush of air as each begins.
+     */
+    private float glanceAt(float t, float was) {
+        float[] len = {GLANCE_WAIT, GLANCE_SWEEP, GLANCE_HOLD, 1.6f * GLANCE_SWEEP, GLANCE_HOLD, GLANCE_SWEEP};
+        float[] to = {0f, GLANCE, GLANCE, -GLANCE, -GLANCE, 0f};
+        float from = 0f, at = 0f;
+        for (int i = 0; i < len.length; i++) {
+            if (len[i] > GLANCE_HOLD + 0.01f && i > 0 && was < at && t >= at) host.sound(Synth.WHOOSH, 0.22f, 0.8f);
+            if (t < at + len[i]) {
+                float k = (t - at) / len[i];
+                float e = k * k * (3f - 2f * k);
+                return from + (to[i] - from) * e;
+            }
+            from = to[i];
+            at += len[i];
+        }
+        return 0f;
+    }
+
     /** Half a turn about the player's own upright, by the right (1) or by the left (-1). */
     void turnAround(int dir) {
+        // a swipe in the middle of the glance takes the head from wherever it is
+        glanceT = -1f;
         facing = facing == 0 ? 2 : 0;
         faceFrom = faceYaw;
         // the shorter way round is not asked: the swipe says which, and the turn goes that way
@@ -756,7 +798,17 @@ final class Game implements Physics.Listener {
 
     /** The turn eased along; off the crossroads the view goes back to the plinth. */
     private void turnStep(float dt) {
-        if (state == CROSS) crossT += dt;
+        boolean down = !fromSky && tilt() == 0f;
+        if (state != CROSS) glanceT = -1f;
+        if (glanceT >= 0f && faceT < 0f && down) {
+            float was = glanceT;
+            glanceT += dt;
+            faceYaw = glanceAt(glanceT, was);
+            if (glanceT >= glanceEnd()) {
+                glanceT = -1f;
+                faceYaw = 0f;
+            }
+        } else if (state == CROSS && down) crossT += dt;
         if (state != CROSS && facing != 0 && faceT < 0f) turnAround(1);
         if (faceT < 0f) return;
         faceT += dt;

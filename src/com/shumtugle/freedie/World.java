@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.48";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.49";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -220,7 +220,7 @@ final class World {
 
     /** The marks teach the turn: shown at a crossroads until the player has turned by a swipe. */
     private boolean marksShown() {
-        return game.turnReady() && host.loadInt("swiped") == 0;
+        return game.crossStill() && host.loadInt("swiped") == 0;
     }
 
     // the marks: where they sit, as a share of the frame's height, half their height to the touch,

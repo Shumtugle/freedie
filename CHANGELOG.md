@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.49
+- At the crossroads the head shows it can turn: once the eye is down, a moment's pause,
+  then of itself it looks 65 degrees to the right, holds, sweeps across to 65 to the left,
+  holds, and comes back, a soft rush of air with each sweep. A swipe in the middle takes
+  the head from wherever it is. The marks at the edges come after the glance, and the
+  empty plinth begins to glow two seconds after it.
+
 ## 0.48
 - No more white light between episodes: the room lets the eye down onto the next building
   as between any two levels, and the street runs on without a seam. The light is kept for
