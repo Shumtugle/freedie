@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.38
+- The crest at the top is drawn at the screen's own grain, round and soft-edged, with a
+  soft shadow under every part, over the pixel street: gold stars with a light heart and a
+  glint, a medallion lit from the upper left with the number in round digits, a rounded bar
+  with its flag, little golden cubes.
+- Only what the player has is shown: the stars left, no empty places; one heavy hammer and
+  how many instead of rows of marks. The ring round the medallion fills with gold toward the
+  golden hammer instead of ripening to red.
+- It lives: a blow on the building jolts the medallion, harder the harder the blow, with a
+  ring of shock off its rim; a building felled turns it over like a coin to the next number;
+  with the golden hammer in hand it burns, a glow of fire round it, a white heart, tongues
+  licking up the rim. A star spent rolls away and melts; the bar follows what is down a
+  little behind; a heavy hammer given drops in and bounces; a cube gained swells in the rack.
+- Drawn only when something on it changes; what does not move is drawn once and laid down.
+
 ## 0.37
 - Water bottles of clear plastic: the street shows through their pale blue skin, whiter at
   the rims, ribbed round the body, with a hard glint of the sun and a soft streak down the

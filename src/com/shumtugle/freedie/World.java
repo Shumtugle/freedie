@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.37";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.38";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -46,6 +46,7 @@ final class World {
     float sceneTime;
     float frameMs;                           // how long the last frame took, set by the shell
     private final Game game;                  // the building on the plinth, and the hammer
+    private Ink hudInk;
     private final People people = new People(20, 0x5EE7L, 1.2f);   // up and down the street, and right by the eye
     private final Fliers fliers = new Fliers();                     // far off in the sky, seldom
 
@@ -259,6 +260,15 @@ final class World {
         else if (intro == null) Daylight.light(d, plate());
         java.util.Arrays.fill(d.flat, 0);
         Px f = flat(d);
+        // the fine layer over the top, for the crest: kept from frame to frame (the crest redraws
+        // it only when something on it changes), handed over only if the crest is shown
+        if (hudInk == null || hudInk.w != W * Crest.K) hudInk = new Ink(W * Crest.K, Crest.ROWS * Crest.K);
+        hudInk.used = false;
+        d.hud = hudInk.a;
+        d.hudW = hudInk.w;
+        d.hudH = hudInk.h;
+        d.hudRows = 0;
+        game.hudInk = hudInk;
         if (intro != null) {
             intro.frame(d, W);
             intro.draw(d);
@@ -327,6 +337,11 @@ final class World {
         // the flat layer: snow at sea, the aim, the version in the corner, and the cost of a frame while the engine is young
         if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
+        if (hudInk.used) {
+            d.hudRows = Crest.ROWS;
+            d.hudFresh = hudInk.fresh;
+            hudInk.fresh = false;
+        }
         PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
         if (frameMs > 0f) {
             String ms = String.valueOf(Math.round(frameMs));

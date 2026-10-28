@@ -100,6 +100,8 @@ final class Game implements Physics.Listener {
     private boolean chapterDue;
     // a cube given on the console, for the world to put in the rack
     boolean cubeGift;
+    /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
+    Ink hudInk;
     // the 39th: the first blow that reaches the building shakes the ground, the plinth's near
     // left corner breaks off at its foot and a golden cube rolls out of it onto the asphalt;
     // the cube lies there till the round is over and is given on the console; the corner
@@ -585,8 +587,7 @@ final class Game implements Physics.Listener {
 
     /** Where the hammer in hand is on screen, the other one at the lower left, and the marks. */
     private boolean onHammer(float x, float y) {
-        int rows = Math.max(1, (heavyShown + Crest.ROW - 1) / Crest.ROW);
-        return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 32f + (rows - 1) * 10f);
+        return (x > fw * 0.58f && y > fh * 0.7f) || (x < fw * 0.34f && y > fh * 0.8f) || (x < 130f && y < 46f);
     }
 
     /** What a body is, in a word or two, for the journal. */
@@ -1596,6 +1597,8 @@ final class Game implements Physics.Listener {
             journal.line(clock, String.format(java.util.Locale.ROOT, "the hammer hits %s at (%.2f, %.2f, %.2f) m, %.1f m/s",
                     what(other), x, y, z, speed));
         }
+        // a blow on the building jolts the medallion at the top
+        if (hammerHit && other != null && fight == null && pieces.contains(other)) crest.hit(speed);
         // the 39th, the first blow to reach the building: the ground shakes
         if (hammerHit && level == CHIP_LEVEL && !chipped && chipT < 0f && fight == null && other != null && pieces.contains(other))
             chipT = 0f;
@@ -2442,25 +2445,10 @@ final class Game implements Physics.Listener {
         }
     }
 
-    /** The crest as a level about to open shows it: whole stars, nothing down yet, so many cubes in the rack. */
-    void crestFor(Px f, int lv, int cubesShown) {
-        Crest c = crest;
-        c.level = lv;
-        c.stars = STARS;
-        c.cubes = cubesShown;
-        c.heavyShown = heavyShown;
-        c.heavyLeft = heavyLeft;
-        c.heavyOn = heavyOn;
-        c.goldOn = false;
-        c.won = false;
-        c.knocked = 0f;
-        c.markT = -1f;
-        c.draw(f);
-    }
-
     /** The crest at the top, with what it has to show this frame. */
     private void hud(Px f) {
         Crest c = crest;
+        c.ink = hudInk;
         c.level = level;
         c.stars = stars;
         c.cubes = cubes;

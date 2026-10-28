@@ -1,0 +1,64 @@
+# The crest living: a golden throw jolts the medallion and burns it; the building felled
+# turns it over like a coin to the next number; the heavy hammers given drop in and bounce.
+screen 1096 2560
+keep level 3
+keep fails 5
+keep gifts 2
+keep cubes 3
+restart
+skip
+wait 2.6
+shot a0_gold
+down 137 420
+wait 1.0
+up 137 420
+wait 0.07
+shot a01
+wait 0.07
+shot a02
+wait 0.07
+shot a03
+wait 0.07
+shot a04
+wait 0.07
+shot a05
+wait 0.07
+shot a06
+wait 0.07
+shot a07
+wait 0.07
+shot a08
+wait 0.07
+shot a09
+wait 0.07
+shot a10
+wait 0.07
+shot a11
+wait 0.07
+shot a12
+wait 0.07
+shot a13
+wait 0.07
+shot a14
+wait 0.6
+shot b0
+wait 0.12
+shot b01
+wait 0.12
+shot b02
+wait 0.12
+shot b03
+wait 0.12
+shot b04
+wait 0.12
+shot b05
+wait 0.12
+shot b06
+wait 0.12
+shot b07
+wait 0.12
+shot b08
+wait 0.12
+shot b09
+wait 0.12
+shot b10

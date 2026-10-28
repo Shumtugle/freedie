@@ -56,7 +56,7 @@ function program(gl, vs, fs) {
   return p;
 }
 
-async function render(canvas, frame, flatImage, scale, shaderDir) {
+async function render(canvas, frame, flatImage, scale, shaderDir, hudImage) {
   const W = frame.w, H = frame.h;
   canvas.width = W * scale;
   canvas.height = H * scale;
@@ -142,6 +142,18 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, flatImage);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  // the fine layer over the top (the crest), premultiplied, smooth
+  const hudTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, hudTex);
+  if (hudImage) {
+    gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, hudImage);
+  } else gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
   // what the mirror sees
   const cubeTex = gl.createTexture();
@@ -302,6 +314,10 @@ async function render(canvas, frame, flatImage, scale, shaderDir) {
   gl.uniform1f(u(blitP, 'uBlur'), frame.blur || 0);
   gl.uniform3fv(u(blitP, 'uGrade'), frame.grade || [1, 1, 0]);
   gl.uniform1f(u(blitP, 'uBolt'), frame.bolt || 0);
+  gl.activeTexture(gl.TEXTURE2);
+  gl.bindTexture(gl.TEXTURE_2D, hudTex);
+  gl.uniform1i(u(blitP, 'uHud'), 2);
+  gl.uniform1f(u(blitP, 'uHudRows'), hudImage ? (frame.hudRows || 0) : 0);
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();

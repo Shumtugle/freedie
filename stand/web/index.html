@@ -9,7 +9,7 @@
 <canvas id="c"></canvas>
 <script src="gfx.js"></script>
 <script>
-// index.html?frame=<frame.json>&flat=<flat.png>&scale=4 draws one frame the stand wrote out
+// index.html?frame=<frame.json>&flat=<flat.png>[&hud=<hud.png>]&scale=4 draws one frame the stand wrote out
 (async () => {
   const q = new URLSearchParams(location.search);
   try {
@@ -17,7 +17,14 @@
     const img = new Image();
     img.src = q.get('flat');
     await img.decode();
-    await render(document.getElementById('c'), frame, img, +(q.get('scale') || 4), q.get('shaders') || '../../assets/shaders/');
+    // the fine layer over the top, if the frame has one
+    let hud = null;
+    if (frame.hudRows > 0 && q.get('hud')) {
+      hud = new Image();
+      hud.src = q.get('hud');
+      await hud.decode();
+    }
+    await render(document.getElementById('c'), frame, img, +(q.get('scale') || 4), q.get('shaders') || '../../assets/shaders/', hud);
     window.DONE = 'ok';
   } catch (e) {
     window.DONE = 'error: ' + e.message;

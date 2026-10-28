@@ -273,6 +273,12 @@ public final class Stand implements World.Host {
         BufferedImage img = new BufferedImage(list.w, list.h, BufferedImage.TYPE_INT_ARGB);
         img.setRGB(0, 0, list.w, list.h, list.flat, 0, list.w);
         ImageIO.write(img, "png", new File(out, name + ".flat.png"));
+        // the fine layer over the top (the crest), when the frame has one: its pixels as they are, premultiplied
+        if (list.hudRows > 0 && list.hud != null) {
+            BufferedImage hi = new BufferedImage(list.hudW, list.hudH, BufferedImage.TYPE_INT_ARGB);
+            hi.setRGB(0, 0, list.hudW, list.hudH, list.hud, 0, list.hudW);
+            ImageIO.write(hi, "png", new File(out, name + ".hud.png"));
+        }
         System.out.println(String.format("%7.2fs  %s (%d boxes)", time, name, list.count));
     }
 }

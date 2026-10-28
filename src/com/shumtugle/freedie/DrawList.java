@@ -40,6 +40,11 @@ final class DrawList {
     static final int STRIDE = 19;
 
     int w, h;                                  // the frame, in game pixels
+    // the fine layer over the top of the frame (the crest): so many pixels to a frame pixel,
+    // covering so many frame rows from the top; none drawn this frame, none
+    int[] hud;
+    int hudW, hudH, hudRows;
+    boolean hudFresh;                          // drawn anew since it was last handed on
     final float[] viewProj = new float[16];    // world to clip, column after column
     final float[] lightProj = new float[16];   // world to the sun's depth map
     final float[] eye = new float[3], right = new float[3], up = new float[3], ahead = new float[3];
@@ -268,6 +273,7 @@ final class DrawList {
     String json() {
         StringBuilder s = new StringBuilder(64 + count * STRIDE * 10);
         s.append("{\"w\":").append(w).append(",\"h\":").append(h).append(",\"focal\":").append(focal);
+        s.append(",\"hudRows\":").append(hudRows);
         arr(s, "viewProj", viewProj);
         arr(s, "lightProj", lightProj);
         arr(s, "eye", eye);

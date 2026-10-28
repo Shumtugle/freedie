@@ -18,6 +18,8 @@ uniform float uTime;
 uniform float uBlur;      // out of focus by so many frame pixels, waking from the dark
 uniform vec3 uGrade;      // the hour's grade: contrast, saturation, warmth
 uniform float uBolt;      // lightning just now: the whole frame lit cold for a moment
+uniform sampler2D uHud;   // the fine layer over the top of the frame (the crest), premultiplied
+uniform float uHudRows;   // how many frame rows it covers from the top; none, 0
 
 out vec4 outColor;
 
@@ -79,6 +81,13 @@ void main() {
     }
     vec4 flat2 = texture(uFlat, vec2(uv.x, 1.0 - uv.y));
     vec3 c = mix(scene, flat2.rgb, flat2.a);
+    if (uHudRows > 0.0) {
+        float gy = (1.0 - uv.y) * float(textureSize(uFlat, 0).y);
+        if (gy < uHudRows) {
+            vec4 hd = texture(uHud, vec2(uv.x, gy / uHudRows));
+            c = c * (1.0 - hd.a) + hd.rgb;
+        }
+    }
     if (uFlash > 0.0) {
         // streaks drawn in toward the middle, longer as the flash grows
         vec3 sum = c;

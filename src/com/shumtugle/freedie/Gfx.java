@@ -34,12 +34,13 @@ final class Gfx {
 
     private int boxP, shadowP, skyP, blitP, ballP, ballShadowP;
     private int vao, empty, cubeBuf, instBuf, ballVao, ballBuf;
-    private int shadowTex, shadowFb, sceneTex, sceneFb, depthRb, flatTex;
+    private int shadowTex, shadowFb, sceneTex, sceneFb, depthRb, flatTex, hudTex, hudW, hudH;
     private int cubeTex, cubeFb, cubeDepth;
     private final float[] faceProj = new float[16], faceEye = new float[3], halo = new float[4];
     private int frameW, frameH;
     private FloatBuffer inst, ballInst;
-    private IntBuffer flat;
+    private IntBuffer flat, hudBuf;
+    private int[] hudSwizzled;
     private int[] swizzled;
 
     /** Everything that belongs to a GL context; called again whenever the context is new. */
@@ -102,6 +103,7 @@ final class Gfx {
         GLES30.glFramebufferRenderbuffer(GLES30.GL_FRAMEBUFFER, GLES30.GL_DEPTH_ATTACHMENT, GLES30.GL_RENDERBUFFER, cubeDepth);
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0);
         frameW = frameH = 0;
+        hudTex = 0;
     }
 
     /** A vertex array: the cube's corners, and one box after another from the given buffer. */
@@ -185,6 +187,33 @@ final class Gfx {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, flatTex);
         GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 4);
         GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, d.w, d.h, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, flat);
+        // the fine layer over the top, when there is one: smooth, premultiplied
+        boolean newHud = hudTex == 0 || hudW != d.hudW || hudH != d.hudH;
+        if (d.hudRows > 0 && d.hud != null && (d.hudFresh || newHud)) {
+            if (newHud) {
+                if (hudTex != 0) GLES30.glDeleteTextures(1, new int[]{hudTex}, 0);
+                int[] t = new int[1];
+                GLES30.glGenTextures(1, t, 0);
+                hudTex = t[0];
+                hudW = d.hudW;
+                hudH = d.hudH;
+                GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
+                GLES30.glTexStorage2D(GLES30.GL_TEXTURE_2D, 1, GLES30.GL_RGBA8, hudW, hudH);
+                params(GLES30.GL_LINEAR);
+                hudBuf = ByteBuffer.allocateDirect(hudW * hudH * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
+                hudSwizzled = new int[hudW * hudH];
+            }
+            int[] hs = d.hud, hd = hudSwizzled;
+            for (int i = 0; i < hd.length; i++) {
+                int c = hs[i];
+                hd[i] = (c & 0xFF00FF00) | ((c >> 16) & 0xFF) | ((c & 0xFF) << 16);
+            }
+            hudBuf.clear();
+            hudBuf.put(hd).position(0);
+            GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
+            GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT, 4);
+            GLES30.glTexSubImage2D(GLES30.GL_TEXTURE_2D, 0, 0, 0, hudW, hudH, GLES30.GL_RGBA, GLES30.GL_UNSIGNED_BYTE, hudBuf);
+        }
 
         GLES30.glEnable(GLES30.GL_DEPTH_TEST);
         GLES30.glDisable(GLES30.GL_CULL_FACE);
@@ -248,6 +277,10 @@ final class Gfx {
         GLES30.glUniform1f(u(blitP, "uBlur"), d.blur);
         GLES30.glUniform3fv(u(blitP, "uGrade"), 1, d.grade, 0);
         GLES30.glUniform1f(u(blitP, "uBolt"), d.bolt);
+        GLES30.glActiveTexture(GLES30.GL_TEXTURE2);
+        GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
+        GLES30.glUniform1i(u(blitP, "uHud"), 2);
+        GLES30.glUniform1f(u(blitP, "uHudRows"), hudTex != 0 ? d.hudRows : 0f);
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
