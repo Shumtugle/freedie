@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.45
+- The room between rounds is the world again, not a screen laid over it: the new picture
+  is brought down to the world's own grain, as on the bridge, and laid into the frame
+  under the crest. Its digits, keys, bank and the hammer that knocks the buttons keep the
+  new shapes, at the coarse grain.
+- The crest counts tries up, not down: the first petal is lit as soon as a level opens,
+  the second try shows two, and so on to five. The medallion's face warms with each try,
+  from green toward gold.
+
 ## 0.44
 - The room between rounds is drawn smooth, as the crest is: on a fine layer over all of
   the frame at twice its grain, soft-edged. The still room is a new picture (deflated in

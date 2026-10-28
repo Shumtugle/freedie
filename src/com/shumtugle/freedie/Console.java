@@ -16,10 +16,11 @@ import java.util.Calendar;
  * the next channel, and the room draws back off the street, where the next building is
  * already coming down.
  *
- * All of it is drawn on a fine layer over the frame, at twice the frame's grain, smooth and
- * soft-edged as the crest is: the still parts of the room are a picture read from an asset
- * (deflated), the tube in it left clear for the street to show through; the glass, the digits,
- * the buttons and the hammer are drawn over it every frame.
+ * The room is a place in the world, not writing over it, so it is drawn at the world's own
+ * grain, as the street is, and laid on the flat layer: the still parts are a picture read
+ * from an asset (deflated, drawn finer and brought down here, so its forms are clean), the
+ * tube in it left clear for the street to show through; the glass, the digits, the buttons
+ * and the hammer are drawn over it every frame with clean edges, a pixel soft.
  */
 final class Console {
     // the buttons, left to right
@@ -56,15 +57,45 @@ final class Console {
         if ((b[0] & 0xFF) == 0x78) b = inflate(b);
         if (b == null || b.length < 4) return;
         int w = ((b[0] & 0xFF) << 8) | (b[1] & 0xFF), h = ((b[2] & 0xFF) << 8) | (b[3] & 0xFF);
-        if (b.length < 4 + w * h * 4) return;
-        art = new int[w * h];
-        for (int k = 0, p = 4; k < art.length; k++, p += 4) {
-            int al = b[p + 3] & 0xFF;
-            int r = (b[p] & 0xFF) * al / 255, g = (b[p + 1] & 0xFF) * al / 255, bl = (b[p + 2] & 0xFF) * al / 255;
-            art[k] = (al << 24) | (r << 16) | (g << 8) | bl;
+        if ((long) b.length < 4L + (long) w * h * 4L) return;
+        // drawn finer than it is shown: each pixel here the mean of those it covers, premultiplied
+        int q = Math.max(1, w / (World.W * Q)), aw = w / q, ah = h / q, n = q * q;
+        art = new int[aw * ah];
+        for (int y = 0; y < ah; y++)
+            for (int x = 0; x < aw; x++) {
+                int sa = 0, sr = 0, sg = 0, sb = 0;
+                for (int j = 0; j < q; j++)
+                    for (int i = 0; i < q; i++) {
+                        int p = 4 + ((y * q + j) * w + x * q + i) * 4, al = b[p + 3] & 0xFF;
+                        sa += al;
+                        sr += (b[p] & 0xFF) * al / 255;
+                        sg += (b[p + 1] & 0xFF) * al / 255;
+                        sb += (b[p + 2] & 0xFF) * al / 255;
+                    }
+                art[y * aw + x] = (sa / n << 24) | (sr / n << 16) | (sg / n << 8) | (sb / n);
+            }
+        artW = aw;
+        artH = ah;
+    }
+
+    /** The room, drawn on its layer (premultiplied), laid over the flat layer (straight colours). */
+    static void over(Px f, Ink room) {
+        int[] d = f.a, s = room.a;
+        int n = Math.min(d.length, s.length);
+        for (int i = 0; i < n; i++) {
+            int c = s[i], sa = c >>> 24;
+            if (sa == 0) continue;
+            if (sa == 255) {
+                d[i] = c;
+                continue;
+            }
+            int o = d[i], da = o >>> 24, keep = da * (255 - sa) / 255, oa = sa + keep;
+            if (oa == 0) continue;
+            int r = (((c >> 16) & 0xFF) * 255 + ((o >> 16) & 0xFF) * keep) / oa;
+            int g = (((c >> 8) & 0xFF) * 255 + ((o >> 8) & 0xFF) * keep) / oa;
+            int b = ((c & 0xFF) * 255 + (o & 0xFF) * keep) / oa;
+            d[i] = (oa << 24) | (Math.min(255, r) << 16) | (Math.min(255, g) << 8) | Math.min(255, b);
         }
-        artW = w;
-        artH = h;
     }
 
     /** A deflated asset, inflated; null if it will not inflate. */
@@ -168,8 +199,8 @@ final class Console {
 
     // ---- drawing, on the fine layer ----
 
-    /** Layer pixels to a frame pixel. */
-    static final int Q = 2;
+    /** Layer pixels to a frame pixel: the room is at the world's own grain. */
+    static final int Q = 1;
 
     /**
      * The room over the frame, as far as it has closed in (0: not at all, 1: only the tube

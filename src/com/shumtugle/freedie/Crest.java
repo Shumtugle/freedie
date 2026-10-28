@@ -3,8 +3,9 @@ package com.shumtugle.freedie;
 /**
  * The top of the frame during a level, laid out like a coat of arms and drawn at the screen's
  * own grain, round and soft-edged, over the street. In the middle a medallion with the level's
- * number, and round it a ring of five segments that fill with gold as the attempts at this
- * level add up toward the golden hammer. On the left wing the stars left, nearest first, and
+ * number, and round it a ring of five petals: the attempt at this level it is, one petal lit
+ * gold for each, the first lit as soon as the level opens; the face warms from green toward
+ * gold with them, and the ring full, a fifth attempt lost, the golden hammer comes. On the left wing the stars left, nearest first, and
  * under them the heavy hammers, one hammer and how many; on the right wing the way through
  * the level, a bar filling toward a flag as the building comes down, and under it the golden
  * cubes in the rack.
@@ -233,8 +234,8 @@ final class Crest {
         }
         g.blit(medal, mx - MS * 0.5f, my - MS * 0.5f, 1f);
         // the newest attempt flashing white as it lights
-        if (!goldOn && failsShown > 0 && failFlash >= 0f && failFlash < 0.8f) {
-            int s = failsShown - 1;
+        if (!goldOn && failsShown > 0 && failsShown < TRIES && failFlash >= 0f && failFlash < 0.8f) {
+            int s = failsShown;
             g.ring(mx, my, r + 1.2f * K, r + 4f * K, s / (float) TRIES + 0.018f, (s + 1) / (float) TRIES - 0.018f, 0xFFFFFFFF,
                     1f - failFlash / 0.8f);
         }
@@ -279,10 +280,14 @@ final class Crest {
         g.disc(mx + 3, my + 7, r + 4 * K, SHADOW, 9f, 0.28f);
         for (int s = 0; s < TRIES; s++) {
             float t0 = s / (float) TRIES + 0.018f, t1 = (s + 1) / (float) TRIES - 0.018f;
-            int c = goldOn ? 0xFFFFB23A : s < failsShown ? GOLD : INK;
-            g.ring(mx, my, r + 1.2f * K, r + 4f * K, t0, t1, c, goldOn || s < failsShown ? 1f : 0.62f);
+            // the petals: one for each attempt, this one too
+            boolean on = s <= failsShown;
+            int c = goldOn ? 0xFFFFB23A : on ? GOLD : INK;
+            g.ring(mx, my, r + 1.2f * K, r + 4f * K, t0, t1, c, goldOn || on ? 1f : 0.62f);
         }
-        int face = goldOn ? 0xFFF08A1E : GREEN, faceLit = goldOn ? 0xFFFFE6A0 : GREEN_LIT;
+        // the face warms from green toward gold, attempt by attempt
+        float warm = Math.min(1f, failsShown / (float) (TRIES - 1)) * 0.85f;
+        int face = goldOn ? 0xFFF08A1E : mix(GREEN, 0xFFE8B83C, warm), faceLit = goldOn ? 0xFFFFE6A0 : mix(GREEN_LIT, 0xFFFFE6A0, warm);
         g.disc(mx, my, r, face, 1f, 1f);
         g.disc(mx - r * 0.18f, my - r * 0.22f, r * 0.72f, faceLit, r * 0.55f, 0.7f);
         g.ring(mx, my, r - 1.2f * K, r + 0.4f * K, 0f, 1f, INK, 1f);

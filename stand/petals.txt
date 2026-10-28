@@ -1,0 +1,29 @@
+# The petals round the level's medallion: the first lit as soon as the level opens; each
+# attempt lost lights the next, the face warming from green toward gold.
+screen 1096 2560
+keep level 11
+keep best 12
+restart
+skip
+wait 2.6
+shot p1
+keep fails 1
+restart
+skip
+wait 2.6
+shot p2
+keep fails 2
+restart
+skip
+wait 2.6
+shot p3
+keep fails 4
+restart
+skip
+wait 2.6
+shot p5
+keep fails 5
+restart
+skip
+wait 2.6
+shot p6
