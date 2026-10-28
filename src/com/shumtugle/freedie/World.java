@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.45";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.46";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -78,6 +78,11 @@ final class World {
 
     private Prelude intro;
     private boolean swallow;                  // the touch that skipped the opening, until it lifts
+    // a touch on a mark at the edge of the frame, held back until it shows itself: lifted at
+    // once it turns the view; moved or held, it was the start of an aim after all
+    static final float MARK_TAP = 0.25f, MARK_STILL = 6f;
+    private int markSide;
+    private float markAt, markX, markY;
     private float flashOut;                   // the flash fading off the game, seconds left
 
     World(Host host) {
@@ -150,17 +155,101 @@ final class World {
             return;
         }
         // a touch on the gate, ajar: the hammer goes to knock it open
-        if (type == DOWN && game.gateReady() && Math.abs(x - gateAt[0]) < gateAt[2] + 6f && Math.abs(y - gateAt[1]) < gateAt[3] + 6f) {
+        if (type == DOWN && game.gateReady() && gateAt[0] > -50f && Math.abs(x - gateAt[0]) < gateAt[2] + 6f && Math.abs(y - gateAt[1]) < gateAt[3] + 6f) {
             game.throwAtGate();
             swallow = true;
             return;
         }
+        // a touch on a mark at the edge: wait and see whether it is a tap
+        if (type == DOWN && game.turnReady() && markOn(x, y) != 0) {
+            markSide = markOn(x, y);
+            markAt = time;
+            markX = x;
+            markY = y;
+            return;
+        }
+        if (markSide != 0) {
+            boolean still = Math.hypot(x - markX, y - markY) < MARK_STILL;
+            if (type == UP && still && time - markAt < MARK_TAP) {
+                game.turn(markSide);
+                host.saveInt("looked", 1);
+                markSide = 0;
+                return;
+            }
+            if (type == MOVE && still) return;
+            // moved off, or lifted late: an aim begun on the mark
+            markLetGo();
+        }
+        // turned away from the building, the hammer is not thrown
+        if (game.turned()) return;
         game.touch(type, x, y);
+    }
+
+    /** A touch held on a mark is no tap: it goes to the game as the aim it is, from where it came down. */
+    private void markLetGo() {
+        markSide = 0;
+        if (!game.turned()) game.touch(DOWN, markX, markY);
+    }
+
+    /** Which mark a touch is on: -1 the left, 1 the right, 0 none; only the marks shown count. */
+    private int markOn(float x, float y) {
+        if (Math.abs(y - h * MARK_Y) > MARK_HALF) return 0;
+        int face = game.facing();
+        if (x < MARK_ZONE && face > -1) return -1;
+        if (x > W - MARK_ZONE && face < 1) return 1;
+        return 0;
+    }
+
+    // the marks: where they sit, as a share of the frame's height, half their height to the touch,
+    // how far in from the edge a touch still counts
+    static final float MARK_Y = 0.6f, MARK_HALF = 44f, MARK_ZONE = 38f;
+
+    /**
+     * The marks for looking round, at either edge of the frame where a turn is open: a pale
+     * chevron pointing out, breathing; until the player has looked round once, it beckons,
+     * nudging toward the edge.
+     */
+    private void marks(Px f) {
+        if (!game.turnReady()) return;
+        boolean first = host.loadInt("looked") == 0;
+        float breath = 0.72f + 0.28f * (float) Math.sin(time * (first ? 4.2f : 2.4f));
+        int face = game.facing();
+        int cy = Math.round(h * MARK_Y);
+        for (int side = -1; side <= 1; side += 2) {
+            if (side < 0 && face == -1 || side > 0 && face == 1) continue;
+            float nudge = first ? 2.5f * Math.max(0f, (float) Math.sin(time * 4.2f)) : 0f;
+            int cx = side < 0 ? Math.round(7 - nudge) : Math.round(W - 8 + nudge);
+            chevron(f, cx, cy, side, breath * (first ? 1f : 0.75f));
+        }
+    }
+
+    /** A chevron of the world's grain pointing to one side, its tip at (cx, cy), a dark edge round it. */
+    private static void chevron(Px f, int cx, int cy, int side, float k) {
+        int arm = 13;
+        int edge = Math.round(150f * k), body = Math.round(235f * k);
+        for (int pass = 0; pass < 2; pass++) {
+            int al = pass == 0 ? edge : body, c = pass == 0 ? 0x2A2018 : 0xFFF6E2;
+            int grow = pass == 0 ? 1 : 0;
+            for (int i = -arm; i <= arm; i++) {
+                int y = cy + i;
+                // the tip at cx, the arms running back from it, two pixels thick
+                int x0 = cx - side * Math.abs(i);
+                for (int t = -1 - grow; t <= 1 + grow; t++) {
+                    for (int dy = -grow; dy <= grow; dy++) {
+                        int x = x0 - side * t, yy = y + dy;
+                        if (x < 0 || yy < 0 || x >= f.w || yy >= f.h) continue;
+                        f.a[yy * f.w + x] = (al << 24) | c;
+                    }
+                }
+            }
+        }
     }
 
     void update(float dt) {
         time += dt;
         frameDt = dt;
+        // a finger resting on a mark is the start of an aim, not a tap
+        if (markSide != 0 && time - markAt >= MARK_TAP) markLetGo();
         // the street on the set is a still: while the room is all closed in, nothing on it moves
         boolean still = game.tilt() >= 1f;
         if (!still) {
@@ -345,6 +434,8 @@ final class World {
         game.view(yaw, pitch, view);
         yaw = view[0];
         pitch = view[1];
+        // looking round, to the houses or the sea
+        yaw += game.faceYaw();
         // in the fight the street jolts as she comes down
         game.jolt(jolt);
         yaw += jolt[0] / (W * 1.9f);
@@ -403,6 +494,7 @@ final class World {
         if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
         if (game.gateReady() && gateAt[0] > -50f) gateGlow(f);
+        marks(f);
         // the room between rounds, at the world's own grain, over all of the frame
         if (roomInk.used) Console.over(f, roomInk);
         if (hudInk.used) {
@@ -437,6 +529,7 @@ final class World {
     /** Where the gate is in the frame now, for a touch on it. */
     private void gateSeen(DrawList d) {
         gateAt[0] = gateAt[1] = -99f;
+        gateAt[2] = gateAt[3] = 0f;
         if (game.tilt() > 0f) return;
         float x = Street.HOUSES_X - 0.1f;
         if (!d.project(x, 0f, Street.GATE_Z - Street.GATE_HALF, g0) || !d.project(x, Street.GATE_H, Street.GATE_Z + Street.GATE_HALF, g1)) return;

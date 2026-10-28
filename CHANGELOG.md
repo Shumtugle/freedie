@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46
+- Looking round. From the 21st level two pale chevrons sit at the edges of the frame,
+  breathing; a tap on one turns the view a quarter: to the right the houses, to the left
+  the promenade and the sea. A chevron at the other edge turns it back. Until the player
+  has looked round once, the chevrons beckon, nudging toward the edge.
+- A touch on a chevron that moves or is held is the start of an aim, as before; turned
+  away from the building, the hammer is not thrown. Anything but a quiet round (the
+  building falling, the room, the fight) brings the view back to the building.
+- A touch far from the gate could knock it open while it was out of sight: fixed.
+
 ## 0.45
 - The room between rounds is the world again, not a screen laid over it: the new picture
   is brought down to the world's own grain, as on the bridge, and laid into the frame

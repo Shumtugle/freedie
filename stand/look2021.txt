@@ -1,0 +1,21 @@
+screen 1096 2560
+keep level 19
+keep best 20
+restart
+skip
+wait 2.6
+shot a20
+down 137 400
+wait 0.7
+shot a20z
+up 137 400
+keep level 20
+keep best 21
+restart
+skip
+wait 2.6
+shot b21
+down 137 400
+wait 0.7
+shot b21z
+up 137 400

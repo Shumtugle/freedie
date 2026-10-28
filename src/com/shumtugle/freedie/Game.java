@@ -117,6 +117,14 @@ final class Game implements Physics.Listener {
     private float gateT = -1f;
     private boolean gateFlight;
     boolean yardDue;
+    // looking round: from the 21st level the player can turn a quarter to either side between
+    // throws, by a touch on the marks at the edges of the frame; to the right the houses and the
+    // gate into the yard, to the left the promenade and the sea. Behind is not open yet
+    static final int TURN_FROM = 21;
+    static final float TURN_T = 0.55f;
+    private int facing;                        // -1 the sea, 0 the building, 1 the houses
+    private float faceFrom, faceTo, faceT = -1f;
+    private float faceYaw;                     // the turn now, radians, eased
     /** The fine layer over the frame the crest is drawn on, set by the world every frame. */
     Ink hudInk;
     /** The fine layer over the whole frame the room between rounds is drawn on, set by the world every frame. */
@@ -671,8 +679,66 @@ final class Game implements Physics.Listener {
         beginReturn();
     }
 
+    // ---- looking round ----
+
+    /** Whether the player may look round: in town, once the 21st level has been reached. */
+    boolean turnOpen() {
+        return !atSea && level < SEA_FROM && Math.max(level + 1, host.loadInt("best")) >= TURN_FROM;
+    }
+
+    /** Whether a touch on a mark would turn the view now: a round on, the hammer in hand, nothing under way. */
+    boolean turnReady() {
+        return turnOpen() && fight == null && state == PLAY && hs == HAND && !aiming && gateT < 0f && tilt() == 0f && faceT < 0f;
+    }
+
+    /** Which way the view faces now, or is turning to: -1 the sea, 0 the building, 1 the houses. */
+    int facing() {
+        return facing;
+    }
+
+    /** Whether the view looks anywhere but at the building, or is on its way. */
+    boolean turned() {
+        return facing != 0 || faceT >= 0f || faceYaw != 0f;
+    }
+
+    /** A quarter turn to the right (1) or the left (-1), as far as the sides. */
+    void turn(int dir) {
+        int to = Math.max(-1, Math.min(1, facing + dir));
+        if (to == facing) return;
+        facing = to;
+        faceFrom = faceYaw;
+        faceTo = to * (float) Math.PI * 0.5f;
+        faceT = 0f;
+        host.sound(Synth.WHOOSH, 0.35f, 0.7f);
+        host.buzz(8);
+        journal.line(clock, "the view turns " + (to == 0 ? "back to the building" : to > 0 ? "to the houses" : "to the sea"));
+    }
+
+    /** The turn eased along; anything but a quiet round brings the view back to the building. */
+    private void turnStep(float dt) {
+        if (facing != 0 && faceT < 0f && (fight != null || state != PLAY || tilt() > 0f)) turn(-facing);
+        if (faceT < 0f) return;
+        faceT += dt;
+        float k = Math.min(1f, faceT / TURN_T);
+        // a head turns quickly through the middle and settles at the end
+        float e = k * k * (3f - 2f * k);
+        faceYaw = faceFrom + (faceTo - faceFrom) * e;
+        if (k >= 1f) {
+            faceYaw = faceTo;
+            faceT = -1f;
+        }
+    }
+
+    /** The turn of the view away from the building, radians, to the right. */
+    float faceYaw() {
+        return faceYaw;
+    }
+
     /** Back from the yard: the gate ajar again, the hammer in hand, the round as it was. */
     void fromYard() {
+        facing = 0;
+        faceYaw = 0f;
+        faceT = -1f;
         gateT = -1f;
         gateFlight = false;
         yardDue = false;
@@ -1111,6 +1177,7 @@ final class Game implements Physics.Listener {
         windUp(dt);
         creep(dt);
         zoomStep(dt);
+        turnStep(dt);
         solids();
         hammerMoves(dt);
         thunderStep(dt);
