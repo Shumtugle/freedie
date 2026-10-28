@@ -4,10 +4,11 @@ import java.util.Random;
 
 /**
  * The yard behind the gate in the right-hand houses, and the air hockey table in it, seen
- * straight from above: a light smooth top with firm rails and rounded corners inside, a line
- * and a circle across the middle, a goal in the middle of each short end. The player's goal
- * is at the bottom. Two round mallets, the player's warm red, the other's cool violet, and a
- * dark puck that glides long and slows hardly at all.
+ * from over its near end at a slant: a light smooth top with dark wooden rails rounded inside
+ * the corners, a line and a circle across the middle, a goal in the middle of each short end,
+ * the player's at the bottom. Two round mallets, the player's of the hammer's wood bound in
+ * iron, the other's black banded in brick red, as she is dressed; a dark puck that glides
+ * long and slows hardly at all. The score is a crest at the top, as the level's is.
  *
  * The finger drives the player's mallet from anywhere on the screen: at the first touch the
  * mallet stays where it is and then follows the finger's moves, keeping the distance it
@@ -42,8 +43,9 @@ final class Yard {
     static final float GOAL_T = 1.0f, OVER_T = 2.6f;
     /** Where the mallets stand at the start, as a share of the half length from the middle. */
     static final float HOME_Z = 0.72f;
-    // the eye: so high over the table that it sees it as good as flat
-    static final float EYE_H = 8f;
+    // the eye: so high over the table's surface, so far back from its middle, looking at a
+    // point just past the middle; the slant keeps the far end nearly as wide as the near
+    static final float EYE_UP = 2.4f, EYE_Z = -1.55f, LOOK_Z = 0.15f;
     // the key out to the street, in the band under the table, frame pixels
     static final int KEY_W = 66, KEY_H = 26;
 
@@ -74,7 +76,8 @@ final class Yard {
     boolean auto;
 
     // the eye as last set, to turn a finger into a point on the table
-    private float eyeX, eyeZ, scale = 200f;
+    private final float[] eye = {0f, Y + 2.5f, -1.45f}, right = {1f, 0f, 0f}, up = {0f, 1f, 0f}, ahead = {0f, 0f, 1f};
+    private float focal = 500f;
     private int fw = World.W, fh = 640, keyX0, keyY0;
     private final float[] at = new float[2];
 
@@ -108,10 +111,14 @@ final class Yard {
         }
     }
 
-    /** The point of the table under a frame point: the eye looks straight down. */
+    /** The point of the table's plane under a frame point. */
     private void onTable(float sx, float sy, float[] out) {
-        out[0] = eyeX + (sx - fw * 0.5f) / scale;
-        out[1] = eyeZ - (sy - fh * 0.5f) / scale;
+        float u = (sx - fw * 0.5f) / focal, v = (fh * 0.5f - sy) / focal;
+        float dx = ahead[0] + right[0] * u + up[0] * v, dy = ahead[1] + right[1] * u + up[1] * v, dz = ahead[2] + right[2] * u + up[2] * v;
+        if (dy > -1e-3f) dy = -1e-3f;
+        float t = (Y - eye[1]) / dy;
+        out[0] = eye[0] + dx * t;
+        out[1] = eye[2] + dz * t;
     }
 
     // ---- the play ----
@@ -120,6 +127,7 @@ final class Yard {
         if (dt <= 0f) return;
         time += dt;
         lit = Math.max(0f, lit - dt);
+        crestTime(dt);
         rival.see(this, time);
         stand.see(this, time);
         if (overT >= 0f && (overT += dt) >= OVER_T) {
@@ -511,6 +519,9 @@ final class Yard {
 
     // ---- drawing ----
 
+    /** The fine layer the score is drawn on, at the top, as the crest is on the street; set by the world. */
+    Ink ink;
+
     void draw(DrawList d, Px f) {
         if (!built) {
             build(still);
@@ -518,99 +529,243 @@ final class Yard {
         }
         fw = d.w;
         fh = d.h;
-        // the table across most of the width, its length within the frame, bands left above and below
-        int band = 56;
-        scale = Math.min(0.88f * fw / (2f * B), (fh - 2f * band) / (2f * (L + RW)));
-        eyeX = 0f;
-        eyeZ = 0f;
-        d.sun(-0.38f, 0.88f, 0.28f, 0f, Y, 0f, 4f, 4f, 10f);
-        d.fogStart = 60f;
-        d.camera(eyeX, Y + EYE_H, eyeZ, 0f, -(float) (Math.PI / 2 - 1e-4), scale * EYE_H, 1f, 40f);
+        // the yard keeps the street's hour: only its shadows are worked out over the table
+        d.sun(d.sun[0], d.sun[1], d.sun[2], 0f, 2f, 0f, 16f, 16f, 40f);
+        // the eye over the near end, looking down at the table at a slant: the near rails
+        // across nearly all the frame, the far end a little narrower
+        float ey = Y + EYE_UP, pitch = -(float) Math.atan2(EYE_UP, LOOK_Z - EYE_Z);
+        float cp = (float) Math.cos(pitch), sp = (float) Math.sin(pitch);
+        float near = (-L - RW - EYE_Z) * cp + (Y - ey) * sp;
+        focal = 0.95f * fw * near / (2f * (B + RW + 0.03f));
+        d.camera(0f, ey, EYE_Z, 0f, pitch, focal, 0.1f, 120f);
+        for (int k = 0; k < 3; k++) {
+            eye[k] = d.eye[k];
+            right[k] = d.right[k];
+            up[k] = d.up[k];
+            ahead[k] = d.ahead[k];
+        }
         d.append(still);
         if (onTable) puck(d, px, pz, 1f);
         else if (goalT >= 0f && goalT < 0.3f) puck(d, px, pz + (scored == 1 ? 1f : -1f) * 0.05f * goalT / 0.3f, 1f - goalT / 0.3f);
-        mallet(d, mx, mz, 0xD8352B, 0xFF8E7A, 0x7A120E);
-        mallet(d, rx, rz, 0x4A3A9A, 0x9C8CF0, 0x1A1240);
-        int top = Math.round(fh * 0.5f - scale * (L + RW)), bottom = Math.round(fh * 0.5f + scale * (L + RW));
-        score(f, top);
+        // the player's mallet is the hammer's: grained wood bound in iron; the other one is
+        // hers: black, banded in brick red, a cap of white lace
+        mallet(d, mx, mz, 0x55524F, 0xDFA868, DrawList.WOOD, 0x55524F, 0xE8B878);
+        mallet(d, rx, rz, 0xB5553A, 0x1E1C22, DrawList.PLAIN, 0xB5553A, 0xF2F0EA);
+        crest();
+        float[] p = at;
+        d.project(-B - RW, Y, -L - RW, p);
+        int bottom = Math.round(p[1]);
         keyX0 = 8;
-        keyY0 = Math.min(fh - KEY_H - 8, bottom + (fh - bottom - KEY_H) / 2);
+        keyY0 = Math.max(bottom + 6, Math.min(fh - KEY_H - 8, bottom + (fh - bottom - KEY_H) / 2));
         key(f);
     }
 
     private static void puck(DrawList d, float x, float z, float k) {
         if (k <= 0.02f) return;
-        Round.cylinder(d, x, Y, z, null, 0f, 0.008f, PR * k, 0x1C1C22, DrawList.PLAIN);
-        Round.cylinder(d, x, Y, z, null, 0.008f, 0.0085f, PR * 0.62f * k, 0x44444E, DrawList.PLAIN);
+        Round.cylinder(d, x, Y, z, null, 0f, 0.009f, PR * k, 0x232226, DrawList.PLAIN);
+        Round.cylinder(d, x, Y, z, null, 0.009f, 0.0096f, PR * 0.7f * k, 0x4A4850, DrawList.PLAIN);
     }
 
-    /** A round mallet: a broad base, a knob on top with a paler cap. */
-    private static void mallet(DrawList d, float x, float z, int face, int light, int dark) {
-        Round.cylinder(d, x, Y, z, null, 0f, 0.016f, MR, dark, DrawList.PAINT);
-        Round.cylinder(d, x, Y, z, null, 0.016f, 0.02f, MR * 0.94f, face, DrawList.PAINT);
-        Round.cylinder(d, x, Y, z, null, 0.02f, 0.05f, MR * 0.42f, face, DrawList.PAINT);
-        Round.cylinder(d, x, Y, z, null, 0.05f, 0.055f, MR * 0.36f, light, DrawList.PAINT);
+    /** A round mallet: a banded rim, a broad face, a knob on it with a band and a cap. */
+    private static void mallet(DrawList d, float x, float z, int rim, int face, int faceMat, int band, int cap) {
+        Round.cylinder(d, x, Y, z, null, 0f, 0.018f, MR, rim, DrawList.PAINT);
+        Round.cylinder(d, x, Y, z, null, 0.018f, 0.024f, MR * 0.86f, face, faceMat);
+        Round.cylinder(d, x, Y, z, null, 0.024f, 0.05f, MR * 0.42f, face, faceMat);
+        Round.cylinder(d, x, Y, z, null, 0.05f, 0.058f, MR * 0.45f, band, DrawList.PAINT);
+        Round.cylinder(d, x, Y, z, null, 0.058f, 0.064f, MR * 0.36f, cap, DrawList.PLAIN);
     }
 
-    /** The score in the band over the table: the player's on the left in red, the other's in violet; lit after a goal. */
-    private void score(Px f, int top) {
-        int s = 5, ch = 7 * s;
-        int y = Math.max(6, (top - ch) / 2);
-        int cx = f.w / 2, gap = 26;
-        String a = String.valueOf(mine), b = String.valueOf(theirs);
-        int wa = PixelFont.width(a, s);
-        float g = Math.min(1f, lit);
-        int ca = 0xFFE8574A, cb = 0xFF9C8CF0;
-        if (g > 0f && (scored == 1 || mine >= WIN)) ca = Px.scale(ca, 1f + 0.35f * g);
-        if (g > 0f && (scored == 2 || theirs >= WIN)) cb = Px.scale(cb, 1f + 0.25f * g);
-        int ax = cx - gap / 2 - wa, bx = cx + gap / 2;
-        PixelFont.draw(f, a, ax + 2, y + 2, s, 0x99000000);
-        PixelFont.draw(f, b, bx + 2, y + 2, s, 0x99000000);
-        PixelFont.draw(f, a, ax, y, s, ca);
-        PixelFont.draw(f, b, bx, y, s, cb);
-        f.disc(cx, y + ch / 2, 2.5f, 0xCCFFFFFF);
+    // ---- the crest: the score at the top, the way the level's is on the street ----
+
+    private float flipT = -1f, jolt = -1f;
+    private int shownMine, shownTheirs, inkKey = Integer.MIN_VALUE;
+    private static final int K = Crest.K, CX = World.W / 2, CY = Crest.CY, R = Crest.R;
+    private static final int INK = 0xFF3A2410, GREEN = 0xFF8FCB6C, GREEN_LIT = 0xFFC6EE9C, GOLD = 0xFFFFC840;
+
+    /**
+     * In the middle the medallion, green, with the player's goals, and round it a ring of seven
+     * that fills with gold goal by goal; a goal turns it over like a coin. On the right a small
+     * black one with hers, banded in brick red, that jolts when she scores. A game won burns gold.
+     */
+    private void crest() {
+        if (ink == null) return;
+        if (mine != shownMine) {
+            if (mine > shownMine && flipT < 0f) flipT = 0f;
+            else if (mine < shownMine) shownMine = mine;
+        }
+        if (theirs != shownTheirs) {
+            if (theirs > shownTheirs) jolt = 0f;
+            shownTheirs = theirs;
+        }
+        boolean gold = overT >= 0f && mine >= WIN;
+        boolean moving = flipT >= 0f || jolt >= 0f || gold;
+        int key = shownMine * 64 + shownTheirs * 4 + (gold ? 1 : 0);
+        if (!moving && key == inkKey) {
+            ink.used = true;
+            return;
+        }
+        inkKey = key;
+        ink.clear();
+        Ink g = ink;
+        float mx = CX * K, my = CY * K, r = R * K;
+        float across = 1f;
+        int shown = shownMine;
+        if (flipT >= 0f) {
+            float an = (float) Math.PI * Math.min(1f, flipT / 0.5f);
+            across = Math.max(0.04f, Math.abs((float) Math.cos(an)));
+            if (an > Math.PI / 2) shown = mine;
+        }
+        int lit = Math.min(WIN, shown);
+        g.disc(mx + 3, my + 7, r + 4 * K, 0xFF000000, 9f, 0.28f);
+        g.squash(mx, my, across, 1f);
+        for (int s = 0; s < WIN; s++) {
+            float t0 = s / (float) WIN + 0.014f, t1 = (s + 1) / (float) WIN - 0.014f;
+            int c = gold ? 0xFFFFB23A : s < lit ? GOLD : INK;
+            g.ring(mx, my, r + 1.2f * K, r + 4f * K, t0, t1, c, gold || s < lit ? 1f : 0.62f);
+        }
+        int face = gold ? 0xFFF08A1E : GREEN, faceLit = gold ? 0xFFFFE6A0 : GREEN_LIT;
+        g.disc(mx, my, r, face, 1f, 1f);
+        g.disc(mx - r * 0.18f, my - r * 0.22f, r * 0.72f, faceLit, r * 0.55f, 0.7f);
+        g.ring(mx, my, r - 1.2f * K, r + 0.4f * K, 0f, 1f, INK, 1f);
+        String a = String.valueOf(shown);
+        float th = 15f * K, tw = Ink.digitsWidth(a, th);
+        g.digits(a, mx - tw * 0.5f, my - th * 0.5f, th, gold ? 0xFFFFF6D0 : 0xFFFFFFFF, INK, 1.1f * K, 1f);
+        if (gold) {
+            float breathe = 0.6f + 0.4f * (float) Math.sin(time * 5f);
+            g.disc(mx, my, r * 0.45f, 0xFFFFFFF0, r * 0.5f, 0.45f * breathe);
+        }
+        g.unsquash();
+        // hers, smaller, off to the right
+        float ox = (CX + R + 24) * K, oy = (CY + 2) * K, orr = 9f * K;
+        float jx = 1f, jy = 1f;
+        if (jolt >= 0f) {
+            float k = 0.25f * (float) Math.exp(-jolt * 8f) * (float) Math.cos(jolt * 28f);
+            jx = 1f + k;
+            jy = 1f - k;
+        }
+        g.disc(ox + 2, oy + 5, orr + 2 * K, 0xFF000000, 7f, 0.25f);
+        g.squash(ox, oy, jx, jy);
+        g.disc(ox, oy, orr + 1.6f * K, 0xFFB5553A, 1f, 1f);
+        g.disc(ox, oy, orr, 0xFF1E1C22, 1f, 1f);
+        g.disc(ox - orr * 0.2f, oy - orr * 0.25f, orr * 0.6f, 0xFF3A3842, orr * 0.5f, 0.6f);
+        String b = String.valueOf(shownTheirs);
+        float bh = 10f * K, bw = Ink.digitsWidth(b, bh);
+        g.digits(b, ox - bw * 0.5f, oy - bh * 0.5f, bh, 0xFFF2F0EA, 0xFF000000, 0.8f * K, 1f);
+        g.unsquash();
+        ink.used = true;
     }
 
-    /** The key out to the street, in the band under the table. */
+    private void crestTime(float dt) {
+        if (flipT >= 0f && (flipT += dt) > 0.5f) {
+            flipT = -1f;
+            shownMine = mine;
+        }
+        if (jolt >= 0f && (jolt += dt) > 0.6f) jolt = -1f;
+    }
+
+    /** The key out to the street, under the table, in the colours of the room's keys. */
     private void key(Px f) {
         int x0 = keyX0, y0 = keyY0, x1 = x0 + KEY_W, y1 = y0 + KEY_H;
-        f.rect(x0, y0, x1, y1, 0xE01B1E24);
-        f.rect(x0, y0, x1, y0 + 2, 0xE03A404A);
-        f.rect(x0, y1 - 2, x1, y1, 0xE00E1014);
+        f.rect(x0 + 1, y0 + 2, x1 + 1, y1 + 2, 0x66000000);
+        f.rect(x0, y0, x1, y1, 0xF02E3226);
+        f.rect(x0, y0, x1, y0 + 2, 0xF04A5040);
+        f.rect(x0, y1 - 3, x1, y1, 0xF01A1D16);
         String s = "HOME";
         int tw = PixelFont.width(s, 2);
-        PixelFont.draw(f, s, x0 + (KEY_W - tw) / 2, y0 + (KEY_H - 14) / 2, 2, 0xFFE8EEF4);
+        PixelFont.draw(f, s, x0 + (KEY_W - tw) / 2, y0 + (KEY_H - 14) / 2, 2, 0xFFE8E2C8);
     }
 
     // ---- what stands still ----
 
-    /** The yard's paving, and the table on it, once. */
+    /**
+     * The yard: old paving, tall houses on three sides with their balconies and flowers, a low
+     * garden wall on the fourth, toward the evening sun, which comes in over it; two palms in
+     * beds by the wall laying their shadows across; washing on a line; pots and a bench. The
+     * table stands in the middle on a block of the plinth's pale stone, its rails dark wood
+     * like a hammer's handle, bound with iron at the corners.
+     */
     private static void build(DrawList d) {
-        d.box(0f, -0.25f, 0f, 6f, 0.25f, 6f, null, 0xC9BBA2, DrawList.PAVING);
-        int rail = 0x2E5E9E, red = 0xD0413A, line = 0x5A86C0;
-        float ex = B + RW, ez = L + RW;
-        // the cabinet under the top, a shade wider than the rails
-        d.box(0f, (Y - 0.02f) * 0.5f, 0f, ex + 0.015f, (Y - 0.02f) * 0.5f, ez + 0.015f, null, 0x1E2638, DrawList.PLAIN);
-        d.box(0f, Y - 0.02f, 0f, B, 0.02f, L, null, 0xF2F5F7, DrawList.PLAIN);
-        // the straight rails: the sides between the corners, the ends between the corners and the mouths
+        Random r = new Random(23);
+        // a narrow yard: the far house close behind the table, so its door and its flowers stand
+        // right over the far end; the right-hand house; behind the eye another; on the left the
+        // low wall toward the sun
+        float far = 3.0f, back = -5f, east = 4.2f, west = -4.2f;
+        d.box(0f, -0.25f, 0f, 12f, 0.25f, 12f, null, 0xC9BBA2, DrawList.PAVING);
+        float[][] walls = {{far, -1}, {back, 1}};
+        for (int i = 0; i < 2; i++) {
+            float wz = walls[i][0];
+            int out = (int) walls[i][1];
+            int storeys = 4 + r.nextInt(2);
+            float height = 3.3f * (storeys + 1) + 0.5f;
+            int tint = Street.WALLS[r.nextInt(Street.WALLS.length)];
+            d.box(0f, height * 0.5f, wz - out * 3f, 9f, height * 0.5f, 3f, null, tint, DrawList.material(DrawList.FACADE, 40 + i));
+            Street.fronts(d, true, wz, out, -5.8f, 4, storeys, 40 + i);
+        }
+        {
+            int storeys = 4;
+            float height = 3.3f * (storeys + 1) + 0.5f;
+            int tint = Street.WALLS[r.nextInt(Street.WALLS.length)];
+            d.box(east + 3f, height * 0.5f, (far + back) * 0.5f, 3f, height * 0.5f, (far - back) * 0.5f, null, tint,
+                    DrawList.material(DrawList.FACADE, 42));
+            Street.fronts(d, false, east, -1, back, 2, storeys, 42);
+        }
+        // the low wall toward the sun, a coping of paler stone
+        d.box(west - 0.25f, 1.0f, (far + back) * 0.5f, 0.25f, 1.0f, (far - back) * 0.5f, null, 0xE6D8BC, DrawList.STONE);
+        d.box(west - 0.25f, 2.05f, (far + back) * 0.5f, 0.32f, 0.06f, (far - back) * 0.5f + 0.05f, null, 0xF0E6D0, DrawList.STONE);
+        // two palms in their beds by the low wall
+        Random pr = new Random(7);
+        float[][] palms = {{west + 0.9f, -0.5f, 7.4f, 0.4f}, {west + 1.0f, 2.0f, 8.2f, -0.3f}};
+        for (float[] pm : palms) {
+            d.box(pm[0], 0.03f, pm[1], 0.6f, 0.03f, 0.6f, null, 0x8C6E4C, DrawList.GRAIN);
+            Street.palm(d, pr, pm[0], 0f, pm[1], pm[2], pm[3], false);
+        }
+        // the washing across the far end, over the far goal
+        float lz = far - 0.25f, ly = 2.15f;
+        d.box(0f, ly, lz, east, 0.008f, 0.008f, null, 0x3A3836, DrawList.RAIL);
+        int[] cloth = {0xF4F2EC, 0x6E9DB0, 0xF4F2EC, 0xD98A6A, 0xE9E1CB, 0x4F7A5E, 0xF4F2EC, 0xB5523E};
+        float x = west + 0.4f;
+        for (int i = 0; x < east - 0.6f; i++) {
+            float cw = 0.14f + r.nextFloat() * 0.14f, ch = 0.16f + r.nextFloat() * 0.18f;
+            d.box(x + cw, ly - ch - 0.01f, lz, cw, ch, 0.012f, null, cloth[i % cloth.length], DrawList.GRAIN);
+            x += cw * 2f + 0.1f + r.nextFloat() * 0.3f;
+        }
+        // pots along the far wall, a bench by the right one
+        for (int i = 0; i < 5; i++) pot(d, -2.9f + i * 1.45f + r.nextFloat() * 0.3f, far - 0.3f, i);
+        pot(d, east - 0.4f, -1.6f, 1);
+        d.box(east - 0.45f, 0.42f, 1.0f, 0.22f, 0.04f, 0.8f, null, 0x8A5A32, DrawList.WOOD);
+        for (int e = -1; e <= 1; e += 2) d.box(east - 0.45f, 0.2f, 1.0f + e * 0.65f, 0.2f, 0.2f, 0.05f, null, 0x2B2A2C, DrawList.PLAIN);
+        table(d);
+    }
+
+    private static void pot(DrawList d, float x, float z, int i) {
+        d.box(x, 0.17f, z, 0.16f, 0.17f, 0.16f, null, 0xB8693E, DrawList.GRAIN);
+        d.box(x, 0.33f, z, 0.18f, 0.025f, 0.18f, null, 0xC87A4A, DrawList.GRAIN);
+        d.box(x, 0.52f, z, 0.21f, 0.17f, 0.21f, null, i % 2 == 0 ? 0x4F6F28 : 0x5E7E2E, DrawList.GRAIN);
+        if (i % 3 == 1) d.box(x + 0.05f, 0.71f, z - 0.05f, 0.06f, 0.04f, 0.06f, null, 0xD9505A, DrawList.GRAIN);
+    }
+
+    /** The table: on a block of pale stone, a light top, dark wooden rails rounded inside the corners. */
+    private static void table(DrawList d) {
+        int rail = 0x6E4A2C, iron = 0x55524F, red = 0xB5553A;
+        float ex = B + RW, ez = L + RW, hy = RH * 0.5f + 0.01f, y = Y + RH * 0.5f - 0.01f;
+        d.box(0f, (Y - 0.03f) * 0.5f, 0f, ex + 0.04f, (Y - 0.03f) * 0.5f, ez + 0.04f, null, 0xE6D8BC, DrawList.STONE);
+        d.box(0f, Y - 0.035f, 0f, ex + 0.05f, 0.012f, ez + 0.05f, null, 0xF0E6D0, DrawList.STONE);
+        d.box(0f, Y - 0.02f, 0f, B, 0.02f, L, null, 0xF4F0E6, DrawList.PLAIN);
         for (int e = -1; e <= 1; e += 2) {
-            d.box(e * (B + RW * 0.5f), Y + RH * 0.5f - 0.01f, 0f, RW * 0.5f, RH * 0.5f + 0.01f, L - RC, null, rail, DrawList.PAINT);
+            d.box(e * (B + RW * 0.5f), y, 0f, RW * 0.5f, hy, L - RC, null, rail, DrawList.WOOD);
             for (int s = -1; s <= 1; s += 2) {
                 float x0 = GOAL, x1 = B - RC, c = s * (x0 + x1) * 0.5f;
-                d.box(c, Y + RH * 0.5f - 0.01f, e * (L + RW * 0.5f), (x1 - x0) * 0.5f, RH * 0.5f + 0.01f, RW * 0.5f, null, rail,
-                        DrawList.PAINT);
+                d.box(c, y, e * (L + RW * 0.5f), (x1 - x0) * 0.5f, hy, RW * 0.5f, null, rail, DrawList.WOOD);
+                // iron at the mouth's posts
+                d.box(s * (GOAL + 0.012f), y + 0.002f, e * (L + RW * 0.5f), 0.012f, hy + 0.002f, RW * 0.5f + 0.003f, null, iron, DrawList.PAINT);
             }
-            // the mouth: a dark slot through the end
-            d.box(0f, Y - 0.03f, e * (L + RW * 0.5f), GOAL, 0.012f, RW * 0.5f + 0.004f, null, 0x08080C, DrawList.PLAIN);
+            d.box(0f, Y - 0.03f, e * (L + RW * 0.5f), GOAL, 0.012f, RW * 0.5f + 0.004f, null, 0x0C0A08, DrawList.PLAIN);
         }
-        // the corners: the rail follows a quarter round inside; outside, it is square
         for (int e = -1; e <= 1; e += 2)
             for (int s = -1; s <= 1; s += 2) {
-                float ox = e * (B - RC), oz = s * (L - RC), hy = RH * 0.5f + 0.01f, y = Y + RH * 0.5f - 0.01f;
-                // the square outer edge of the rails round the corner
-                d.box(e * (B + RW * 0.5f), y, s * (L + (RW - RC) * 0.5f), RW * 0.5f, hy, (RC + RW) * 0.5f, null, rail, DrawList.PAINT);
-                d.box(e * (B + (RW - RC) * 0.5f), y, s * (L + RW * 0.5f), (RC + RW) * 0.5f, hy, RW * 0.5f, null, rail, DrawList.PAINT);
-                // and the round inside: blocks out from the corner's middle, from the curve to the table's edge
+                float ox = e * (B - RC), oz = s * (L - RC);
+                d.box(e * (B + RW * 0.5f), y, s * (L + (RW - RC) * 0.5f), RW * 0.5f, hy, (RC + RW) * 0.5f, null, rail, DrawList.WOOD);
+                d.box(e * (B + (RW - RC) * 0.5f), y, s * (L + RW * 0.5f), (RC + RW) * 0.5f, hy, RW * 0.5f, null, rail, DrawList.WOOD);
                 int segs = 12;
                 for (int i = 0; i < segs; i++) {
                     float a = (float) ((i + 0.5f) / segs * Math.PI / 2);
@@ -621,16 +776,18 @@ final class Yard {
                     T[0] = dx; T[1] = 0f; T[2] = -dz;
                     T[3] = 0f; T[4] = 1f; T[5] = 0f;
                     T[6] = dz; T[7] = 0f; T[8] = dx;
-                    d.box(ox + dx * mid, y, oz + dz * mid, half, hy, across, T, rail, DrawList.PAINT);
+                    d.box(ox + dx * mid, y, oz + dz * mid, half, hy, across, T, rail, DrawList.WOOD);
                 }
+                // an iron cap over the outer corner
+                d.box(e * (B + RW * 0.5f), y + 0.003f, s * (L + RW * 0.5f), RW * 0.5f + 0.004f, hy + 0.003f, RW * 0.5f + 0.004f, null, iron,
+                        DrawList.PAINT);
             }
-        // the lines on the top: across the middle, the circle round it, a half round before each goal
         float lh = 0.0006f;
         d.box(0f, Y + lh, 0f, B, lh, 0.004f, null, red, DrawList.PLAIN);
         arc(d, 0f, 0f, 0.15f, 0.006f, 0f, (float) (Math.PI * 2), 40, red);
         for (int s = -1; s <= 1; s += 2) {
             float a0 = s > 0 ? (float) Math.PI : 0f;
-            arc(d, 0f, s * L, GOAL + 0.04f, 0.005f, a0, a0 + (float) Math.PI, 22, line);
+            arc(d, 0f, s * L, GOAL + 0.04f, 0.005f, a0, a0 + (float) Math.PI, 22, red);
         }
     }
 
@@ -642,7 +799,6 @@ final class Yard {
         for (int i = 0; i < segs; i++) {
             float a = a0 + (i + 0.5f) * step;
             float c = (float) Math.cos(a), s = (float) Math.sin(a);
-            // across the line: out from the middle; along it: round
             T[0] = c; T[1] = 0f; T[2] = -s;
             T[3] = 0f; T[4] = 1f; T[5] = 0f;
             T[6] = s; T[7] = 0f; T[8] = c;

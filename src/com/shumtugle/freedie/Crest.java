@@ -63,6 +63,11 @@ final class Crest {
         cubesWas = cubes;
     }
 
+    /** The layer was drawn over by something else: the next frame draws it whole again. */
+    void dirty() {
+        drawnKey = Long.MIN_VALUE;
+    }
+
     /** A star has just been spent: it rolls away. */
     void burn(int i) {
         if (i >= 0 && i < burnt.length) burnt[i] = 0f;

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.42
+- The table in the yard is seen at a slant again, from over its near end, the way the street
+  is seen: the near rails across nearly all the frame, the far end a little narrower.
+- It is the game's own yard now. A narrow court: the far house close behind the table with
+  its door and a row of flower pots, washing on a line before it, the right-hand house with
+  a bench, on the left a low wall toward the evening sun, which comes in over it, and two
+  palms by the wall laying their trunks' shadows across the table. The street's hour of the
+  evening holds in the yard too.
+- The table stands on a block of the plinth's pale stone; its rails are dark wood like a
+  hammer's handle, bound with iron at the corners and the goal posts; the lines are brick red.
+- The player's mallet is the hammer's grained wood bound in iron; the other one is dressed
+  as she is, black banded in brick red with a cap of white lace.
+- The score is a crest at the top, the way the level's is on the street: the green medallion
+  with the player's goals, its ring of seven filling with gold goal by goal and turning over
+  like a coin at each; a small black medallion banded in brick red with hers, which jolts
+  when she scores. A game won burns gold.
+- The key back to the street is in the colours of the room's keys.
+
 ## 0.41
 - The table in the yard is seen straight from above, across nine tenths of the width, one
   to one and seven in its proportions: a light smooth top, firm blue rails, rounded corners

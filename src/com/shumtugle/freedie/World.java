@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.41";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.42";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -216,6 +216,7 @@ final class World {
     /** Out of the yard: back on the street, before the same building, the hammer in hand. */
     void leaveYard() {
         yard = null;
+        game.crest.dirty();
         game.fromYard();
         flashOut = FLASH_OUT;
         host.sound(Synth.DOOR, 0.8f, 1f);
@@ -323,7 +324,13 @@ final class World {
             return;
         }
         if (yard != null) {
+            yard.ink = hudInk;
             yard.draw(d, f);
+            if (hudInk.used) {
+                d.hudRows = Crest.ROWS;
+                d.hudFresh = hudInk.fresh;
+                hudInk.fresh = false;
+            }
             d.flash = flashOut / FLASH_OUT;
             PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
             return;
