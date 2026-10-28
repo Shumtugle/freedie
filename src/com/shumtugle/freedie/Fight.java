@@ -6,14 +6,13 @@ import java.util.Random;
  * The fight with Freedie, as the fight with the golem went in the game this one grows from.
  * It comes when the golden hammer has been given once and a building will not fall ten
  * times again; or from the bridge's console. The street is seen red and black, the plinth
- * is gone, and she comes up the road from far off in leaps (see Giant), tearing parked cars
+ * is gone, and she comes up the road from far off, flowing (see Giant), tearing parked cars
  * from the curb and throwing them. The watchers have given a diamond hammer: it flies hard and
  * flat, and comes back at once.
  *
  * A thrown car knocked out of the air goes up and over to the curb; one that gets through
- * breaks a shield, and with no shield left the next one ends the fight. Her weak points are
- * the knees and the eyes: a knee struck goes out, and she leaps short; both out, she drags
- * herself on; three blows to the head and she falls apart. If she reaches the player, a
+ * breaks a shield, and with no shield left the next one ends the fight. Every blow that lands
+ * on her, anywhere, knocks a block out of her; twelve, and she falls apart. If she reaches the player, a
  * sweep of her arm ends it too. Won, the world goes gold and up into the sky, where the watchers
  * cheer; in the street her heart comes out of the heap as a golden cube first. Lost, it goes
  * dark, and the player wakes on the street before the same building.
@@ -69,21 +68,20 @@ final class Fight {
         if (giant.down) giant.body.fall(dt);
         flash = Math.max(0f, flash - dt * 2.2f);
         for (int i = 0; i < POPS; i++) if (popT[i] >= 0f && (popT[i] += dt) > 0.45f) popT[i] = -1f;
-        for (int i = 0; i < broke.length; i++) if (broke[i] >= 0f && (broke[i] += dt) > 1.2f) broke[i] = -1f;
+        if (hitT >= 0f && (hitT += dt) > 1.2f) hitT = -1f;
         shake = Math.max(0f, shake - dt * 2.5f);
-        // she comes down: the street shakes, dust flies
+        // a step: a dull thud of stone, the street trembling a little, more as she nears
         if (giant.landings != landingsSeen) {
             landingsSeen = giant.landings;
             float near = progress();
-            shake = Math.max(shake, 0.5f + near * 0.6f);
-            host.sound(Synth.GROUND, 1.4f, 0.45f);
-            host.sound(Synth.CRASH, 0.5f + near * 0.4f, 0.45f);
-            host.buzz((int) (60 + near * 120));
-            for (int k = 0; k < 30; k++) {
-                float a = k * 0.2094f;
-                g.spawn(giant.x + (float) Math.cos(a) * 2.5f, 0.15f, giant.z + (float) Math.sin(a) * 2.5f, true, 0xD8CFC0, 4f);
+            shake = Math.max(shake, 0.1f + near * 0.2f);
+            host.sound(Synth.GROUND, 0.55f + near * 0.35f, 0.5f + fx.nextFloat() * 0.1f);
+            host.buzz((int) (12 + near * 25));
+            for (int k = 0; k < 8; k++) {
+                float a = fx.nextFloat() * 6.283f;
+                g.spawn(giant.x + (float) Math.cos(a) * 1.6f, 0.12f, giant.z + (float) Math.sin(a) * 1.6f, true, 0xD8CFC0, 2.5f);
             }
-            if (fx.nextFloat() < 0.35f) host.sound(Synth.ROAR, 0.8f, 0.9f + fx.nextFloat() * 0.2f);
+            if (fx.nextFloat() < 0.12f) host.sound(Synth.ROAR, 0.7f, 0.9f + fx.nextFloat() * 0.2f);
         }
         // on the last shield the heart is heard
         if (armor == 0 && end < 0f) {
@@ -264,63 +262,42 @@ final class Fight {
         }
         Giant gi = giant;
         if (gi.down) return;
-        for (int side = -1; side <= 1; side += 2) {
-            boolean right = side > 0;
-            if ((right ? gi.kneeR : gi.kneeL) == 0) continue;
-            gi.knee(right, tmp);
-            if (near(tmp, hx, hy, hz, Giant.KNEE_HIT + 0.25f)) {
-                if (right) gi.kneeR = 0;
-                else gi.kneeL = 0;
-                broke[right ? 1 : 0] = 0f;
-                weakHit(hx, hy, hz, 1.1f);
-                return;
+        if (gi.bodyDist(hx, hy, hz) < Giant.BODY_HIT + 0.35f) {
+            // a blow that lands, anywhere: the block nearest it is knocked out of her for good,
+            // up and out to her side, to come down on the street before her
+            int part = gi.body.nearest(hx, hy, hz);
+            if (part >= 0) {
+                Body b = gi.body.knockOut(part);
+                float ox = b.px - gi.x;
+                b.vx = (ox >= 0f ? 1f : -1f) * (2.5f + fx.nextFloat() * 2f);
+                b.vy = 4.5f + fx.nextFloat() * 2.5f;
+                b.vz = -2.5f - fx.nextFloat() * 2.5f;
+                b.wx = (fx.nextFloat() - 0.5f) * 9f;
+                b.wz = (fx.nextFloat() - 0.5f) * 9f;
+                b.homeX = b.px;
+                b.homeY = b.py;
+                b.homeZ = b.pz;
+                b.asleep = false;
+                g.phys.add(b);
+                g.pieces.add(b);
             }
-        }
-        gi.headCenter(tmp);
-        if (near(tmp, hx, hy, hz, Giant.HEAD_HIT + 0.3f)) {
-            gi.head--;
-            broke[2 + gi.head] = 0f;
-            weakHit(hx, hy, hz, 0.9f);
-            if (gi.head == 0) topple(hx, hy, hz);
-            return;
-        }
-        if (gi.bodyDist(hx, hy, hz) < Giant.BODY_HIT + 0.2f) {
-            // a blow to the bulk: a brick knocked out, a moment's pause
-            gi.stagger = Math.max(gi.stagger, 0.5f);
-            gi.hurt = 0.6f;
-            pop(hx, hy, hz, BODY_POP);
-            Body b = new Body(0.22f, 0.1f, 0.22f, Body.STONE, 0xB5553A);
-            b.setPose(hx, hy, hz, 1, 0, 0, 0);
-            b.vx = (fx.nextFloat() - 0.5f) * 3f;
-            b.vy = 2f;
-            b.vz = -2f;
-            b.wx = 6f;
-            b.homeX = b.px;
-            b.homeY = b.py;
-            b.homeZ = b.pz;
-            g.phys.add(b);
-            g.pieces.add(b);
-            host.sound(Synth.STONE, 1f, 0.7f);
-            host.buzz(40);
-            g.beginReturn();
+            gi.hits++;
+            hitT = 0f;
+            pop(hx, hy, hz, WEAK_POP);
+            gi.stagger = Math.max(gi.stagger, 0.35f);
+            gi.hurt = 1f;
+            host.sound(Synth.STONE, 1.2f, 0.55f + fx.nextFloat() * 0.15f);
+            host.sound(Synth.CRASH, 0.5f, 1.2f);
+            host.buzz(70);
+            for (int k = 0; k < 16; k++) g.spawn(hx, hy, hz, (k & 1) == 0, (k & 1) == 0 ? 0xE6DCC8 : 0xFFB13A, 4f);
+            if (gi.hits >= Giant.HITS) topple(hx, hy, hz);
+            else g.beginReturn();
         }
     }
 
     private static boolean near(float[] p, float x, float y, float z, float r) {
         float dx = p[0] - x, dy = p[1] - y, dz = p[2] - z;
         return dx * dx + dy * dy + dz * dz < r * r;
-    }
-
-    private void weakHit(float x, float y, float z, float stun) {
-        pop(x, y, z, WEAK_POP);
-        giant.stagger = Math.max(giant.stagger, stun);
-        giant.hurt = 1f;
-        giant.pose();
-        host.sound(Synth.STONE, 1.3f, 0.5f);
-        host.sound(Synth.THUNDER, 0.5f, 1.6f);
-        host.buzz(110);
-        for (int k = 0; k < 24; k++) g.spawn(x, y, z, (k & 1) == 0, (k & 1) == 0 ? 0xE6DCC8 : 0xFFB13A, 5f);
-        g.beginReturn();
     }
 
     /** She falls apart into what she was made of, out from the last blow. */
@@ -403,7 +380,7 @@ final class Fight {
         host.buzz(12);
     }
 
-    /** The point under the ring: her head, knees or body, or the plane she walks in. */
+    /** The point under the ring: her head, her chest or her hips, or the plane she walks in. */
     void target(float sx, float sy, float[] out) {
         g.ray(sx, sy, dir);
         float dx = dir[0], dy = dir[1], dz = dir[2];
@@ -415,7 +392,7 @@ final class Fight {
         float best = 1e9f;
         float[] c = scr3;
         if (!giant.down)
-            for (int k = 0; k < 4; k++) {
+            for (int k = 0; k < 3; k++) {
                 float r;
                 if (k == 0) {
                     giant.headCenter(c);
@@ -424,8 +401,8 @@ final class Fight {
                     giant.chest(c);
                     r = Giant.BODY_HIT + 0.2f;
                 } else {
-                    giant.knee(k == 3, c);
-                    r = Giant.KNEE_HIT;
+                    giant.hips(c);
+                    r = Giant.BODY_HIT;
                 }
                 float ox = ex - c[0], oy = ey - c[1], oz = ez - c[2];
                 float b = ox * dx + oy * dy + oz * dz, q = ox * ox + oy * oy + oz * oz - r * r;
@@ -470,20 +447,20 @@ final class Fight {
         }
     }
 
-    /** The fight's corner: the shields left on the left, her weak points still whole on the right. */
+    /** The fight's corner: the shields left on the left; on the right the blows still wanted, a block each. */
     void hud(Px f) {
         int x = 6, y = 8;
         for (int i = 0; i < ARMOR; i++) shield(f, x + i * 15, y, i < armor);
-        int bx = g.fw - 7 - 5 * 13;
-        for (int i = 0; i < 5; i++) {
-            boolean whole = i < 2 ? (i == 0 ? giant.kneeL : giant.kneeR) > 0 : giant.head > i - 2;
-            int cx = bx + i * 13;
-            // a point just broken flares white and shrinks to dark
-            float b = broke[i];
-            int in = whole ? (i < 2 ? 0xFFFFB13A : 0xFFFFE07A) : b >= 0f ? Px.mix(0xFFFFFFFF, 0xFF3A3236, b / 1.2f) : 0xFF3A3236;
-            int grow = b >= 0f ? Math.round(3f * (1f - b / 1.2f)) : 0;
-            f.rect(cx - grow, y - grow, cx + 11 + grow, y + 11 + grow, 0xFF5A3A0E);
-            f.rect(cx + 1 - grow, y + 1 - grow, cx + 10 + grow, y + 10 + grow, in);
+        int per = Giant.HITS / 2, bx = g.fw - 7 - per * 10;
+        for (int i = 0; i < Giant.HITS; i++) {
+            int cx = bx + (i % per) * 10, cy = y + (i / per) * 10;
+            boolean whole = i >= giant.hits;
+            // the block just knocked out flares white and shrinks to dark
+            boolean last = i == giant.hits - 1 && hitT >= 0f;
+            int in = whole ? 0xFFE2734E : last ? Px.mix(0xFFFFFFFF, 0xFF3A3236, hitT / 1.2f) : 0xFF3A3236;
+            int grow = last ? Math.round(2f * (1f - hitT / 1.2f)) : 0;
+            f.rect(cx - grow, cy - grow, cx + 8 + grow, cy + 8 + grow, 0xFF5A3A0E);
+            f.rect(cx + 1 - grow, cy + 1 - grow, cx + 7 + grow, cy + 7 + grow, in);
         }
     }
 
@@ -521,14 +498,14 @@ final class Fight {
     // ---- the marks over the frame ----
     // Through the red and the fire the eye needs help: brackets round each car in her hand or
     // in the air (red when the ring has it), the ring itself in the diamond's colours, and a
-    // burst where a blow lands. Her weak points show by their own throbbing glow.
+    // burst where a blow lands.
 
     private static final int POPS = 6, CAR_POP = 0, WEAK_POP = 1, BODY_POP = 2;
     private final float[] popX = new float[POPS], popY = new float[POPS], popZ = new float[POPS];
     private final float[] popT = {-1f, -1f, -1f, -1f, -1f, -1f};
     private final int[] popKind = new int[POPS];
-    // seconds since each weak point broke: two knees, then the head's three
-    private final float[] broke = {-1f, -1f, -1f, -1f, -1f};
+    // seconds since the last block was knocked out of her
+    private float hitT = -1f;
     private final float[] p0 = new float[2], p1 = new float[2], w3 = new float[3];
 
     private void pop(float x, float y, float z, int kind) {
@@ -609,7 +586,7 @@ final class Fight {
             }
     }
 
-    /** Bursts where blows landed: a wide white-blue one on a weak point, orange off a car, grey on her bulk. */
+    /** Bursts where blows landed: a wide white-blue one on her, orange off a car. */
     private void pops(Px f) {
         for (int i = 0; i < POPS; i++) {
             if (popT[i] < 0f) continue;
@@ -646,7 +623,7 @@ final class Fight {
 
     // ---- for the desktop stand ----
 
-    /** The frame point the stand's player should throw at now: a car on its way, else a weak point; or null. */
+    /** The frame point the stand's player should throw at now: a car on its way, else her chest; or null. */
     float[] standPick() {
         if (end >= 0f) return null;
         int best = -1;
@@ -661,9 +638,7 @@ final class Fight {
             if (!g.project(fly[best].px, fly[best].py, fly[best].pz, o)) return null;
             return o;
         }
-        if (giant.kneeL > 0) giant.knee(false, tmp);
-        else if (giant.kneeR > 0) giant.knee(true, tmp);
-        else giant.headCenter(tmp);
+        giant.chest(tmp);
         if (!g.project(tmp[0], tmp[1], tmp[2], o)) return null;
         return o;
     }
@@ -672,7 +647,6 @@ final class Fight {
         StringBuilder cars = new StringBuilder();
         for (int i = 0; i < FLY_MAX; i++)
             if (flyState[i] != 0) cars.append(String.format(" car%d:%d@%.1f,%.1f,%.1f v%.1f,%.1f,%.1f t%.2f", i, flyState[i], fly[i].px, fly[i].py, fly[i].pz, fly[i].vx, fly[i].vy, fly[i].vz, flyT[i]));
-        return String.format("z %.1f knees %d%d head %d armor %d end %.1f %s%s", giant.z, giant.kneeL, giant.kneeR,
-                giant.head, armor, end, won ? "won" : "", cars);
+        return String.format("z %.1f hits %d armor %d end %.1f %s%s", giant.z, giant.hits, armor, end, won ? "won" : "", cars);
     }
 }

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.43
+- Freedie no longer leaps. She flows up the street, never leaving the ground: swaying
+  side to side, dipping and rising like a spring at every step, her feet sliding forward
+  in turn, her arms swinging against them. At every step two of her blocks of a kind
+  change places, one rolling up over the top of her, the other tumbling down her front,
+  each taking the shape of the place it comes to: a brick that was a shin comes down as a
+  forearm, her head may go round to a shoulder. Every step is a dull thud of stone and a
+  light tremble of the street. She gathers into herself to lift and throw a car.
+- The way she moves is a part of its own, for her to go about the same way wherever she
+  appears.
+- No weak points any more. Every blow that lands on her, anywhere, knocks a block out of
+  her for good: it flies out to her side and comes down on the street before her, and she
+  comes on a little smaller and a little slower. Twelve, and she falls apart. The fight's
+  corner shows the twelve, a block each, darkening as they go.
+
 ## 0.42
 - The table in the yard is seen at a slant again, from over its near end, the way the street
   is seen: the near rails across nearly all the frame, the far end a little narrower.

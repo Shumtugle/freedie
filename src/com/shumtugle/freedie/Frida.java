@@ -13,6 +13,12 @@ import java.util.Random;
  * the upright by the root's own angle. Her model is in units of her own, drawn size times
  * bigger. When she breaks, every box becomes a body of the game's own physics and falls
  * where it will.
+ *
+ * Her blocks are not fixed to their places: two of a kind (brick with brick, stone with
+ * stone, plank with plank) can change places, each tumbling through the air to where the
+ * other was, one over the top of her and the other down her front; a block keeps its own
+ * colour and takes the shape of the place it comes to. So a brick that was a shin may become
+ * a forearm, and her head may go to a shoulder. A block can also be knocked out of her for good.
  */
 final class Frida {
     // the joints, each turning about its own pivot, after its parent
@@ -44,6 +50,14 @@ final class Frida {
     private final int[] joint = new int[64], color = new int[64], body = new int[64];
     private final float[] mid = new float[64 * 3], half = new float[64 * 3], look = new float[64];
     private int eyeFrom, eyeTo, kneeFrom, kneeTo;
+    // the kinds of block that change places with one another, and the place each now holds
+    static final int NONE = 0, BRICKS = 1, STONES = 2, PLANKS = 3;
+    private final int[] kindOf = new int[64], slot = new int[64];
+    // a block on its way between two places: from, to, how far (0 to 1, below 0 not moving),
+    // how long it takes, which way it goes (over the top or down the front), how it tumbles
+    private final int[] fromS = new int[64], toS = new int[64];
+    private final float[] flyU = new float[64], flyT = new float[64], spin = new float[64];
+    private final boolean[] over = new boolean[64], lost = new boolean[64];
 
     // the pose per joint: angles about x (forward and back), z (out to the side), y (across)
     final float[] ax = new float[JOINTS], az = new float[JOINTS], ay = new float[JOINTS];
@@ -125,6 +139,16 @@ final class Frida {
         add(HAMMER, hx, hy - 1.95f, hz, 0.38f, 0.38f, 0.62f, GOLD, gold, AU);
         for (int e = -1; e <= 1; e += 2)
             add(HAMMER, hx, hy - 1.95f, hz + e * 0.42f, 0.41f, 0.41f, 0.06f, GOLD_DARK, gold, AU);
+        // which blocks may change places: the bricks of her limbs, her stones, her planks
+        for (int i = 0; i < n; i++) {
+            slot[i] = i;
+            flyU[i] = -1f;
+            int j = joint[i];
+            if (j == HAMMER || look[i] == DrawList.GLOW || j == ROOT) continue;
+            if (look[i] == DrawList.GRAIN && half[i * 3 + 1] > 0.25f) kindOf[i] = BRICKS;
+            else if (look[i] == DrawList.STONE && half[i * 3] > 0.3f) kindOf[i] = STONES;
+            else if (look[i] == DrawList.WOOD) kindOf[i] = PLANKS;
+        }
     }
 
     private void add(int j, float cx, float cy, float cz, float hx, float hy, float hz, int rgb, float drawn, int mat) {
@@ -211,13 +235,143 @@ final class Frida {
 
     void draw(DrawList d) {
         for (int i = 0; i < n; i++) {
+            if (lost[i]) continue;
             int j = joint[i];
             if (j == HAMMER && !holding) continue;
-            place(j, mid[i * 3], mid[i * 3 + 1], mid[i * 3 + 2], at);
-            System.arraycopy(jr, j * 9, turn, 0, 9);
-            float s = size;
-            d.box(at[0], at[1], at[2], half[i * 3] * s, half[i * 3 + 1] * s, half[i * 3 + 2] * s, turn, shade(i), drawn(i));
+            where(i, at, turn, hs);
+            d.box(at[0], at[1], at[2], hs[0], hs[1], hs[2], turn, shade(i), drawn(i));
         }
+    }
+
+    private final float[] hs = new float[3], a3 = new float[3], b3 = new float[3], ra = new float[9];
+
+    /**
+     * Where a block is now, its turn and half sizes: in the place it holds, or tumbling on its
+     * way from one place to another.
+     */
+    void where(int i, float[] p, float[] t, float[] h) {
+        if (flyU[i] < 0f) {
+            int s = slot[i], j = joint[s];
+            place(j, mid[s * 3], mid[s * 3 + 1], mid[s * 3 + 2], p);
+            System.arraycopy(jr, j * 9, t, 0, 9);
+            for (int k = 0; k < 3; k++) h[k] = half[s * 3 + k] * size;
+            return;
+        }
+        int a = fromS[i], b = toS[i];
+        float u = flyU[i], e = u * u * (3f - 2f * u);
+        place(joint[a], mid[a * 3], mid[a * 3 + 1], mid[a * 3 + 2], a3);
+        place(joint[b], mid[b * 3], mid[b * 3 + 1], mid[b * 3 + 2], b3);
+        // up over her, or out before her: toward the way she faces, and up
+        float fxw = -jr[2], fzw = -jr[8];
+        float arc = (float) Math.sin(Math.PI * u);
+        float up = (over[i] ? 1.1f + Math.abs(b3[1] - a3[1]) / size * 0.35f : 0.25f) * size;
+        float out = (over[i] ? 0.35f : 0.9f) * size;
+        for (int k = 0; k < 3; k++) p[k] = a3[k] + (b3[k] - a3[k]) * e;
+        p[0] += fxw * out * arc;
+        p[1] += up * arc;
+        p[2] += fzw * out * arc;
+        // the place it goes to's turn, rolled about its own across over and over as it flies
+        float th = (1f - e) * spin[i];
+        float c = (float) Math.cos(th), sn = (float) Math.sin(th);
+        int jb = joint[b];
+        for (int r = 0; r < 3; r++) {
+            float m0 = jr[jb * 9 + r * 3], m1 = jr[jb * 9 + r * 3 + 1], m2 = jr[jb * 9 + r * 3 + 2];
+            t[r * 3] = m0;
+            t[r * 3 + 1] = m1 * c + m2 * sn;
+            t[r * 3 + 2] = -m1 * sn + m2 * c;
+        }
+        for (int k = 0; k < 3; k++) h[k] = (half[a * 3 + k] + (half[b * 3 + k] - half[a * 3 + k]) * e) * size;
+    }
+
+    // ---- blocks changing places ----
+
+    /** Whether a block can set out now: of a kind that moves, in her, not already on its way. */
+    boolean free(int i) {
+        return i >= 0 && i < n && kindOf[i] != NONE && !lost[i] && flyU[i] < 0f;
+    }
+
+    /** How many blocks there are, and of what kind each is. */
+    int parts() {
+        return n;
+    }
+
+    int kind(int i) {
+        return kindOf[i];
+    }
+
+    /** Where the place a block now holds is in her model, up and down: for choosing which goes over. */
+    float slotY(int i) {
+        return mid[slot[i] * 3 + 1];
+    }
+
+    /**
+     * Two blocks of a kind set out to change places, so many seconds on the way: the lower one
+     * goes up over the top of her, the higher one down her front, both tumbling.
+     */
+    void swap(int i, int k, float time, Random rnd) {
+        if (!free(i) || !free(k) || kindOf[i] != kindOf[k] || i == k) return;
+        int a = slot[i], b = slot[k];
+        boolean iLow = mid[a * 3 + 1] <= mid[b * 3 + 1];
+        set(i, a, b, time, iLow, rnd);
+        set(k, b, a, time, !iLow, rnd);
+    }
+
+    private void set(int i, int from, int to, float time, boolean overTop, Random rnd) {
+        fromS[i] = from;
+        toS[i] = to;
+        flyU[i] = 0f;
+        flyT[i] = time;
+        over[i] = overTop;
+        // over the top it rolls forward a turn or two; down the front, half a turn back
+        spin[i] = overTop ? (float) (Math.PI * 2 * (1 + rnd.nextInt(2))) : -(float) Math.PI;
+    }
+
+    /** The blocks on their way go on; those that arrive take their new places. Returns how many arrived. */
+    int travel(float dt) {
+        int landed = 0;
+        for (int i = 0; i < n; i++) {
+            if (flyU[i] < 0f) continue;
+            flyU[i] += dt / flyT[i];
+            if (flyU[i] >= 1f) {
+                flyU[i] = -1f;
+                slot[i] = toS[i];
+                landed++;
+            }
+        }
+        return landed;
+    }
+
+    /** The block of hers nearest a point of the world that could be knocked out, or -1. */
+    int nearest(float x, float y, float z) {
+        int best = -1;
+        float bd = Float.MAX_VALUE;
+        for (int i = 0; i < n; i++) {
+            // anything of her that shows: not the hammer, not the glowing eyes and knees, not a button
+            if (lost[i] || joint[i] == HAMMER || look[i] == DrawList.GLOW) continue;
+            if (Math.max(half[i * 3], Math.max(half[i * 3 + 1], half[i * 3 + 2])) < 0.12f) continue;
+            where(i, at, turn, hs);
+            float dx = at[0] - x, dy = at[1] - y, dz = at[2] - z, d = dx * dx + dy * dy + dz * dz;
+            if (d < bd) {
+                bd = d;
+                best = i;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * A block knocked out of her for good: it goes out as a body of its own where it was, of
+     * what it is made of, and she is the less by it.
+     */
+    Body knockOut(int i) {
+        where(i, at, turn, hs);
+        lost[i] = true;
+        flyU[i] = -1f;
+        Body b = new Body(hs[0], hs[1], hs[2], body[i], kind != STONE_KIND ? kindColor(i, color[i]) : color[i]);
+        float[] q = new float[4];
+        quat(turn, 0, q);
+        b.setPose(at[0], at[1], at[2], q[0], q[1], q[2], q[3]);
+        return b;
     }
 
     /** How a part is drawn: a knee put out goes dark; in the fight all of her burns. */
@@ -315,11 +469,13 @@ final class Frida {
         bodies = new Body[n];
         bodyPart = new int[n];
         float[] q = new float[4];
+        int k = 0;
         for (int i = 0; i < n; i++) {
+            if (lost[i]) continue;
             int j = joint[i];
-            place(j, mid[i * 3], mid[i * 3 + 1], mid[i * 3 + 2], at);
-            Body b = new Body(half[i * 3] * size, half[i * 3 + 1] * size, half[i * 3 + 2] * size, body[i], color[i]);
-            quat(jr, j * 9, q);
+            where(i, at, turn, hs);
+            Body b = new Body(hs[0], hs[1], hs[2], body[i], color[i]);
+            quat(turn, 0, q);
             b.setPose(at[0], at[1], at[2], q[0], q[1], q[2], q[3]);
             // out from the middle of her, up, and away from the blow
             float ox = at[0] - x, oy = at[1] - 2.4f * size, oz = at[2] - z;
@@ -337,10 +493,12 @@ final class Frida {
             b.wx = (rnd.nextFloat() - 0.5f) * 7f;
             b.wy = (rnd.nextFloat() - 0.5f) * 7f;
             b.wz = (rnd.nextFloat() - 0.5f) * 7f;
-            bodies[i] = b;
-            bodyPart[i] = i;
+            bodies[k] = b;
+            bodyPart[k] = i;
+            k++;
             physics.add(b);
         }
+        bodies = java.util.Arrays.copyOf(bodies, k);
     }
 
     private float brokenFor;
