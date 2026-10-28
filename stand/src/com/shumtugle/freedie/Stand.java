@@ -255,6 +255,39 @@ public final class Stand implements World.Host {
                 wait = 0.5f + r.nextFloat() * 0.4f;
             }
             System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
+        } else if (c.equals("alleycube")) {
+            // alleycube: this round's figure carries a golden cube
+            world.standAlleyCube();
+        } else if (c.equals("alleyneed")) {
+            // alleyneed SHARE: how much of each figure must fall, for a quick way through
+            world.standAlleyNeed(f(p[1]));
+        } else if (c.equals("alleybot")) {
+            // alleybot SECONDS [SKILL] [SHOTEVERY]: a player in the alley, rolling a ball at the
+            // middle of the figure whenever one can be rolled, until the alley is over; skill is
+            // the share of balls rolled true, the rest go wide; with a third number a shot every
+            // so many seconds, named b000, b001...
+            int n = Math.round(f(p[1]) / DT);
+            float skill = p.length > 2 ? f(p[2]) : 1f;
+            float every = p.length > 3 ? f(p[3]) : 0f, next = every;
+            int shots = 0;
+            java.util.Random r = new java.util.Random(7);
+            float wait = 0.4f;
+            for (int i = 0; i < n && world.standAlleyOn(); i++) {
+                step();
+                if (every > 0f && (next -= DT) <= 0f) {
+                    next += every;
+                    shot(String.format("b%03d", shots++));
+                }
+                if (!world.standAlleyAiming()) {
+                    wait = 0.4f;
+                    continue;
+                }
+                if ((wait -= DT) > 0f) continue;
+                float u = r.nextFloat() < skill ? (r.nextFloat() - 0.5f) * 0.3f : (r.nextBoolean() ? 1f : -1f) * 1.1f;
+                world.standAlleyRoll(u, 10f + r.nextFloat() * 2f, 0f);
+                System.out.println(String.format("%7.2fs  ball at %.2f", time, u));
+            }
+            System.out.println(String.format("%7.2fs  %s", time, world.standAlleyState()));
         } else if (c.equals("botshot")) {
             // botshot NAME: the next throw of the bot is shot with the finger down
             shotDown = p[1];

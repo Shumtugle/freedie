@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.51
+- The alley, at the crossroads before the 21st. Turned round to her, a touch on her: she
+  sinks into herself and bursts, and her blocks fly in arcs to stand up as a figure down the
+  street, a triangle of pins, a wall, a gate, towers, steps, grown fresh each time and tried
+  so that one good ball brings some of it down but not all. Three heavy balls, rolled with a
+  swipe up the screen, the ball in hand following the finger; the balls left in the corner.
+  Most of the figure down, and her blocks fly back together into her, she backs away down
+  the street and bursts again, farther off; the view closes in on the far figures. Five
+  times, and she turns and flows away over the shore road, across the beach and into the
+  sea, gone for this crossroads. A figure left standing after the third ball: she gathers
+  and flows back to where she waited, and waits again.
+- About one game in four, one figure carries a golden cube on top. Knocked off, it flies to
+  the player and is his, given in the room between rounds.
+- No hammer is in hand in the alley: the hand holds the ball.
+
 ## 0.50
 - One hammer, one look, everywhere in the game. The room between rounds no longer paints a
   hammer of its own: the hammer in the hand on the street, the same model with the same

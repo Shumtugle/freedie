@@ -1,0 +1,32 @@
+# The alley at the crossroads before the 21st: turned round to her, a touch on her; she sinks
+# into herself and bursts, her blocks flying into the first figure, the triangle of pins; a
+# swipe up rolls the first ball into it.
+screen 1096 2560
+keep level 20
+keep best 21
+keep cross 21
+keep swiped 1
+restart
+skip
+wait 4.6
+drag 200 400 40 410 0.2
+wait 1.3
+shot a0_her
+down 137 300
+wait 0.08
+up 137 300
+wait 0.3
+shot a1_slump
+wait 0.5
+shot a2_flying
+wait 2.4
+shot a3_figure
+drag 140 590 150 380 0.15
+wait 0.5
+shot a4_rolling
+wait 1.0
+shot a5_strike
+wait 2.5
+shot a6_after
+wait 2.5
+shot a7_next

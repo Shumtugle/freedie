@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.50";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.51";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -90,7 +90,13 @@ final class World {
     // she waits behind, where the alley will be
     private Frida waiting;
     private Flow waitFlow;
-    static final float WAIT_X = 0.4f, WAIT_Z = -17f, WAIT_SIZE = 1.1f;
+    // she waits at the head of the alley, on its line down the street
+    static final float WAIT_X = -1.0f, WAIT_Z = -17.5f, WAIT_SIZE = 1.1f;
+    // the alley, while it is played; and whether she has been driven into the sea at this crossroads
+    private Alley alley;
+    private boolean fridaGone;
+    private final float[] fridaAt = {-99f, -99f, 0f};
+    private final float[] f0 = new float[3];
     private float flashOut;                   // the flash fading off the game, seconds left
 
     World(Host host) {
@@ -182,6 +188,10 @@ final class World {
      * facing it, brings the next building.
      */
     private void crossTouch(int type, float x, float y) {
+        if (alley != null) {
+            alley.touch(type, x, y, time);
+            return;
+        }
         if (type == DOWN) {
             crossDown = true;
             crossX = x;
@@ -205,9 +215,22 @@ final class World {
             game.turnAround(side);
             return;
         }
+        // facing her, a touch on her: the alley
+        if (game.facing() == 2 && game.turnReady() && waiting != null && fridaAt[0] > -50f
+                && Math.abs(x - fridaAt[0]) < fridaAt[2] + 10f && Math.abs(y - fridaAt[1]) < fridaAt[2] * 2f + 10f) {
+            alley = new Alley(host, game, waiting, waitFlow, time2seed());
+            game.handBusy = true;
+            game.journalLine("the alley: she is touched, and bursts");
+            return;
+        }
         if (game.facing() == 0 && !game.turned() && plinthAt[0] > -50f
                 && Math.abs(x - plinthAt[0]) < plinthAt[2] + 12f && Math.abs(y - plinthAt[1]) < plinthAt[3] + 16f)
             game.leaveCross();
+    }
+
+    /** A seed for a game that starts now: the time, and the level, mixed. */
+    private long time2seed() {
+        return Double.doubleToLongBits(time) * 31L + level * 1000003L;
     }
 
     /** Which mark a touch is on: -1 the left, 1 the right, 0 none; only while the marks are shown. */
@@ -266,7 +289,7 @@ final class World {
         time += dt;
         frameDt = dt;
         // she waits behind at a crossroads, breathing, a hand up now and then
-        if (game.atCross()) {
+        if (game.atCross() && !fridaGone) {
             if (waiting == null) {
                 waiting = new Frida();
                 waiting.size = WAIT_SIZE;
@@ -276,8 +299,21 @@ final class World {
                 waitFlow.fx = 0f;
                 waitFlow.fz = 1f;
             }
-            waitFlow.update(dt, 0f, 0f);
-        } else waiting = null;
+            if (alley != null) {
+                alley.update(dt);
+                if (alley.done()) {
+                    fridaGone = alley.gone;
+                    if (fridaGone) waiting = null;
+                    alley = null;
+                    game.handBusy = false;
+                }
+            } else waitFlow.update(dt, 0f, 0f);
+        } else {
+            waiting = null;
+            alley = null;
+            game.handBusy = false;
+            if (!game.atCross()) fridaGone = false;
+        }
         // the street on the set is a still: while the room is all closed in, nothing on it moves
         boolean still = game.tilt() >= 1f;
         if (!still) {
@@ -380,6 +416,32 @@ final class World {
     }
 
         /** For the desktop stand: whether a fight has come to its end, won or lost. */
+    /** For the stand: whether the alley is on, whether a ball can be rolled, rolling one, and how it stands. */
+    boolean standAlleyOn() {
+        return alley != null;
+    }
+
+    boolean standAlleyAiming() {
+        return alley != null && alley.aiming();
+    }
+
+    void standAlleyRoll(float u, float speed, float ang) {
+        if (alley != null) alley.roll(u, speed, ang);
+    }
+
+    void standAlleyCube() {
+        if (alley != null) alley.cubeRound = alley.round;
+    }
+
+    void standAlleyNeed(float share) {
+        if (alley != null) alley.need = share;
+    }
+
+    String standAlleyState() {
+        if (alley == null) return "the alley is over" + (fridaGone ? ": she is gone into the sea" : ": she waits again");
+        return "the alley: round " + (alley.round + 1) + ", ball " + (alley.ball + 1) + ", felled " + alley.won;
+    }
+
     boolean standFightOver() {
         return game.fight != null && !game.fight.live();
     }
@@ -469,8 +531,9 @@ final class World {
         game.jolt(jolt);
         yaw += jolt[0] / (W * 1.9f);
         pitch += jolt[1] / (W * 1.9f);
-        // as the room closes in over the street, the street draws back a little into the set
-        float wide = 1f - 0.15f * game.tilt();
+        // as the room closes in over the street, the street draws back a little into the set;
+        // in the alley the view closes in on the far figures
+        float wide = (1f - 0.15f * game.tilt()) * (alley != null ? alley.zoom() : 1f);
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];
@@ -505,11 +568,22 @@ final class World {
             Street.gate(d, game.gateOpen(), game.yardOpen());
             gateSeen(d);
             plinthSeen(d);
-            if (waiting != null) {
+            fridaAt[0] = fridaAt[1] = -99f;
+            if (alley != null) {
+                alley.draw(d);
+                d.flash = Math.max(d.flash, alley.flash);
+            } else if (waiting != null) {
                 waitFlow.pose();
                 beckon(waiting, game.crossTime());
                 waiting.pose();
                 waiting.draw(d);
+                // where she is in the frame, for a touch on her
+                waiting.chest(f0);
+                if (d.project(f0[0], f0[1], f0[2], g0)) {
+                    fridaAt[0] = g0[0];
+                    fridaAt[1] = g0[1];
+                    fridaAt[2] = WAIT_SIZE * 2.4f * d.focal / Math.max(1f, -WAIT_Z);
+                }
             }
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
@@ -532,6 +606,7 @@ final class World {
         game.flat(f);
         if (game.gateReady() && gateAt[0] > -50f) gateGlow(f);
         marks(f);
+        if (alley != null) alley.flat(f);
         // the empty plinth glows, a while after the crossroads came, to say it is waiting
         if (game.atCross() && !game.turned() && plinthAt[0] > -50f && game.crossTime() > Game.PLINTH_CALL) {
             float k = Math.min(1f, (game.crossTime() - Game.PLINTH_CALL) / 1.2f);

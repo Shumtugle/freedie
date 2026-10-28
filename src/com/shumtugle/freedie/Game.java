@@ -2598,6 +2598,10 @@ final class Game implements Physics.Listener {
 
     /** The hammer: held low on the right, drawn back by the wind-up; or wherever it is now. */
     private void hammer(DrawList d) {
+        if (handBusy) {
+            console.cut(cutPts, cutN, 0);
+            return;
+        }
         if (hs == HAND) {
             float bob = (float) Math.sin(clock * 1.7f) * 0.008f;
             // held upright, head up and to the left, tilted toward the street
@@ -2678,6 +2682,20 @@ final class Game implements Physics.Listener {
 
     // how far ahead of the eye the hand holds the hammer
     static final float HELD_Z = 1.35f;
+
+    /** The hand holds something else (a ball in the alley): no hammer is drawn. */
+    boolean handBusy;
+
+    /** A golden cube knocked off a figure in the alley: the player's, given in the room. */
+    void alleyCube() {
+        cubeDue = true;
+        journal.line(clock, "a golden cube knocked off a figure in the alley");
+    }
+
+    /** A line in the journal, from the world. */
+    void journalLine(String s) {
+        journal.line(clock, s);
+    }
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {
