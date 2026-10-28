@@ -1,0 +1,15 @@
+# The air hockey table in the yard, from straight above: in at once, a few seconds of the
+# stand's own hand against the violet mallet.
+screen 1096 2560
+keep level 11
+keep best 12
+restart
+skip
+wait 2.6
+yard
+wait 0.5
+shot t0
+yardbot 1
+wait 3
+shot t1
+yardstate

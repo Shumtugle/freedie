@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.41
+- The table in the yard is seen straight from above, across nine tenths of the width, one
+  to one and seven in its proportions: a light smooth top, firm blue rails, rounded corners
+  inside, a red line and circle across the middle, a half round before each goal; the
+  goals a third of the width, the player's at the bottom.
+- No hammers at the table: two round mallets, the player's warm red, the other's cool
+  violet, and a dark puck. The mallet does not jump to the finger: it keeps the distance
+  it was touched at, so the finger can stay below it, and it never crosses the middle.
+- The puck glides long and slows hardly at all; the fastest crosses the table in about
+  half a second. It leaves a straight rail at the angle it came, a little slower, and a
+  rounded corner by its curve; the posts of a goal are hard. A still mallet blocks, a
+  moving one hits, the faster the harder, an edge sends it off at a slant. The steps are
+  small enough that nothing passes through anything, and a puck pressed against a rail
+  pushes the mallet back instead of sticking.
+- The other mallet plays by the same laws: no faster than it can run, a moment late; it
+  guards its goal, cuts the puck off where it will cross, and attacks, straight or off a
+  rail, now and then a little wide.
+- First to seven. After a goal a short sound, the score lit for a moment, a second's
+  pause, then the puck on the half of whoever let it in and both mallets back at their
+  places. A dry click for a mallet, another for a rail, a light buzz on the player's hits.
+- The score sits in the band over the table, the key back to the street under it.
+
 ## 0.40
 - The yard. In the houses on the right, where the curb is kept clear, there is a wooden
   gate. It stays shut until the player has reached the tenth level; then it stands ajar,
