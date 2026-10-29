@@ -6,7 +6,8 @@ package com.shumtugle.freedie;
  * calls, always from one thread: touch() for each queued touch, update(dt), then draw().
  * Coordinates of touches are frame pixels, W across.
  *
- * The street under a low evening sun: houses, palms, the sea beyond the promenade, cars
+ * Every game opens with Freedie on the street (see Intro); the eye goes into hers, and the
+ * game is seen from there. The street under a low evening sun: houses, palms, the sea beyond the promenade, cars
  * parked and cars coming, and on the plinth in the middle of the road a building, with the
  * hammer in hand to knock it down (see Game). The red button on the lamp post rings the
  * dispatcher, and three presses open the bridge, where any level played so far can be
@@ -14,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.57";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.58";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -67,12 +68,17 @@ final class World {
     private int calls;
     private float callAt = -9f;
     private float tvOn = -1f;
-    private boolean swallow;                  // the touch that pressed the red button, until it lifts
+    private boolean swallow;                  // the touch that pressed the red button or skipped the opening, until it lifts
+    // the opening, while it plays; then the light off it fading into the game
+    private Intro intro;
+    static final float FLASH_OUT = 0.35f;
+    private float flashOut;
     // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast
     private float showYaw = Float.NaN, showSpin;
 
     World(Host host) {
         this.host = host;
+        intro = new Intro(host);
         game = new Game(host, host.loadInt("level"));
         game.traffic = traffic;
         game.solid = solid;
@@ -95,6 +101,14 @@ final class World {
     }
 
     void touch(int type, float x, float y) {
+        if (intro != null) {
+            if (type == DOWN) {
+                intro.skip();
+                swallow = true;
+            }
+            if (type == UP) swallow = false;
+            return;
+        }
         if (bridge != null) {
             if (type == BACK) {
                 // the back key leaves the room as the lever does, without the show
@@ -133,6 +147,15 @@ final class World {
         }
         // birds and planes keep their own time, counted only while the street is in sight
         fliers.update(dt, bridge == null && !game.atSea && game.tilt() == 0f);
+        if (intro != null) {
+            intro.update(dt);
+            if (intro.done()) {
+                intro = null;
+                flashOut = FLASH_OUT;
+            }
+            return;
+        }
+        flashOut = Math.max(0f, flashOut - dt);
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
@@ -156,6 +179,11 @@ final class World {
     /** For the desktop stand: up among the watchers at once, with a verdict. */
     void standDeck(int verdict) {
         game.standDeck(verdict);
+    }
+
+    /** For the desktop stand: no opening (scenes start on the street), or the opening once more. */
+    void standIntro(boolean on) {
+        intro = on ? new Intro(host) : null;
     }
 
     /** For the desktop stand: her model on the road before the plinth, turned so many degrees, turning so many a second. */
@@ -209,13 +237,15 @@ final class World {
         // as the room closes in over the street, the street draws back a little into the set
         float wide = 1f - 0.15f * game.tilt();
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
+        // the opening has an eye of its own
+        if (intro != null) intro.frame(d, W);
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];
         d.fogScale *= view[2];
         game.frame(d);
         if (!game.atSea) fliers.strokes(d);
-        // the light through the portal
-        d.flash = game.light();
+        // the light off the opening, or through the portal
+        d.flash = Math.max(d.flash, Math.max(flashOut / FLASH_OUT, game.light()));
         if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
         if (bridge != null) {
             // the world fades as the room comes up, and is not drawn once it is up
@@ -240,11 +270,13 @@ final class World {
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
+            if (intro != null) intro.draw(d);
             if (!Float.isNaN(showYaw)) Frida.draw(d, -0.6f, 0f, 8.6f, showYaw + showSpin * time, 0.55f);
             callAt3[0] = Street.CALL_X;
             callAt3[1] = Street.CALL_Y + 0.06f;
             callAt3[2] = Street.CALL_Z;
         }
+        game.hideHand = intro != null;
         game.draw(d);
         // the red button on the call box: a slow glow, bright for a moment when pressed
         float since = time - pressedAt;
@@ -256,9 +288,11 @@ final class World {
 
         // the flat layer: snow at sea, the aim, the version in the corner, and the cost of a frame while the engine is young
         if (game.atSea) Ocean.snow(f, time);
-        game.flat(f);
-        // the aim, drawn smooth over everything by the renderer
-        game.aim(d);
+        if (intro == null) {
+            game.flat(f);
+            // the aim, drawn smooth over everything by the renderer
+            game.aim(d);
+        }
         // the room between rounds, at the world's own grain, over all of the frame
         if (roomInk.used) Console.over(f, roomInk);
         if (hudInk.used) {

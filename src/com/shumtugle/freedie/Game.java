@@ -1868,6 +1868,10 @@ final class Game implements Physics.Listener {
 
     /** The hammer: held low on the right, drawn back by the wind-up; or wherever it is now. */
     private void hammer(DrawList d) {
+        if (hideHand) {
+            console.cut(cutPts, cutN, 0);
+            return;
+        }
         if (hs == HAND) {
             float bob = (float) Math.sin(clock * 1.7f) * 0.008f;
             // held upright, head up and to the left, tilted toward the street
@@ -1943,6 +1947,9 @@ final class Game implements Physics.Listener {
 
     // how far ahead of the eye the hand holds the hammer
     static final float HELD_Z = 1.35f;
+
+    /** No hammer drawn: the eye is not the player's yet (the opening). */
+    boolean hideHand;
 
     /** The flat layer: the flight the throw would take, in dots, and the ring with its wind-up. */
     void flat(Px f) {

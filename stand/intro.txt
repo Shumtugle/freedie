@@ -1,0 +1,24 @@
+# The opening: up from her feet to where the player stands, her eyes kindling, the name in
+# gold over her, into her eyes, the light, and the game from there.
+screen 1096 2560
+keep level 4
+restart
+intro
+wait 0.3
+shot i0_feet
+wait 0.9
+shot i1_rising
+wait 0.7
+shot i2_eyes
+wait 0.6
+shot i3_name
+wait 0.8
+shot i4_held
+wait 0.5
+shot i5_into
+wait 0.45
+shot i6_light
+wait 0.5
+shot i7_game
+wait 1.5
+shot i8_street

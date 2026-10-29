@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.58
+- An opening again, at every start, about four and a half seconds: Freedie on the road
+  before the empty plinth; the eye rises from her feet back to where the player stands, her
+  eyes kindle, the name comes up over her in gold, block by block; then the eye goes into
+  hers, the light comes up, and the game is seen from there. A touch goes straight to the
+  light.
+
 ## 0.57
 - Freedie's model, new, after the author's sheet: brick feet, legs, body and forearms laid
   in courses; stone shoulders and fists, a brick on each shoulder; iron bands at the ankles,

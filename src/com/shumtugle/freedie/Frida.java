@@ -140,6 +140,8 @@ final class Frida {
     }
 
     private static final float[] rot = new float[9];
+    /** How far her eyes are lit, 0 (dark coals) to 1. */
+    static float eyes = 1f;
 
     /** Draws her standing at (x, y, z), turned about the upright by yaw (0: facing -z), so many meters to her unit. */
     static void draw(DrawList d, float x, float y, float z, float yaw, float size) {
@@ -158,7 +160,8 @@ final class Frida {
             rot[3] = r10; rot[4] = r11; rot[5] = r12;
             rot[6] = -sy * r00 + cy * r20; rot[7] = -sy * r01 + cy * r21; rot[8] = -sy * r02 + cy * r22;
             float wx = x + cy * px + sy * pz, wz = z - sy * px + cy * pz;
-            d.box(wx, y + py, wz, P[o + 3] * size, P[o + 4] * size, P[o + 5] * size, rot, COL[i], MAT[i]);
+            int c = COL[i] == EYES ? Street.mix(0x2A1C14, EYES, eyes) : COL[i];
+            d.box(wx, y + py, wz, P[o + 3] * size, P[o + 4] * size, P[o + 5] * size, rot, c, MAT[i]);
         }
     }
 }
