@@ -2735,7 +2735,8 @@ final class Game implements Physics.Listener {
                 }
             }
         }
-        if (k * fh < fh / 8f) hud(f);
+        // the crest, while the street is in sight; the alley keeps a corner of its own
+        if (k * fh < fh / 8f && !handBusy) hud(f);
         if (wake >= 0f) lids(f);
         if (!aiming) return;
         float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);

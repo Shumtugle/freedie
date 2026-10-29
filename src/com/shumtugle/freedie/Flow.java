@@ -30,6 +30,11 @@ final class Flow {
     int steps;
     /** Gathered into herself: no block sets out, the sway dies down. */
     boolean gathered;
+    /**
+     * How much she lives standing still, 0 to 1: at 0 she only breathes; above it she keeps
+     * swaying and springing on the spot, treading, and her blocks keep changing places.
+     */
+    float alive;
     private float phase, move, time;
 
     Flow(Frida f, Random rnd) {
@@ -48,14 +53,14 @@ final class Flow {
         x += vx * dt;
         z += vz * dt;
         // the sway grows as she gets going and dies down when she stops
-        float want = gathered ? 0f : Math.min(1f, v / 0.8f);
+        float want = gathered ? 0f : Math.max(alive, Math.min(1f, v / 0.8f));
         move += (want - move) * Math.min(1f, dt * 4f);
         float stepLen = STEP * f.size;
         float before = phase;
-        phase += Math.max(v, gathered ? 0f : 0.15f * move) * dt / stepLen;
+        phase += Math.max(v, gathered ? 0f : Math.max(0.15f * move, 0.7f * alive)) * dt / stepLen;
         if ((int) phase != (int) before) {
             steps++;
-            if (!gathered && move > 0.3f) swaps(stepLen / Math.max(0.5f, v) * TRAVEL);
+            if (!gathered && move > 0.3f) swaps(stepLen / Math.max(0.5f, Math.max(v, 0.7f * alive)) * TRAVEL);
         }
         f.travel(dt);
     }

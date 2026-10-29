@@ -15,8 +15,9 @@ import java.util.Random;
  * then a figure carries a golden cube on top; knocked off, it is the player's, given in the
  * room between rounds.
  *
- * The lane runs straight down the street behind, from the player's feet; a point of it is u
- * across (to the player's right as he faces down it) and v along. Every figure is grown fresh,
+ * The lane runs down the street behind from the player's feet, turned a little toward the
+ * middle of the road; a point of it is u across (to the player's right as he faces down it)
+ * and v along. The eye looks straight down it. Every figure is grown fresh,
  * from her blocks, and tried: it must stand by itself, and one ball rolled at its middle must
  * bring some of it down but not all. It grows in the background, one figure ahead.
  */
@@ -30,11 +31,13 @@ final class Alley {
 
     static final int ROUNDS = 5, BALLS = 3;
     static final float WIN = 0.7f;           // share of a figure to knock down to drive her back
-    static final float LANE_X = World.WAIT_X;
+    // the lane: from the player's feet, down the street behind, turned so much toward the road's middle
+    static final float LANE_TURN = 0.11f, YAW = (float) Math.PI - LANE_TURN;
+    static final float FX = (float) Math.sin(YAW), FZ = (float) Math.cos(YAW), RX = (float) Math.cos(YAW), RZ = -(float) Math.sin(YAW);
     static final float K = 2f;               // figures are built at this size: they are her blocks
     static final float BALL_R = 0.34f;
     static final float BLOCK_MASS = 0.12f, BALL_MASS = 5f;
-    static final float FLOW = 4.2f, FLOW_OUT = 6.5f;   // how fast she flows back, meters a second
+    static final float FLOW = 3.0f, FLOW_OUT = 6.5f;   // how fast she flows back, meters a second
     static final float CUBE_ODDS = 0.25f;    // a golden cube on one figure, about one game in four
     // where she goes when driven out: the shore road, the end of the beach, and down into the sea
     static final float SHORE_V = -Street.SHORE_Z, SEA_V = -Street.BEACH_Z + 20f, SUNK = 7f;
@@ -128,16 +131,16 @@ final class Alley {
 
     /** A point of the lane, across u and along v from the player's feet, into the world. */
     static float wx(float u, float v) {
-        return LANE_X - u;
+        return World.CAM_X + RX * u + FX * v;
     }
 
     static float wz(float u, float v) {
-        return World.CAM_Z - v;
+        return World.CAM_Z + RZ * u + FZ * v;
     }
 
     /** Where a world point is along the lane. */
     static float vOf(float x, float z) {
-        return World.CAM_Z - z;
+        return (x - World.CAM_X) * FX + (z - World.CAM_Z) * FZ;
     }
 
     private void go(int p) {
@@ -225,6 +228,7 @@ final class Alley {
                 Body b = balls.get(balls.size() - 1);
                 phys.step(dt);
                 cubeWatch();
+                standing = 1f - knockedShare();
                 boolean stopped = b.speed2() < 0.09f && phaseT > 0.8f;
                 // at the figure, what it does now is settling
                 boolean past = vOf(b.px, b.pz) > figureV(round) - 0.5f * K;
@@ -304,11 +308,10 @@ final class Alley {
         float want = phase == OUT && go > 0.05f ? (float) Math.PI : 0f;
         float d = want - faceA;
         faceA += Math.signum(d) * Math.min(Math.abs(d), dt * 4f);
-        flow.fx = (float) Math.sin(faceA);
-        flow.fz = (float) Math.cos(faceA);
-        // along the lane: v grows as z falls
-        flow.update(dt, 0f, -go);
-        flow.x = LANE_X;
+        float toward = (float) Math.atan2(-FX, -FZ) + faceA;
+        flow.fx = (float) Math.sin(toward);
+        flow.fz = (float) Math.cos(toward);
+        flow.update(dt, FX * go, FZ * go);
     }
 
     private boolean arrived() {
@@ -411,6 +414,10 @@ final class Alley {
             delay[i] = rank[i] * Math.min(0.037f, 0.9f / Math.max(1, n));
         }
         shown = false;
+        // out of her at once: not one frame where they stand already in their places
+        phaseT = 0f;
+        phase = SCATTER;
+        flyBlocks(false);
         host.sound(Synth.THUNDER, 0.5f, 1.5f);
         host.sound(Synth.CRASH, 0.7f, 0.5f);
         host.buzz(60);
@@ -553,7 +560,7 @@ final class Alley {
     private Body crown() {
         Body top = null;
         for (Body b : blocks)
-            if (Math.abs(b.homeX - wx(0f, 0f)) < 0.6f * K && b.hx >= 0.18f && b.hz >= 0.18f && (top == null || b.homeY + b.hy > top.homeY + top.hy))
+            if (Math.abs((b.homeX - World.CAM_X) * RX + (b.homeZ - World.CAM_Z) * RZ) < 0.6f * K && b.hx >= 0.18f && b.hz >= 0.18f && (top == null || b.homeY + b.hy > top.homeY + top.hy))
                 top = b;
         float hs = 0.26f;
         Body c = new Body(hs, hs, hs, Body.GOLD, 0xFFC81E);
@@ -646,10 +653,10 @@ final class Alley {
         do c = Builder.BALL_COLORS[rnd.nextInt(Builder.BALL_COLORS.length)];
         while (c == handColor);
         handColor = c;
-        // along the lane (toward -z), turned a little across it
+        // along the lane, turned a little across it
         float across = (float) Math.sin(ang), along = (float) Math.cos(ang);
-        b.vx = -across * speed;
-        b.vz = -along * speed;
+        b.vx = (RX * across + FX * along) * speed;
+        b.vz = (RZ * across + FZ * along) * speed;
         b.vy = 0f;
         b.wx = b.vz / BALL_R;
         b.wz = -b.vx / BALL_R;
@@ -702,20 +709,25 @@ final class Alley {
             float s = cube.shown;
             d.box(cube.px, cube.py, cube.pz, cube.hx * s, cube.hy * s, cube.hz * s, turn, 0xFFB428, DrawList.FIRE_GOLD);
         }
-        // the ball in hand, low on the right, following the finger
-        if (phase == AIM || phase == SCATTER || phase == ROLL && phaseT < 0.15f) {
-            float up = phase == SCATTER ? Math.min(1f, phaseT / 0.6f) : 1f;
-            float vx = 0.62f + handX * 0.45f, vy = -1.3f - (1f - up) * 0.8f, vz = 3.3f;
+        // the next ball, held low in front, following the finger: a little one close to the eye,
+        // so it is all there at the bottom of the frame; it stays the same however the view closes in
+        if (phase == AIM || phase == SCATTER) {
+            float up = phase == SCATTER ? Math.min(1f, Math.max(0f, phaseT - 0.6f) / 0.6f) : 1f;
+            float z = zoomNow;
+            float vx = handX * 0.22f * z, vy = (-0.5f - (1f - up) * 0.35f) * z, vz = 1.05f * z;
             float x = d.eye[0] + d.right[0] * vx + d.up[0] * vy + d.ahead[0] * vz;
             float y = d.eye[1] + d.right[1] * vx + d.up[1] * vy + d.ahead[1] * vz;
-            float z = d.eye[2] + d.right[2] * vx + d.up[2] * vy + d.ahead[2] * vz;
-            float c = (float) Math.cos(handSpin), s = (float) Math.sin(handSpin);
-            turn[0] = c; turn[1] = 0f; turn[2] = s;
+            float zz = d.eye[2] + d.right[2] * vx + d.up[2] * vy + d.ahead[2] * vz;
+            float c = (float) Math.cos(handSpin), sn = (float) Math.sin(handSpin);
+            turn[0] = c; turn[1] = 0f; turn[2] = sn;
             turn[3] = 0f; turn[4] = 1f; turn[5] = 0f;
-            turn[6] = -s; turn[7] = 0f; turn[8] = c;
-            d.ball(x, y, z, BALL_R, turn, handColor & 0xFFFFFF, DrawList.POLISHED);
+            turn[6] = -sn; turn[7] = 0f; turn[8] = c;
+            d.ball(x, y, zz, HAND_R * z, turn, handColor & 0xFFFFFF, DrawList.POLISHED);
         }
     }
+
+    // the ball in hand, as drawn: small and near, standing for the big one
+    static final float HAND_R = 0.13f;
 
     private void rot(Body b) {
         turn[0] = b.r00; turn[1] = b.r01; turn[2] = b.r02;
@@ -723,16 +735,38 @@ final class Alley {
         turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
     }
 
-    /** The balls left, small, low in the corner, while the figure stands. */
-    void flat(Px p) {
-        if (phase != AIM && phase != ROLL && phase != SETTLE) return;
-        int left = BALLS - ball - (phase == AIM ? 0 : 1);
-        for (int i = 0; i < left; i++) {
-            float cx = 12 + i * 13, cy = p.h - 22;
-            p.disc(cx + 1, cy + 1.5f, 5f, 0x66000000);
-            p.disc(cx, cy, 5f, 0xFF000000 | Street.scale(handColor, 1.4f));
-            p.set(Math.round(cx) - 2, Math.round(cy) - 2, 0xCCFFFFFF);
+    /**
+     * The alley's corner, without a word, in the world's grain: five squares for the five
+     * figures, green for those felled and the one bowled at now blinking; under them the balls
+     * left; to the right the bar of what still stands, with the line it must fall below.
+     */
+    void flat(Px f) {
+        int x = 6, y = 8;
+        for (int i = 0; i < ROUNDS; i++) {
+            int bx = x + i * 17;
+            boolean now = i == round && !lost && won <= i && phase != OUT && phase != DONE;
+            boolean done = i < won;
+            f.rect(bx, y, bx + 14, y + 14, now && ((int) (clock * 3f) & 1) == 0 ? 0xFFFFC93A : 0xFF5A3A0E);
+            f.rect(bx + 1, y + 1, bx + 13, y + 13, done ? 0xFF6FBF5A : now ? 0xFFF3E9D2 : 0xFF3A3236);
         }
+        if (phase >= AIM && phase <= SETTLE) {
+            int left = BALLS - ball - (phase == AIM ? 0 : 1);
+            for (int i = 0; i < left; i++) {
+                int cx = x + 5 + i * 13, cy = y + 23;
+                for (int dy = -4; dy <= 4; dy++)
+                    for (int dx = -4; dx <= 4; dx++)
+                        if (dx * dx + dy * dy <= 17) f.set(cx + dx, cy + dy, dx + dy < -3 ? 0xFF5A70B8 : 0xFF22357E);
+            }
+        }
+        // what stands of the figure, with the line to bring it below
+        if (phase < SCATTER || phase > FELLED) return;
+        int bw = 58, bx = World.W - bw - 7, by = 9;
+        float on = phase == SCATTER ? 1f : standing;
+        f.rect(bx - 1, by - 1, bx + bw + 1, by + 7, 0xFF8A5A12);
+        f.rect(bx, by, bx + bw, by + 6, 0xFFF3E9D2);
+        f.rect(bx, by, bx + Math.round(bw * on), by + 6, on <= 1f - need ? 0xFF6FBF5A : 0xFFE8963C);
+        int mark = bx + Math.round(bw * (1f - need));
+        f.rect(mark, by - 3, mark + 1, by + 9, 0xFF5A3A0E);
     }
 
     // ---- the grower ----
@@ -835,8 +869,10 @@ final class Alley {
         ball.scaleMass(BALL_MASS);
         ball.setPose(wx(0f, 1.6f), BALL_R + 0.01f, wz(0f, 1.6f), 1, 0, 0, 0);
         float speed = 10f;
-        ball.vz = -speed;
+        ball.vx = FX * speed;
+        ball.vz = FZ * speed;
         ball.wx = ball.vz / BALL_R;
+        ball.wz = -ball.vx / BALL_R;
         ball.asleep = false;
         ball.savePrev();
         p.add(ball);
@@ -991,8 +1027,9 @@ final class Alley {
         hy *= K;
         hv *= K;
         // square to the lane, and the block's own turn about the upright on top of that
-        q[0] = (float) Math.cos(turn * 0.5f);
-        q[2] = (float) Math.sin(turn * 0.5f);
+        float a = YAW + turn;
+        q[0] = (float) Math.cos(a * 0.5f);
+        q[2] = (float) Math.sin(a * 0.5f);
         Body b = new Body(hu, hy, hv, Body.STONE, color);
         // stone to look at, light enough to knock over, and free to topple
         b.scaleMass(BLOCK_MASS);

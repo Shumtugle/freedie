@@ -76,6 +76,33 @@ final class Street {
         // the beach, pale sand to the water, and the sea round from the left
         d.box(20f, -0.35f, BEACH_Z - 10f, 35f, 0.25f, 9.6f, null, 0xE8D6B0, DrawList.GRAIN);
         d.box(0f, -0.85f, BEACH_Z - 140f, 220f, 0.25f, 120f, null, 0x2D6990, DrawList.SEA);
+        // a low sea wall between the road and the sand, open in the middle for the steps down
+        float wz = BEACH_Z - 0.3f;
+        for (int side = -1; side <= 1; side += 2) {
+            float x0 = side < 0 ? PARAPET_X : 3.2f, x1 = side < 0 ? -0.8f : 55f;
+            d.box((x0 + x1) * 0.5f, 0.35f, wz, (x1 - x0) * 0.5f, 0.45f, 0.3f, null, 0xE2D4BA, DrawList.STONE);
+            d.box((x0 + x1) * 0.5f, 0.82f, wz, (x1 - x0) * 0.5f + 0.04f, 0.05f, 0.38f, null, 0xEDE2CC, DrawList.PLAIN);
+        }
+        for (int k = 0; k < 4; k++)
+            d.box(1.2f, -0.1f + 0.1f * (3 - k), wz - 0.3f - k * 0.35f, 2f, 0.05f + 0.1f * (3 - k), 0.18f, null, 0xD8CAB0, DrawList.STONE);
+        // umbrellas on the sand, in rows down to the water, some striped
+        int[] cloth = {0xD9473A, 0xF3EDE0, 0x3F7FBF, 0xE8C25A, 0x5E9E92};
+        for (int i = 0; i < 12; i++) {
+            float ux = -12f + i * 4.4f + rnd.nextFloat() * 1.6f, uz = BEACH_Z - 4f - (i % 3) * 4f - rnd.nextFloat() * 2f;
+            int c = cloth[rnd.nextInt(cloth.length)];
+            d.box(ux, 0.95f, uz, 0.035f, 1.05f, 0.035f, null, 0xEDE6D8, DrawList.PLAIN);
+            d.box(ux, 2.0f, uz, 1.15f, 0.07f, 1.15f, null, c, DrawList.PAINT);
+            d.box(ux, 2.12f, uz, 0.7f, 0.06f, 0.7f, null, (i & 1) == 0 ? 0xF3EDE0 : c, DrawList.PAINT);
+            // a towel under some of them
+            if (rnd.nextBoolean())
+                d.box(ux + 0.6f, -0.09f, uz + 0.4f, 0.45f, 0.01f, 0.9f, null, cloth[rnd.nextInt(cloth.length)], DrawList.PAINT);
+        }
+        // and palms along the sea wall
+        for (int i = 0; i < 5; i++) {
+            float px = -11f + i * 7.5f + (rnd.nextFloat() - 0.5f) * 1.2f, pz = BEACH_Z - 1.6f;
+            if (solid != null) solid.fixed(px, pz, 0.65f);
+            palm(d, rnd, px, -0.1f, pz, 7.5f + rnd.nextFloat() * 2.2f, (rnd.nextFloat() - 0.5f) * 0.6f, false);
+        }
         // the houses go on behind, from the first one ahead back to the corner on the shore road
         float z = -12f;
         int n = 50;

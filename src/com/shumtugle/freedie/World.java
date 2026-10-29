@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.51";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.52";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -90,8 +90,13 @@ final class World {
     // she waits behind, where the alley will be
     private Frida waiting;
     private Flow waitFlow;
-    // she waits at the head of the alley, on its line down the street
-    static final float WAIT_X = -1.0f, WAIT_Z = -17.5f, WAIT_SIZE = 1.1f;
+    // she waits at the head of the alley, on its line down the street, as big as in the fight
+    static final float WAIT_X = Alley.wx(0f, Alley.fridaV(0)), WAIT_Z = Alley.wz(0f, Alley.fridaV(0)), WAIT_SIZE = Giant.G;
+    // turned round to her, she throws herself into the game; once a game is over, only when the
+    // player has turned away and back again, or touches her
+    private boolean alleyArmed = true;
+    // people behind, on the pavements down to the shore road and along the beach
+    private final People shore = new People(14, 0x5A0DL, 1.2f);
     // the alley, while it is played; and whether she has been driven into the sea at this crossroads
     private Alley alley;
     private boolean fridaGone;
@@ -118,6 +123,23 @@ final class World {
             float x = side * (4.8f + r.nextFloat() * (side > 0 ? 4.6f : 2.0f));
             float z0 = -4f + r.nextFloat() * 40f, z1 = Math.min(82f, z0 + 30f + r.nextFloat() * 30f);
             people.walk(x, z0, x + (r.nextFloat() - 0.5f) * 0.8f, z1, Street.WALK_TOP);
+        }
+        // behind: down the pavements to the shore road, along it by the sea wall, and on the beach
+        java.util.Random s = shore.random();
+        for (int i = 0; i < 4; i++) {
+            float side = (i & 1) == 0 ? 1f : -1f;
+            float x = side * (4.9f + s.nextFloat() * (side > 0 ? 4.4f : 2.0f));
+            shore.walk(x, -14f - s.nextFloat() * 6f, x + (s.nextFloat() - 0.5f) * 0.6f, -42f - s.nextFloat() * 2f, Street.WALK_TOP);
+        }
+        for (int i = 0; i < 4; i++) {
+            float z = Street.SHORE_Z - Street.SHORE_HALF + 0.6f + s.nextFloat() * 0.5f;
+            float x0 = -13f + s.nextFloat() * 12f;
+            shore.walk(x0, z, x0 + 14f + s.nextFloat() * 14f, z, 0f);
+        }
+        for (int i = 0; i < 6; i++) {
+            float z = Street.BEACH_Z - 3f - s.nextFloat() * 12f;
+            float x0 = -12f + s.nextFloat() * 20f;
+            shore.walk(x0, z, x0 + 6f + s.nextFloat() * 14f, z + (s.nextFloat() - 0.5f) * 3f, -0.1f);
         }
     }
 
@@ -218,14 +240,20 @@ final class World {
         // facing her, a touch on her: the alley
         if (game.facing() == 2 && game.turnReady() && waiting != null && fridaAt[0] > -50f
                 && Math.abs(x - fridaAt[0]) < fridaAt[2] + 10f && Math.abs(y - fridaAt[1]) < fridaAt[2] * 2f + 10f) {
-            alley = new Alley(host, game, waiting, waitFlow, time2seed());
-            game.handBusy = true;
-            game.journalLine("the alley: she is touched, and bursts");
+            startAlley();
             return;
         }
         if (game.facing() == 0 && !game.turned() && plinthAt[0] > -50f
                 && Math.abs(x - plinthAt[0]) < plinthAt[2] + 12f && Math.abs(y - plinthAt[1]) < plinthAt[3] + 16f)
             game.leaveCross();
+    }
+
+    /** The alley begins: she throws herself into the game. */
+    private void startAlley() {
+        alley = new Alley(host, game, waiting, waitFlow, time2seed());
+        alleyArmed = false;
+        game.handBusy = true;
+        game.journalLine("the alley: she throws herself into the game");
     }
 
     /** A seed for a game that starts now: the time, and the level, mixed. */
@@ -296,12 +324,16 @@ final class World {
                 waitFlow = new Flow(waiting, new java.util.Random(21));
                 waitFlow.x = WAIT_X;
                 waitFlow.z = WAIT_Z;
-                waitFlow.fx = 0f;
-                waitFlow.fz = 1f;
+                waitFlow.fx = -Alley.FX;
+                waitFlow.fz = -Alley.FZ;
+                waitFlow.alive = 0.7f;
             }
+            if (game.facing() == 0) alleyArmed = true;
+            if (alley == null && alleyArmed && game.facing() == 2 && game.turnReady()) startAlley();
             if (alley != null) {
                 alley.update(dt);
                 if (alley.done()) {
+                    alleyArmed = false;
                     fridaGone = alley.gone;
                     if (fridaGone) waiting = null;
                     alley = null;
@@ -564,7 +596,10 @@ final class World {
             Ocean.button(time, callAt3);
         } else {
             d.append(still);
-            if (game.atCross() || game.turned()) d.append(back);
+            if (game.atCross() || game.turned()) {
+                d.append(back);
+                shore.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
+            }
             Street.gate(d, game.gateOpen(), game.yardOpen());
             gateSeen(d);
             plinthSeen(d);
@@ -574,7 +609,6 @@ final class World {
                 d.flash = Math.max(d.flash, alley.flash);
             } else if (waiting != null) {
                 waitFlow.pose();
-                beckon(waiting, game.crossTime());
                 waiting.pose();
                 waiting.draw(d);
                 // where she is in the frame, for a touch on her
@@ -658,17 +692,6 @@ final class World {
         plinthAt[1] = (g0[1] + g1[1]) * 0.5f;
         plinthAt[2] = Math.abs(g1[0] - g0[0]) * 0.5f;
         plinthAt[3] = Math.abs(g1[1] - g0[1]) * 0.5f;
-    }
-
-    /** Her free hand up over her head and waving, a few times, then down a while; again. */
-    private static void beckon(Frida f, float t) {
-        float cycle = t % 4.2f;
-        if (cycle > 2.2f) return;
-        float up = Math.min(1f, cycle / 0.35f) * Math.min(1f, (2.2f - cycle) / 0.35f);
-        f.az[Frida.ARM_B] += (-2.5f - f.az[Frida.ARM_B]) * up;
-        f.ax[Frida.ARM_B] += (0f - f.ax[Frida.ARM_B]) * up;
-        f.az[Frida.FORE_B] = up * 0.45f * (float) Math.sin(t * 9f);
-        f.ax[Frida.FORE_B] *= 1f - up;
     }
 
     /** Where the gate is in the frame now, for a touch on it. */

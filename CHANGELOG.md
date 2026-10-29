@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.52
+- The alley as it was: the lane runs from the player's feet down the street, turned a little
+  toward the middle of the road, and the eye looks straight down it. The next ball is held
+  low in the middle, nearly all of it at the bottom of the frame, following the finger, and
+  the ball rolled sets off from there.
+- She is as big as in the fight, and alive standing still: swaying and springing on the
+  spot, her blocks changing places. No waving: turned round to her, she throws herself into
+  the game at once. After a game she waits until the player turns away and back, or
+  touches her.
+- The alley's own corner instead of the crest: five squares for the figures, the balls left
+  under them, and the bar of what still stands with the line it must fall below.
+- Behind, the shore as it was: a low sea wall with steps down, palms along it, umbrellas and
+  towels on the sand, people on the pavements, along the shore road and on the beach.
+- The blocks leave her the moment she bursts; she backs away down the street more slowly.
+
 ## 0.51
 - The alley, at the crossroads before the 21st. Turned round to her, a touch on her: she
   sinks into herself and bursts, and her blocks fly in arcs to stand up as a figure down the
