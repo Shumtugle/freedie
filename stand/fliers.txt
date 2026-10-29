@@ -3,7 +3,6 @@
 screen 1096 2560
 keep level 4
 restart
-skip
 wait 2.6
 birds
 wait 4

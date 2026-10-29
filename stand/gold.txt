@@ -1,13 +1,10 @@
-# The golden hammer in hand: five tries lost at this building already (and the fight over, in
-# town), the medallion gold. One golden throw and the building flies to pieces whatever it
+# The golden hammer in hand: five tries lost at this building already, the medallion gold. One golden throw and the building flies to pieces whatever it
 # hits; then the console, and the next building.
 screen 1096 2560
 keep level 3
 keep fails 5
 keep gifts 2
-keep cubes 3
 restart
-skip
 wait 2.6
 shot g0_gold
 down 137 420

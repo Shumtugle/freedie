@@ -15,11 +15,10 @@ import javax.imageio.ImageIO;
  * page in stand/web draws them with the game's own shaders.
  *
  * Scene commands, one a line: screen W H · wait SECONDS · down X Y · move X Y · up X Y ·
- * drag X0 Y0 X1 Y1 SECONDS · shot NAME · skip (a touch through the opening, if it plays) ·
- * sounds (every sound of the synthesizer in turn, each after the last has died away) ·
- * keep KEY VALUE (as kept by an earlier game) · back (the phone's back key) · restart (the
- * game started again, with what it kept) · fight (the fight at once, as from the console) ·
- * bot SECONDS [SKILL] (a player in the fight for so long) · fightstate (how it stands).
+ * drag X0 Y0 X1 Y1 SECONDS · shot NAME · sounds (every sound of the synthesizer in turn, each
+ * after the last has died away) · keep KEY VALUE (as kept by an earlier game) · back (the
+ * phone's back key) · restart (the game started again, with what it kept) · tear · birds ·
+ * plane SECONDS · deck VERDICT.
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -31,7 +30,6 @@ public final class Stand implements World.Host {
     private final DrawList list = new DrawList();
     private final File out;
     private float time;
-    private String shotDown;
 
     private Stand(File out) {
         this.out = out;
@@ -61,16 +59,6 @@ public final class Stand implements World.Host {
 
     @Override
     public void buzz(int ms) {
-    }
-
-    /** The games on the screens cannot run here: they are written down, and come straight back. */
-    int played = -1;
-
-    @Override
-    public void play(int game) {
-        played = game;
-        System.out.println(String.format("%7.2fs  plays game %d", time, game));
-        world.touch(World.RETURN, 0f, 0f);
     }
 
     @Override
@@ -191,7 +179,6 @@ public final class Stand implements World.Host {
         } else if (c.equals("keep")) {
             // keep KEY VALUE: as if a game before had kept it
             saveInt(p[1], Integer.parseInt(p[2]));
-            if (p[1].equals("cubes")) world.cubes = Integer.parseInt(p[2]);
         } else if (c.equals("restart")) {
             // the game started again, with what it kept
             world = new World(this);
@@ -199,13 +186,6 @@ public final class Stand implements World.Host {
         } else if (c.equals("back")) {
             world.touch(World.BACK, 0f, 0f);
             step();
-        } else if (c.equals("skip")) {
-            if (world.opening()) {
-                world.touch(World.DOWN, World.W * 0.5f, 300f);
-                step();
-                world.touch(World.UP, World.W * 0.5f, 300f);
-                step();
-            }
         } else if (c.equals("tear")) {
             // every mattress torn, every suitcase burst open
             world.standTear();
@@ -221,97 +201,6 @@ public final class Stand implements World.Host {
             // deck VERDICT: up among the watchers at once (0 laughter, 1 nods, 2 unimpressed, 3 the stars ran out)
             world.standDeck(Integer.parseInt(p[1]));
             step();
-        } else if (c.equals("fight")) {
-            // the fight at once, as from the bridge's console
-            world.standFight();
-            step();
-        } else if (c.equals("bot")) {
-            // bot SECONDS [SKILL]: a player in the fight, throwing at what matters most whenever
-            // the hammer is in hand, until the fight is over; skill is the share of throws aimed
-            // true, the rest go wide
-            int n = Math.round(f(p[1]) / DT);
-            float skill = p.length > 2 ? f(p[2]) : 1f;
-            java.util.Random r = new java.util.Random(5);
-            float wait = 0.6f;
-            for (int i = 0; i < n && !world.standFightOver(); i++) {
-                step();
-                wait -= DT;
-                if (wait > 0f) continue;
-                float[] at = world.standFightPick();
-                if (at == null || !world.standHandFree()) continue;
-                float off = r.nextFloat() < skill ? 0f : 18f;
-                // a finger as a player's: put down under the ring's spot, held a moment, lifted
-                float fx = at[0] + (r.nextFloat() - 0.5f) * 2f * off, fy = at[1] + (r.nextFloat() - 0.5f) * 2f * off + Fight.FINGER;
-                world.touch(World.DOWN, fx, fy);
-                for (int k = 0; k < 6; k++) {
-                    step();
-                    i++;
-                }
-                if (shotDown != null) {
-                    shot(shotDown);
-                    shotDown = null;
-                }
-                world.touch(World.UP, fx, fy);
-                wait = 0.5f + r.nextFloat() * 0.4f;
-            }
-            System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
-        } else if (c.equals("alleycube")) {
-            // alleycube: this round's figure carries a golden cube
-            world.standAlleyCube();
-        } else if (c.equals("alleyneed")) {
-            // alleyneed SHARE: how much of each figure must fall, for a quick way through
-            world.standAlleyNeed(f(p[1]));
-        } else if (c.equals("alleybot")) {
-            // alleybot SECONDS [SKILL] [SHOTEVERY]: a player in the alley, rolling a ball at the
-            // middle of the figure whenever one can be rolled, until the alley is over; skill is
-            // the share of balls rolled true, the rest go wide; with a third number a shot every
-            // so many seconds, named b000, b001...
-            int n = Math.round(f(p[1]) / DT);
-            float skill = p.length > 2 ? f(p[2]) : 1f;
-            float every = p.length > 3 ? f(p[3]) : 0f, next = every;
-            int shots = 0;
-            java.util.Random r = new java.util.Random(7);
-            float wait = 0.4f;
-            for (int i = 0; i < n && world.standAlleyOn(); i++) {
-                step();
-                if (every > 0f && (next -= DT) <= 0f) {
-                    next += every;
-                    shot(String.format("b%03d", shots++));
-                }
-                if (!world.standAlleyAiming()) {
-                    wait = 0.4f;
-                    continue;
-                }
-                if ((wait -= DT) > 0f) continue;
-                float u = r.nextFloat() < skill ? (r.nextFloat() - 0.5f) * 0.3f : (r.nextBoolean() ? 1f : -1f) * 1.1f;
-                world.standAlleyRoll(u, 10f + r.nextFloat() * 2f, 0f);
-                System.out.println(String.format("%7.2fs  ball at %.2f", time, u));
-            }
-            System.out.println(String.format("%7.2fs  %s", time, world.standAlleyState()));
-        } else if (c.equals("botshot")) {
-            // botshot NAME: the next throw of the bot is shot with the finger down
-            shotDown = p[1];
-        } else if (c.equals("fightstate")) {
-            System.out.println(String.format("%7.2fs  %s", time, world.standFightState()));
-        } else if (c.equals("yard")) {
-            // through the gate into the yard at once
-            world.standYard();
-            step();
-        } else if (c.equals("gatetap")) {
-            // a finger on the gate into the yard, where it is in the frame now
-            float[] g = world.standGate();
-            world.touch(World.DOWN, g[0], g[1]);
-            step();
-            world.touch(World.UP, g[0], g[1]);
-            step();
-            System.out.println(String.format(java.util.Locale.ROOT, "%7.2fs  gate at %.0f,%.0f, %.0f x %.0f", time, g[0], g[1], g[2] * 2, g[3] * 2));
-        } else if (c.equals("yardbot")) {
-            // yardbot 1|0: the player's hammer in the yard played by the stand's own hand
-            if (world.yard != null) world.yard.auto = !p[1].equals("0");
-        } else if (c.equals("yardstate")) {
-            System.out.println(String.format("%7.2fs  %s", time, world.yard == null ? "street"
-                    : String.format(java.util.Locale.ROOT, "yard %d:%d puck %.2f,%.2f v %.2f,%.2f", world.yard.mine, world.yard.theirs,
-                    world.yard.px, world.yard.pz, world.yard.vx, world.yard.vz)));
         } else if (c.equals("shot")) {
             shot(p[1]);
         } else {

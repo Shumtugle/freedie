@@ -150,6 +150,11 @@
 
     const cube = frame.cube * STRIDE, button = frame.button * STRIDE;
     const two = new Float32Array(STRIDE);
+    // the frame is an old one: the cube it has on the plinth is no longer in the game, so it is not shown
+    two.set(boxes.subarray(cube, cube + STRIDE));
+    two[3] = two[4] = two[5] = 0;
+    gl.bindBuffer(gl.ARRAY_BUFFER, inst);
+    gl.bufferSubData(gl.ARRAY_BUFFER, cube * 4, two);
     let time = frame.time, last = performance.now();
     function draw(now) {
       const dt = Math.min(0.05, (now - last) / 1000);
@@ -161,12 +166,8 @@
         look += lookVel * dt;
       }
       size();
-      // the golden cube turning, the button glowing, as the game moves them
-      const a = time * 0.8, c = Math.cos(a), s = Math.sin(a);
-      two.set(boxes.subarray(cube, cube + STRIDE));
-      two[6] = c; two[7] = 0; two[8] = -s; two[9] = 0; two[10] = 1; two[11] = 0; two[12] = s; two[13] = 0; two[14] = c;
+      // the button glowing, as the game makes it glow
       gl.bindBuffer(gl.ARRAY_BUFFER, inst);
-      gl.bufferSubData(gl.ARRAY_BUFFER, cube * 4, two);
       const glow = 0.45 + 0.25 * Math.sin(time * 3.1);
       two.set(boxes.subarray(button, button + STRIDE));
       two[15] = (0x6A + (0xFF - 0x6A) * glow) / 255; two[16] = (0x0C + (0x2A - 0x0C) * glow) / 255; two[17] = (0x08 + (0x18 - 0x08) * glow) / 255;

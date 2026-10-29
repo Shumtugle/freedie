@@ -7,20 +7,19 @@ package com.shumtugle.freedie;
  * gold for each, the first lit as soon as the level opens; the face warms from green toward
  * gold with them, and the ring full, a fifth attempt lost, the golden hammer comes. On the left wing the stars left, nearest first, and
  * under them the heavy hammers, one hammer and how many; on the right wing the way through
- * the level, a bar filling toward a flag as the building comes down, and under it the golden
- * cubes in the rack.
+ * the level, a bar filling toward a flag as the building comes down.
  *
  * It lives with the game. A blow on the building jolts the medallion, harder the harder the
  * blow, with a ring of shock off its rim; a building felled turns the medallion over like a
  * coin, the next number on its other face; with the golden hammer in hand it burns as gold
  * does, orange with a white-hot heart, tongues of fire over its rim. A star spent rolls away
  * and melts; the bar follows what is down a little behind, and the flag waves once it is
- * reached; a heavy hammer given drops in and bounces; a cube gained is swallowed by the rack.
+ * reached; a heavy hammer given drops in and bounces.
  * It shows only what the player has, never what is missing.
  */
 final class Crest {
     // what it shows, set by the level every frame
-    int level, stars, fails, cubes, heavyShown, heavyLeft;
+    int level, stars, fails, heavyShown, heavyLeft;
     boolean heavyOn, goldOn, won;
     float knocked;                 // share of the building off the plinth
     float markT = -1f;             // the new heavy marks dropping in, seconds; below 0 none
@@ -37,8 +36,8 @@ final class Crest {
     private final float[] burnt = {-1f, -1f, -1f, -1f, -1f};   // seconds since each star burnt
     private int failsShown;
     private float failFlash = -1f, reached = -1f;
-    private float hitT = -1f, hitK, flipT = -1f, track, bounceT = -1f, gulpT = -1f;
-    private int heavyWas = -1, cubesWas = -1;
+    private float hitT = -1f, hitK, flipT = -1f, track, bounceT = -1f;
+    private int heavyWas = -1;
 
     static final int CX = World.W / 2, CY = 22, R = 15;
 
@@ -54,19 +53,11 @@ final class Crest {
         if (won && flipT < 0f) flipT = 0f;
         if (flipT >= 0f) flipT += dt;
         if (bounceT >= 0f && (bounceT += dt) > 0.5f) bounceT = -1f;
-        if (gulpT >= 0f && (gulpT += dt) > 0.5f) gulpT = -1f;
         // the bar follows what is down, a little behind
         float k = Math.min(1f, knocked / Game.CLEAR);
         track += (k - track) * Math.min(1f, dt * 6f);
         if (heavyWas >= 0 && heavyShown > heavyWas) bounceT = 0f;
         heavyWas = heavyShown;
-        if (cubesWas >= 0 && cubes > cubesWas) gulpT = 0f;
-        cubesWas = cubes;
-    }
-
-    /** The layer was drawn over by something else: the next frame draws it whole again. */
-    void dirty() {
-        drawnKey = Long.MIN_VALUE;
     }
 
     /** A star has just been spent: it rolls away. */
@@ -126,7 +117,6 @@ final class Crest {
         stars();
         heavy();
         track();
-        cubes();
         main.used = true;
     }
 
@@ -135,7 +125,6 @@ final class Crest {
         long k = level;
         k = k * 31 + stars;
         k = k * 31 + failsShown;
-        k = k * 31 + cubes;
         k = k * 31 + heavyShown;
         k = k * 31 + (heavyOn ? 1 : 0);
         k = k * 31 + (goldOn ? 1 : 0);
@@ -146,23 +135,19 @@ final class Crest {
 
     /** Whether something is moving: then it is drawn every frame. */
     private boolean busy() {
-        if (hitT >= 0f || flipT >= 0f && flipT < 0.6f || bounceT >= 0f || gulpT >= 0f || markT >= 0f || goldOn || won) return true;
+        if (hitT >= 0f || flipT >= 0f && flipT < 0.6f || bounceT >= 0f || markT >= 0f || goldOn || won) return true;
         if (failFlash >= 0f && failFlash < 0.85f) return true;
         for (float b : burnt) if (b >= 0f && b < 0.75f) return true;
         if (knocked >= Game.CLEAR && reached < 3f) return true;
         if (Math.abs(track - Math.min(1f, knocked / Game.CLEAR)) > 0.002f) return true;
         if ((clock * 0.5f) % 3f < 0.62f) return true;
-        for (int i = 0; i < Math.min(cubes, 7); i++) {
-            float gl = (clock * 1.3f - i * 0.12f) % 3.2f;
-            if (gl > -0.05f && gl < 0.24f) return true;
-        }
         return false;
     }
 
     // ---- what is drawn once and laid down again: the parts that do not move ----
 
-    private Ink starSprite, starWhite, hammerSprite, cubeSprite, cubeShine, trackBack, medal, count, cubeCount;
-    private int medalKey = Integer.MIN_VALUE, countKey = -1, cubeCountKey = -1;
+    private Ink starSprite, starWhite, hammerSprite, trackBack, medal, count;
+    private int medalKey = Integer.MIN_VALUE, countKey = -1;
 
     /** Draws onto a small layer of its own instead of the crest's, then back. */
     private Ink beginSprite(int w, int h) {
@@ -435,59 +420,5 @@ final class Crest {
         float wave = done ? (float) Math.sin(clock * 9f) * 0.9f * K : 0f;
         g.shape(fx, y0 - 6.5f * K, fx + 6.5f * K, y0 - 4.6f * K + wave, fx, y0 - 2.4f * K);
         g.polyFill(mix(pc, 0xFFFFFFFF, 0.25f), pc, 1f, 1f);
-    }
-
-    // ---- the cubes ----
-
-    private static final int CS = 14 * K;     // a cube's own layer
-
-    private void cubes() {
-        int n = cubes;
-        if (n <= 0) return;
-        Ink g = ink;
-        if (cubeSprite == null) {
-            cubeSprite = beginSprite(CS, CS);
-            cube(CS * 0.5f, CS * 0.45f, 4.2f * K, false);
-            endSprite();
-            cubeShine = beginSprite(CS, CS);
-            cube(CS * 0.5f, CS * 0.45f, 4.2f * K, true);
-            endSprite();
-        }
-        float x0 = (CX + R + 12) * K, y0 = (CY + 9) * K;
-        int shownCubes = n <= 7 ? n : 1;
-        for (int i = 0; i < shownCubes; i++) {
-            float gl = (clock * 1.3f - i * 0.12f) % 3.2f;
-            float cx = x0 + i * 11 * K;
-            if (i == shownCubes - 1 && gulpT >= 0f) {
-                // swallowed by the rack: it swells and settles
-                float sc = 1f + 0.35f * (float) Math.sin(Math.min(1f, gulpT / 0.35f) * Math.PI);
-                g.squash(cx, y0, sc, sc);
-            }
-            g.blit(gl > 0f && gl < 0.18f ? cubeShine : cubeSprite, cx - CS * 0.5f, y0 - CS * 0.45f, 1f);
-            g.unsquash();
-        }
-        if (n > 7) {
-            if (cubeCount == null || cubeCountKey != n) {
-                cubeCountKey = n;
-                cubeCount = number("x" + n, 0xFFFFFFFF);
-            }
-            g.blit(cubeCount, x0 + 6 * K - 2 * K, y0 - 4.5f * K - 2 * K, 1f);
-        }
-    }
-
-    /** A golden cube seen from a corner, from its middle, so far to each corner. */
-    private void cube(float cx, float cy, float s, boolean shine) {
-        Ink g = ink;
-        g.shape(cx - s + 3, cy - s * 0.5f + 7, cx + 3, cy - s + 7, cx + s + 3, cy - s * 0.5f + 7, cx + s + 3, cy + s * 0.5f + 7, cx + 3, cy + s + 7,
-                cx - s + 3, cy + s * 0.5f + 7);
-        g.polyFill(SHADOW, SHADOW, 6f, 0.28f);
-        int w = shine ? 0xFFFFFFFF : 0;
-        g.shape(cx - s, cy - s * 0.5f, cx, cy, cx, cy + s, cx - s, cy + s * 0.5f);
-        g.polyFill(mix(0xFFF8A23A, w, shine ? 0.5f : 0f), 0xFFE08420, 1f, 1f);
-        g.shape(cx, cy, cx + s, cy - s * 0.5f, cx + s, cy + s * 0.5f, cx, cy + s);
-        g.polyFill(mix(0xFFC8701E, w, shine ? 0.5f : 0f), 0xFFA4560E, 1f, 1f);
-        g.shape(cx, cy - s, cx + s, cy - s * 0.5f, cx, cy, cx - s, cy - s * 0.5f);
-        g.polyFill(mix(0xFFFFE08A, w, shine ? 0.6f : 0f), 0xFFFFC85A, 1f, 1f);
-        g.disc(cx - s * 0.1f, cy - s * 0.55f, s * 0.22f, 0xFFFFF8D8, s * 0.2f, 0.8f);
     }
 }

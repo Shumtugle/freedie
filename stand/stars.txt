@@ -6,7 +6,6 @@ screen 1096 2560
 keep level 1
 keep gifts 3
 restart
-skip
 wait 2.4
 shot t0_second
 down 50 600

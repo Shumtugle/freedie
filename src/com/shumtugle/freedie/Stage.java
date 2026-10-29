@@ -55,18 +55,6 @@ final class Stage extends GLSurfaceView implements GLSurfaceView.Renderer {
         return true;
     }
 
-    /** Back from a game on one of the bridge's screens. */
-    void returned() {
-        synchronized (pending) {
-            if (pendingCount < 64) {
-                pending[pendingCount * 3] = World.RETURN;
-                pending[pendingCount * 3 + 1] = 0f;
-                pending[pendingCount * 3 + 2] = 0f;
-                pendingCount++;
-            }
-        }
-    }
-
     /** The back key: true when the world takes it (the bridge closes), false to leave the game. */
     boolean back() {
         if (!world.wantsBack()) return false;

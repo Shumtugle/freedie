@@ -1,6 +1,5 @@
 # The street: the building on the plinth, cars coming and going, and the red button pressed.
 screen 1096 2560
-skip
 wait 2.5
 shot s0_rest
 wait 5.0

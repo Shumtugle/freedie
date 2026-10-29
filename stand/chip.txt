@@ -1,12 +1,10 @@
-# The 39th, the first blow: the ground shakes, the plinth's near left corner breaks off at
-# its foot and a golden cube rolls out onto the asphalt; it is given on the console.
+# The 39th, the first blow: the ground shakes, and the plinth's near left corner breaks off at
+# its foot, tips out onto the road and comes apart there.
 screen 1096 2560
 keep level 38
 keep best 39
 keep chip 0
-keep cubes 1
 restart
-skip
 wait 2.6
 down 137 420
 wait 1.0
@@ -45,7 +43,7 @@ wait 0.2
 shot c15
 wait 1.0
 shot c_lie
-# then the rest of the round, and the console, where the cube is knocked out
+# then the rest of the round, and the console
 wait 2.6
 down 137 420
 wait 1.0

@@ -9,8 +9,6 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.shumtugle.freedie.hopper.Play;
-
 /**
  * The window: full screen, no bars, the screen kept on; the stage fills it; the sound plays
  * while it is shown. Answers the world's requests to the phone.
@@ -19,9 +17,6 @@ public final class MainActivity extends Activity implements World.Host {
     private Stage stage;
     private Vibrator vibrator;
     private final Sound sound = new Sound();
-    // the game on the bridge's first screen, made when it is first played; shown instead of the stage
-    private Play game;
-    private boolean inGame;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -43,67 +38,15 @@ public final class MainActivity extends Activity implements World.Host {
     protected void onResume() {
         super.onResume();
         hideBars();
-        if (inGame) {
-            game.resume();
-            return;
-        }
         stage.onResume();
         sound.start();
     }
 
     @Override
     protected void onPause() {
-        if (inGame) game.pause();
-        else {
-            sound.stop();
-            stage.onPause();
-        }
-        super.onPause();
-    }
-
-    @Override
-    public void play(int which) {
-        if (which != 0) return;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                enterGame();
-            }
-        });
-    }
-
-    private void enterGame() {
-        if (inGame) return;
-        if (game == null) {
-            game = new Play(this, new Play.Back() {
-                @Override
-                public void back() {
-                    leaveGame();
-                }
-
-                @Override
-                public void cube() {
-                    saveInt("cubes", loadInt("cubes") + 1);
-                }
-            });
-        }
-        inGame = true;
         sound.stop();
         stage.onPause();
-        setContentView(game.view());
-        game.resume();
-        hideBars();
-    }
-
-    private void leaveGame() {
-        if (!inGame) return;
-        inGame = false;
-        game.pause();
-        setContentView(stage);
-        stage.onResume();
-        sound.start();
-        stage.returned();
-        hideBars();
+        super.onPause();
     }
 
     @Override
@@ -126,8 +69,7 @@ public final class MainActivity extends Activity implements World.Host {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (inGame) game.back();
-        else if (!stage.back()) super.onBackPressed();
+        if (!stage.back()) super.onBackPressed();
     }
 
     @Override

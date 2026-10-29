@@ -2,57 +2,46 @@
 screen 1096 2560
 keep level 0
 restart
-skip
 wait 2.6
 shot d1
 keep level 19
 restart
-skip
 wait 2.6
 shot d20
 keep level 39
 restart
-skip
 wait 2.6
 shot d40
 keep level 49
 restart
-skip
 wait 2.6
 shot d50
 keep level 59
 restart
-skip
 wait 2.6
 shot d60
 keep level 67
 restart
-skip
 wait 2.6
 shot d68
 keep level 74
 restart
-skip
 wait 2.6
 shot d75
 keep level 81
 restart
-skip
 wait 2.6
 shot d82
 keep level 89
 restart
-skip
 wait 2.6
 shot d90
 keep level 100
 restart
-skip
 wait 2.6
 shot d101
 keep level 81
 restart
-skip
 wait 2.6
 down 137 420
 wait 0.6
@@ -60,7 +49,6 @@ shot c82
 up 137 420
 keep level 100
 restart
-skip
 wait 2.6
 down 137 420
 wait 0.6

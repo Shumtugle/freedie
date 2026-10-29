@@ -6,7 +6,6 @@ keep level 1
 keep gifts 0
 keep fails 10
 restart
-skip
 wait 2.6
 down 137 420
 wait 1.0

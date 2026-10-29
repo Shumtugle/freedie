@@ -4,7 +4,6 @@ screen 1096 2560
 keep level 16
 keep gifts 1
 restart
-skip
 wait 2.6
 shot b17
 down 300 300
@@ -16,7 +15,6 @@ wait 1.6
 shot b17_roll
 keep level 17
 restart
-skip
 wait 2.6
 shot b18
 down 300 300

@@ -4,7 +4,6 @@ screen 1096 2560
 keep level 20
 keep best 21
 restart
-skip
 wait 3.0
 wait 1.6
 shot a0
@@ -19,7 +18,6 @@ shot a4
 keep level 50
 keep best 51
 restart
-skip
 wait 3.0
 wait 1.6
 shot b0
@@ -34,7 +32,6 @@ shot b4
 keep level 90
 keep best 91
 restart
-skip
 wait 3.0
 wait 1.6
 shot c0

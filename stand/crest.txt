@@ -4,9 +4,7 @@ screen 1096 2560
 keep level 3
 keep fails 5
 keep gifts 2
-keep cubes 3
 restart
-skip
 wait 2.6
 shot a0_gold
 down 137 420

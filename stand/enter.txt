@@ -5,7 +5,6 @@ screen 1096 2560
 keep level 10
 keep best 11
 restart
-skip
 wait 2.6
 shot n0_eleventh
 down 240 325

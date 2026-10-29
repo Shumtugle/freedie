@@ -5,7 +5,6 @@ screen 1096 2560
 keep level 4
 keep fails 10
 restart
-skip
 wait 2.6
 down 137 420
 wait 1.0
@@ -23,7 +22,6 @@ keep fails 0
 keep goldSeen 1
 keep fought 1
 restart
-skip
 wait 2.6
 deck 3
 wait 1.8
@@ -34,7 +32,6 @@ shot k6_nod
 keep level 104
 keep fails 10
 restart
-skip
 wait 2.8
 down 137 420
 wait 1.0

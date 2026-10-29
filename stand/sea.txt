@@ -3,7 +3,6 @@
 screen 1096 2560
 keep level 101
 restart
-skip
 wait 2.8
 shot s102
 down 137 420
@@ -16,11 +15,9 @@ wait 2.5
 shot s102_after
 keep level 104
 restart
-skip
 wait 2.8
 shot s105
 keep level 108
 restart
-skip
 wait 2.8
 shot s109

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.54
+- The game is the throw alone: the alley, the yard with its table, the fight, the stones on
+  the water and the game on the bridge's screen are gone, and the giant with them; no
+  opening, the street at once.
+- The crossroads before the 21st is gone with the alley: the 20th runs on into the 21st
+  without a stop.
+- No golden cubes: none on the buildings, none for an episode won clean, none out of the
+  plinth on the 39th (the corner still breaks off, and stays broken); no bank, no rack in
+  the crest.
+- Five buildings lost at the same one: the golden hammer, in hand as the eye comes down,
+  in town as at sea.
+- The console between rounds: two wide keys, the one that goes on and the hammer's; a
+  speaker where the cube was.
+- The bridge: every level reached is open, free. The knob picks the stretch of the game,
+  the counter shows a level of it, and two keys step it back and on (held, they run); the
+  green key goes there. No slot, no tokens, no scrambled channels.
+
 ## 0.53
 - The alley is a show. She does not come near: she stands on a stage at the far end of the
   street, at a console like a disc jockey's, between speaker stacks under a truss of lamps,

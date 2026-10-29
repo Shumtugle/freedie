@@ -5,7 +5,6 @@ keep level 8
 keep fails 10
 keep best 9
 restart
-skip
 wait 2.6
 shot e0_ninth
 down 200 520

@@ -10,17 +10,12 @@ import java.util.Random;
  * The parked cars take what falls on them: each blow is one step worse, crazed glass and a
  * dent in the hood, then the roof pressed lower, a door dented, a window gone and a headlamp
  * out, then a wreck; and every blow sets its alarm off, the indicators blinking. On the
- * right a stretch of the curb is kept clear: the way into a yard is to be there.
- *
- * In the fight a parked car can be torn from its place and thrown: while it is in the air
- * the giant's side draws it; where it comes down it lies on as a wreck.
+ * right a stretch of the curb is kept clear, before the gate in the houses.
  */
 final class Traffic {
     static final int[] PAINT = {0xE9B63A, 0xB5352C, 0xE9E1CB, 0x2D3A57, 0x6E9DB0, 0x9DBB8E, 0x3A3B40, 0xF4F2EC};
     static final float[] PARK_X = {-3.05f, -3.05f, -3.05f, -3.05f, -3.05f, -3.05f, 3.05f, 3.05f, 3.05f, 3.05f};
     static final float[] PARK_Z = {15.0f, 20.6f, 29.0f, 34.6f, 47.5f, 61.0f, 17.5f, 23.2f, 41.5f, 55.0f};
-    /** The stretch of the right curb kept clear for the way into a yard, from here to there along the street. */
-    static final float YARD_Z0 = 27f, YARD_Z1 = 37f;
     static final float[] CONE_X = {-2.75f, -2.45f, 2.6f};
     static final float[] CONE_Z = {10.0f, 10.9f, 9.9f};
 
@@ -29,9 +24,8 @@ final class Traffic {
     /** How badly each parked car is damaged, 0 to 3, and how long its alarm has still to blink. */
     final int[] damage = new int[PARK_X.length];
     private final float[] alarm = new float[PARK_X.length];
-    /** Where each parked car is now, which way it faces, and whether it is up in the air. */
+    /** Where each parked car is, and which way it faces. */
     final float[] atX = PARK_X.clone(), atZ = PARK_Z.clone(), atYaw = new float[PARK_X.length];
-    final boolean[] away = new boolean[PARK_X.length];
     /** What each parked car's alarm sounds like: the two tones, a chirp, the horn, a wail. */
     private final int[] alarmSound = new int[PARK_X.length];
     private static final int[] ALARMS = {Synth.ALARM, Synth.CHIRP, Synth.CHIRP, Synth.HORN, Synth.WAIL};
@@ -41,8 +35,6 @@ final class Traffic {
      */
     float clearFrom = -1e9f;
     private static final float TURN_ROOM = 4.6f;
-    /** No cars come down the road: the street is held for the fight. */
-    boolean calm;
 
     // cars on the move
     private static final int CARS = 3;
@@ -73,33 +65,6 @@ final class Traffic {
         return parkColor[i];
     }
 
-    /** A parked car torn from its place: gone from the curb until it comes down. */
-    void lift(int i) {
-        away[i] = true;
-    }
-
-    /** A thrown car down on the street: a wreck where it fell, facing as it came to rest. */
-    void putDown(int i, float x, float z, float yaw) {
-        away[i] = false;
-        atX[i] = x;
-        atZ[i] = z;
-        atYaw[i] = yaw;
-        damage[i] = 3;
-        alarm[i] = 2.4f;
-    }
-
-    /** Every parked car back where it was parked, whole: a new street after the fight. */
-    void repark() {
-        for (int i = 0; i < PARK_X.length; i++) {
-            away[i] = false;
-            atX[i] = PARK_X[i];
-            atZ[i] = PARK_Z[i];
-            atYaw[i] = PARK_X[i] < 0f ? 0f : (float) Math.PI;
-            damage[i] = 0;
-            alarm[i] = 0f;
-        }
-    }
-
     /** A blow to a parked car: one step worse, and its alarm goes off. */
     void hit(int i) {
         if (damage[i] < 3) damage[i]++;
@@ -108,11 +73,6 @@ final class Traffic {
 
     void update(float dt) {
         for (int i = 0; i < alarm.length; i++) alarm[i] = Math.max(0f, alarm[i] - dt);
-        if (calm) {
-            // the cars on the move are gone round the corner, and no more come
-            for (int c = 0; c < CARS; c++) cState[c] = OFF;
-            nextCar = 4f;
-        }
         nextCar -= dt;
         if (nextCar <= 0f) {
             nextCar = 7f + rnd.nextFloat() * 8f;
@@ -193,18 +153,6 @@ final class Traffic {
         cState[c] = COME;
     }
 
-    /** For the desktop stand: where the cars on the move are, x and z one after another; how many. */
-    int standMoving(float[] out) {
-        int k = 0;
-        for (int c = 0; c < CARS; c++)
-            if (cState[c] != OFF) {
-                out[k * 2] = cx[c];
-                out[k * 2 + 1] = cz[c];
-                k++;
-            }
-        return k;
-    }
-
     private static float approach(float v, float target, float rate, float dt) {
         if (v < target) return Math.min(target, v + rate * dt);
         return Math.max(target, v - rate * 1.6f * dt);
@@ -214,8 +162,7 @@ final class Traffic {
 
     void draw(DrawList d) {
         for (int i = 0; i < PARK_X.length; i++)
-            if (!away[i])
-                car(d, atX[i], atZ[i], atYaw[i], parkColor[i], damage[i], alarm[i] > 0f && ((int) (alarm[i] * 6f) & 1) == 0);
+            car(d, atX[i], atZ[i], atYaw[i], parkColor[i], damage[i], alarm[i] > 0f && ((int) (alarm[i] * 6f) & 1) == 0);
         for (int c = 0; c < CARS; c++) if (cState[c] != OFF) car(d, cx[c], cz[c], cYaw[c], cColor[c]);
         for (int i = 0; i < CONE_X.length; i++) cone(d, CONE_X[i], CONE_Z[i]);
     }
@@ -232,18 +179,6 @@ final class Traffic {
     void car(DrawList d, float x, float z, float yaw, int paint, int dmg, boolean blink) {
         upright(x, 0f, z, yaw);
         drawCar(d, paint, dmg, blink);
-    }
-
-    /**
-     * A car turned any way at all, tumbling through the air: its middle (the body's, 0.65 m
-     * over the ground when it stands) and its turn, row by row.
-     */
-    void car(DrawList d, float x, float y, float z, float[] rot, int paint, int dmg) {
-        System.arraycopy(rot, 0, frame, 0, 9);
-        px = x - rot[1] * 0.65f;
-        py = y - rot[4] * 0.65f;
-        pz = z - rot[7] * 0.65f;
-        drawCar(d, paint, dmg, false);
     }
 
     /** The frame of something standing on the ground, turned about the upright. */

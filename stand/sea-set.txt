@@ -2,7 +2,6 @@
 screen 1096 2560
 keep level 101
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -10,7 +9,6 @@ shot z102
 up 137 420
 keep level 102
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -18,7 +16,6 @@ shot z103
 up 137 420
 keep level 103
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -26,7 +23,6 @@ shot z104
 up 137 420
 keep level 104
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -34,7 +30,6 @@ shot z105
 up 137 420
 keep level 105
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -42,7 +37,6 @@ shot z106
 up 137 420
 keep level 106
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -50,7 +44,6 @@ shot z107
 up 137 420
 keep level 107
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6
@@ -58,7 +51,6 @@ shot z108
 up 137 420
 keep level 108
 restart
-skip
 wait 2.8
 down 137 420
 wait 0.6

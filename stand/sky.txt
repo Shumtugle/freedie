@@ -2,7 +2,6 @@
 # the thunderer's lightning flashes; the next building falls out of the sky as the eye
 # comes back down. People walk the pavements and the promenade.
 screen 1096 2560
-skip
 wait 2.2
 down 200 520
 wait 1.0

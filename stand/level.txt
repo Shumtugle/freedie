@@ -2,7 +2,6 @@
 # thrown at it, and the first building flies to pieces at the first touch;
 # the eye goes up to the gods (see sky.txt).
 screen 1096 2560
-skip
 wait 0.6
 shot l0_build
 wait 1.6

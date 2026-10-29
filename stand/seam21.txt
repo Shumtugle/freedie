@@ -1,0 +1,19 @@
+# The 20th felled with the golden hammer: up to the room, and down again without a stop onto
+# the 21st, the plinth farther down the street; nothing waits between the two.
+screen 1096 2560
+keep level 19
+keep fails 10
+keep best 20
+restart
+wait 2.8
+down 200 520
+wait 1.0
+up 200 520
+wait 1.0
+shot w0_down
+wait 5.2
+shot w1_room
+wait 1.6
+shot w2_coming
+wait 2.4
+shot w3_21st

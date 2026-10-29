@@ -6,13 +6,12 @@ import java.util.Calendar;
  * Between rounds. The street stays where it is and goes still; from above and below the room
  * closes in over it, the dispatcher's own, until only the old set is left with the street on
  * its tube: its edges run off the sides of the frame, the room above and below goes off into
- * the dark. Over the set the clock and the date (the real ones, the player's own), and the
- * golden cube in its slot that powers the set; under it a row of buttons, and under those the
- * level, and a key back to the one before.
+ * the dark. Over the set the clock and the date (the real ones, the player's own), and a
+ * speaker; under it two keys, and under those the level, and a key back to the one before.
  *
  * No hand is drawn: the hammer is the hand. It comes up out of the dark, big, lazy, and knocks
- * the buttons one after another, each going in with a click and lighting up: the hammer it
- * gives, the cube, the game it leads to, and last the one that goes on. The set flicks over to
+ * the keys one after another, each going in with a click and lighting up: the hammer it
+ * gives, if it gives one, and last the one that goes on. The set flicks over to
  * the next channel, and the room draws back off the street, where the next building is
  * already coming down.
  *
@@ -26,17 +25,18 @@ import java.util.Calendar;
  * with the shadow it casts on the room.
  */
 final class Console {
-    // the buttons, left to right
-    static final int NEXT = 0, CUBE = 1, HAMMER = 2, GAME = 3;
+    // the keys, left to right
+    static final int NEXT = 0, HAMMER = 1;
 
     // where things are in the room's picture, its own pixels (the picture is 274 x 640)
     private static final int PW = 274, PH = 640;
     private static final int SX0 = -4, SY0 = 162, SW = 282, SH = 212;   // the tube
     private static final int SPLIT = 268;                                // above it comes down, below it comes up
-    private static final int[] BX = {4, 72, 140, 208};
-    private static final int BY = 422, BW = 58, BH = 32;
+    static final int[] BX = {4, 140};
+    static final int BW = 130;
+    private static final int BY = 422, BH = 32;
     private static final int DY = 474;                                   // the desk
-    private static final int[] LIT = {0x4FE36A, 0xFFA830, 0x9AA3B4, 0xFF5A3C};
+    private static final int[] LIT = {0x4FE36A, 0x9AA3B4};
 
     // the timeline, seconds: the hammer coming up, each knock, the channel flicking over
     static final float RISE = 0.3f, KNOCK = 0.42f, FLICK = 0.18f;
@@ -44,12 +44,12 @@ final class Console {
 
     private int[] art;
     private int artW, artH;
-    private final int[] press = new int[4];
+    private final int[] press = new int[2];
     private int presses;
     private int giftKind = -1;
     private int shown, then;                          // the level on the counter now, and after the flick
-    private final boolean[] lit = new boolean[4];
-    private final float[] hitAt = new float[4];
+    private final boolean[] lit = new boolean[2];
+    private final float[] hitAt = new float[2];
     private float t = -1f;                            // seconds into the knocking, below 0 not yet
     private int heard;                                // knocks already sounded
     private final java.util.Random rnd = new java.util.Random(11);
@@ -122,7 +122,7 @@ final class Console {
     }
 
     /**
-     * A new visit: the buttons to knock, in order (the last is NEXT or GAME); the hammer in
+     * A new visit: the keys to knock, in order (the last is NEXT); the hammer in
      * hand, and the one given, if any (its kind lights the hammer button); the level shown now
      * and after the flick, as the counter counts them, from one.
      */
@@ -136,39 +136,6 @@ final class Console {
         java.util.Arrays.fill(hitAt, -9f);
         t = 0f;
         heard = 0;
-    }
-
-    private int bank;
-    private boolean bankFresh;
-
-    /** The bank this time: how many golden cubes are in it, and whether one came in with this round. */
-    void bank(int n, boolean fresh) {
-        bank = n;
-        bankFresh = fresh;
-    }
-
-    /**
-     * The bank, on the desk at the right: golden cubes behind a grille, won with the buildings
-     * that wore them; they are not the player's yet. One come in with this round shines.
-     */
-    static void bankBox(Px f, int x0, int y0, int x1, int y1, int n, float shine) {
-        f.rect(x0 - 2, y0 - 2, x1 + 2, y1 + 2, 0xFF0E0F11);
-        f.rect(x0, y0, x1, y1, 0xFF15171A);
-        int cols = 4, shown = Math.min(8, n);
-        float cw = (x1 - x0) / (float) cols;
-        for (int i = 0; i < shown; i++) {
-            int row = i / cols, col = i % cols;
-            int cx = Math.round(x0 + cw * (col + 0.5f)), cy = y1 - 11 - row * 22;
-            boolean lit = i == shown - 1 && shine > 0f;
-            // a little golden cube: its top light, its two sides darker
-            f.rect(cx - 7, cy - 7, cx + 7, cy - 2, lit ? 0xFFFFE6A0 : 0xFFFFC24A);
-            f.rect(cx - 7, cy - 2, cx, cy + 7, 0xFFF08C1E);
-            f.rect(cx, cy - 2, cx + 7, cy + 7, 0xFFB85A12);
-        }
-        // the grille over it, thin: they are behind bars, not in the hand
-        for (int x = x0 + 8; x < x1 - 2; x += 17) f.rect(x, y0, x + 1, y1, 0xFF5A626C);
-        f.rect(x0, y0, x1, y0 + 2, 0xFF5A626C);
-        f.rect(x0, y1 - 2, x1, y1, 0xFF3A4048);
     }
 
     /** How long the knocking and the flick take, seconds. */
@@ -232,7 +199,6 @@ final class Console {
         clock(g, dTop);
         buttons(g, dBot);
         counter(g, dBot);
-        if (bank > 0) bankAt(g, 196, DY + 8 + dBot, 264, DY + 60 + dBot, bank, bankFresh ? 0.5f + 0.5f * (float) Math.sin(t * 9f) : 0f);
         if (handUp > 0f) {
             holes(g);
             // the lower dark takes it, as it takes the room
@@ -313,7 +279,7 @@ final class Console {
         }
     }
 
-    // ---- what is drawn once and laid down again: digits, keys and their light, the bank, the hammer ----
+    // ---- what is drawn once and laid down again: digits, keys and their light ----
 
     private final java.util.HashMap<Integer, Ink> sprites = new java.util.HashMap<Integer, Ink>();
     private static final float PAD = 6f;
@@ -422,7 +388,7 @@ final class Console {
 
     /** The row of buttons: dark until knocked, then lit; the one just knocked in and flaring. */
     private void buttons(Ink g, float dy) {
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 2; i++) {
             float x = BX[i], y = BY + dy;
             float since = t - hitAt[i];
             boolean in = since >= 0f && since < 0.15f;
@@ -443,7 +409,9 @@ final class Console {
                     gl.disc(58f * Q, 58f * Q, 10f * Q, 0xFF000000 | LIT[i], 46f * Q, 1f);
                     sprites.put(3000 + i, gl);
                 }
-                g.blit(gl, (x + BW / 2f - 58f) * Q, (y + BH / 2f - 58f) * Q, 0.55f * (1f - since / 0.45f));
+                // as wide as the key: two pools of it, one under each half
+                for (int h = -1; h <= 1; h += 2)
+                    g.blit(gl, (x + BW / 2f + h * BW / 4f - 58f) * Q, (y + BH / 2f - 58f) * Q, 0.45f * (1f - since / 0.45f));
             }
         }
     }
@@ -464,24 +432,12 @@ final class Console {
     private void icon(Ink g, int kind, float cx, float cy, int c) {
         switch (kind) {
             case NEXT:
-                g.shape((cx - 5) * Q, (cy - 7.5f) * Q, (cx + 7.5f) * Q, cy * Q, (cx - 5) * Q, (cy + 7.5f) * Q);
+                g.shape((cx - 6) * Q, (cy - 9f) * Q, (cx + 9f) * Q, cy * Q, (cx - 6) * Q, (cy + 9f) * Q);
                 g.polyFill(c, c, 1f, 1f);
-                break;
-            case CUBE:
-                g.shape(cx * Q, (cy - 7) * Q, (cx + 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, (cx - 7) * Q, (cy - 3) * Q);
-                g.polyFill(c, c, 1f, 1f);
-                int c2 = 0xFF000000 | Street.scale(c, 0.75f), c3 = 0xFF000000 | Street.scale(c, 0.55f);
-                g.shape((cx - 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, cx * Q, (cy + 8) * Q, (cx - 7) * Q, (cy + 4) * Q);
-                g.polyFill(c2, c2, 1f, 1f);
-                g.shape((cx + 7) * Q, (cy - 3) * Q, cx * Q, (cy + 1) * Q, cx * Q, (cy + 8) * Q, (cx + 7) * Q, (cy + 4) * Q);
-                g.polyFill(c3, c3, 1f, 1f);
-                break;
-            case HAMMER:
-                // the hammer's own shape, as a sign
-                Hammer.icon(g, cx * Q, (cy + 1f) * Q, 19f * Q, Hammer.HEAVY_KIND, c & 0xFFFFFF, 1f);
                 break;
             default:
-                g.ring(cx * Q, cy * Q, 5.2f * Q, 6.8f * Q, 0f, 1f, c, 1f);
+                // the hammer's own shape, as a sign
+                Hammer.icon(g, cx * Q, (cy + 1f) * Q, 19f * Q, Hammer.HEAVY_KIND, c & 0xFFFFFF, 1f);
         }
     }
 
@@ -492,40 +448,6 @@ final class Console {
         int back = n - 1;
         for (int i = 0; i < 3; i++)
             digitAt(g, 3, back < 1 ? -1 : (Math.max(0, back) / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10, 28 + i * 16, DY + 40 + dy);
-    }
-
-    /** The bank, drawn once for how many and whether the newest shines, laid on the desk. */
-    private void bankAt(Ink g, float x0, float y0, float x1, float y1, int n, float shine) {
-        int key = 4000 + Math.min(8, n) * 2 + (shine > 0.5f ? 1 : 0);
-        Ink sp = sprites.get(key);
-        if (sp == null) {
-            sp = new Ink(Math.round((x1 - x0 + 8) * Q), Math.round((y1 - y0 + 8) * Q));
-            bankBox(sp, 4f, 4f, 4f + x1 - x0, 4f + y1 - y0, n, shine > 0.5f ? 1f : 0f);
-            sprites.put(key, sp);
-        }
-        g.blit(sp, (x0 - 4f) * Q, (y0 - 4f) * Q, 1f);
-    }
-
-    /** The bank on the desk: golden cubes behind a thin grille; one come in with this round shines. */
-    private static void bankBox(Ink g, float x0, float y0, float x1, float y1, int n, float shine) {
-        g.box((x0 - 2) * Q, (y0 - 2) * Q, (x1 + 2) * Q, (y1 + 2) * Q, 5f * Q, 0xFF0E0F11, 0xFF15171A, 1f, 1f);
-        g.box(x0 * Q, y0 * Q, x1 * Q, y1 * Q, 4f * Q, 0xFF181B1F, 0xFF101215, 1f, 1f);
-        int cols = 4, shown = Math.min(8, n);
-        float cw = (x1 - x0) / cols;
-        for (int i = 0; i < shown; i++) {
-            int row = i / cols, col = i % cols;
-            float cx = x0 + cw * (col + 0.5f), cy = y1 - 11 - row * 22;
-            boolean on = i == shown - 1 && shine > 0f;
-            g.disc(cx * Q, cy * Q, 6f * Q, 0xFFFF9628, 7f * Q, 0.25f);
-            g.shape(cx * Q, (cy - 7) * Q, (cx + 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, (cx - 7) * Q, (cy - 3.5f) * Q);
-            g.polyFill(on ? 0xFFFFE6A0 : 0xFFFFC24A, on ? 0xFFFFE6A0 : 0xFFFFC24A, 1f, 1f);
-            g.shape((cx - 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, cx * Q, (cy + 7.5f) * Q, (cx - 7) * Q, (cy + 4) * Q);
-            g.polyFill(0xFFF08C1E, 0xFFF08C1E, 1f, 1f);
-            g.shape((cx + 7) * Q, (cy - 3.5f) * Q, cx * Q, cy * Q, cx * Q, (cy + 7.5f) * Q, (cx + 7) * Q, (cy + 4) * Q);
-            g.polyFill(0xFFB85A12, 0xFFB85A12, 1f, 1f);
-        }
-        for (float x = x0 + 8; x < x1 - 2; x += 17) g.line(x * Q, y0 * Q, x * Q, y1 * Q, 1.2f * Q, 0xFF5A626C, 1f);
-        g.line(x0 * Q, (y0 + 1) * Q, x1 * Q, (y0 + 1) * Q, 1.6f * Q, 0xFF5A626C, 1f);
     }
 
     // which segments light for each digit: a top, b upper right, c lower right, d bottom, e lower left, f upper left, g middle

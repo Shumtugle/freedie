@@ -1,10 +1,10 @@
 # Freedie
 
 A game for Android about knocking down buildings with a hammer, on a summer street of a
-seaside town. Freedie, a giant heaped together from stone, brick and planks and dressed
-as a maid, is its mascot.
+seaside town, and then out on the winter ocean.
 
-Early days: the engine, the street, the opening and the first level stand; the levels after it are still to come.
+Early days: a hundred and one levels on the street, a few out at sea so far; the
+dispatcher's bridge, three presses on the red button, plays any level reached again.
 
 ## How it is made
 
@@ -19,9 +19,6 @@ Early days: the engine, the street, the opening and the first level stand; the l
   which the coarse pixels read as round.
 - The desktop stand (`stand/`) plays scenes against the same Java and writes each frame's
   draw list; `stand/web/index.html` draws it with the same shaders in a browser.
-- The first game of the bridge, the hopscotch over the quicksilver, is a game of its own
-  with its own renderer, in `src/com/shumtugle/freedie/hopper` and `assets/hopper`; the
-  activity hands the screen to it and takes it back.
 
 ## The page
 

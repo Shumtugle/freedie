@@ -3,6 +3,5 @@ screen 1096 2560
 keep level 12
 keep gifts 21
 restart
-skip
 wait 3.0
 shot rows

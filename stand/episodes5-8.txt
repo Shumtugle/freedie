@@ -2,262 +2,210 @@
 screen 1096 2560
 keep level 50
 restart
-skip
 wait 2.6
 shot e51
 keep level 51
 restart
-skip
 wait 2.6
 shot e52
 keep level 52
 restart
-skip
 wait 2.6
 shot e53
 keep level 53
 restart
-skip
 wait 2.6
 shot e54
 keep level 54
 restart
-skip
 wait 2.6
 shot e55
 keep level 55
 restart
-skip
 wait 2.6
 shot e56
 keep level 56
 restart
-skip
 wait 2.6
 shot e57
 keep level 57
 restart
-skip
 wait 2.6
 shot e58
 keep level 58
 restart
-skip
 wait 2.6
 shot e59
 keep level 59
 restart
-skip
 wait 2.6
 shot e60
 keep level 60
 restart
-skip
 wait 2.6
 shot e61
 keep level 61
 restart
-skip
 wait 2.6
 shot e62
 keep level 62
 restart
-skip
 wait 2.6
 shot e63
 keep level 63
 restart
-skip
 wait 2.6
 shot e64
 keep level 64
 restart
-skip
 wait 2.6
 shot e65
 keep level 65
 restart
-skip
 wait 2.6
 shot e66
 keep level 66
 restart
-skip
 wait 2.6
 shot e67
 keep level 67
 restart
-skip
 wait 2.6
 shot e68
 keep level 68
 restart
-skip
 wait 2.6
 shot e69
 keep level 69
 restart
-skip
 wait 2.6
 shot e70
 keep level 70
 restart
-skip
 wait 2.6
 shot e71
 keep level 71
 restart
-skip
 wait 2.6
 shot e72
 keep level 72
 restart
-skip
 wait 2.6
 shot e73
 keep level 73
 restart
-skip
 wait 2.6
 shot e74
 keep level 74
 restart
-skip
 wait 2.6
 shot e75
 keep level 75
 restart
-skip
 wait 2.6
 shot e76
 keep level 76
 restart
-skip
 wait 2.6
 shot e77
 keep level 77
 restart
-skip
 wait 2.6
 shot e78
 keep level 78
 restart
-skip
 wait 2.6
 shot e79
 keep level 79
 restart
-skip
 wait 2.6
 shot e80
 keep level 80
 restart
-skip
 wait 2.6
 shot e81
 keep level 81
 restart
-skip
 wait 2.6
 shot e82
 keep level 82
 restart
-skip
 wait 2.6
 shot e83
 keep level 83
 restart
-skip
 wait 2.6
 shot e84
 keep level 84
 restart
-skip
 wait 2.6
 shot e85
 keep level 85
 restart
-skip
 wait 2.6
 shot e86
 keep level 86
 restart
-skip
 wait 2.6
 shot e87
 keep level 87
 restart
-skip
 wait 2.6
 shot e88
 keep level 88
 restart
-skip
 wait 2.6
 shot e89
 keep level 89
 restart
-skip
 wait 2.6
 shot e90
 keep level 90
 restart
-skip
 wait 2.6
 shot e91
 keep level 91
 restart
-skip
 wait 2.6
 shot e92
 keep level 92
 restart
-skip
 wait 2.6
 shot e93
 keep level 93
 restart
-skip
 wait 2.6
 shot e94
 keep level 94
 restart
-skip
 wait 2.6
 shot e95
 keep level 95
 restart
-skip
 wait 2.6
 shot e96
 keep level 96
 restart
-skip
 wait 2.6
 shot e97
 keep level 97
 restart
-skip
 wait 2.6
 shot e98
 keep level 98
 restart
-skip
 wait 2.6
 shot e99
 keep level 99
 restart
-skip
 wait 2.6
 shot e100
 keep level 100
 restart
-skip
 wait 2.6
 shot e101
 keep level 65
 restart
-skip
 wait 2.6
 down 137 400
 wait 0.5
@@ -266,7 +214,6 @@ up 137 400
 wait 2
 keep level 79
 restart
-skip
 wait 2.6
 down 137 400
 wait 0.5
@@ -275,7 +222,6 @@ up 137 400
 wait 2
 keep level 94
 restart
-skip
 wait 2.6
 down 137 400
 wait 0.5
@@ -284,7 +230,6 @@ up 137 400
 wait 2
 keep level 100
 restart
-skip
 wait 2.6
 down 137 400
 wait 0.5

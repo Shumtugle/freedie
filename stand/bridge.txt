@@ -1,15 +1,13 @@
-# The bridge: three presses of the red button open it. One set, the episodes its channels: the
-# big red knob clicks to the next (snow for a moment); the third channel is not paid for and
-# comes scrambled; a tap on the slot drops a cube from the tray into it like a token and the
-# picture comes clear; the knob stops against the last channel; back a channel, and the green
-# button goes into the episode.
+# The bridge: three presses of the red button open it, on the channel being played, the
+# counter on the level the player came from. The step keys at the right of the row run the
+# counter back through the levels of the episode reached (held, they run), and against its
+# first a dead click; the knob clicks to the next channel (snow for a moment), its counter
+# on its first level; on, a step; the knob stops against the last channel reached; the
+# green key goes onto the street at the level on the counter.
 screen 1096 2560
+keep level 23
 keep best 25
-keep cubes 3
-keep slot0 1
-keep slot1 1
-keep slot2 0
-skip
+restart
 wait 1.0
 down 240 325
 up 240 325
@@ -21,24 +19,29 @@ down 240 325
 up 240 325
 wait 0.8
 shot b0_room
-down 185 592
-up 185 592
+down 172 438
+up 172 438
+wait 0.2
+shot b1_back
+down 172 438
+wait 1.2
+shot b2_run
+up 172 438
+wait 0.3
+shot b3_first
+down 90 592
+up 90 592
 wait 0.08
-shot b1_snow
+shot b4_snow
 wait 0.6
-shot b2_second
+shot b5_second
+down 240 438
+up 240 438
+wait 0.3
+shot b6_on
 down 185 592
 up 185 592
-wait 0.9
-shot b3_scrambled
-down 218 96
-up 218 96
-wait 0.25
-shot b4_token
 wait 0.6
-shot b5_clearing
-wait 0.8
-shot b6_paid
 down 185 592
 up 185 592
 wait 0.05
@@ -46,10 +49,10 @@ shot b7_stop
 wait 0.6
 down 90 592
 up 90 592
-wait 0.8
-shot b8_back
-down 33 438
-up 33 438
+wait 0.6
+shot b8_back_one
+down 60 438
+up 60 438
 wait 0.1
 shot b9_press
 wait 1.2

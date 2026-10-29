@@ -5,31 +5,26 @@ import java.util.Random;
 /**
  * Every sound in the game, synthesized once at start: knocks of wood and stone,
  * the dull thud of the ground, the whirr of a spinning hammer, the slap of it
- * coming back to the hand, and thunder for a building that falls at one blow;
- * wind over the town and a golden chime for the opening.
+ * coming back to the hand, and thunder for a building that falls at one blow.
  * A small mixer plays them back at any pitch. Plain Java: the phone streams the
  * mixer, the desktop stand can write it to a file.
  */
 final class Synth {
     static final int RATE = 22050;
     static final int WOOD = 0, STONE = 1, GROUND = 2, WHOOSH = 3, THUNDER = 4, CATCH = 5, TOCK = 6, GLASS = 7;
-    static final int SPLASH = 8, PLASTIC = 9, CRASH = 10, ALARM = 11, POP = 12, ROAR = 13, BEAT = 14, RING = 15, DOOR = 16, DTMF = 17;
-    // after the twelve keypad tones
-    static final int CLANG = DTMF + 12, SAND = DTMF + 13, RUBBER = DTMF + 14, BUSY = DTMF + 15;
+    static final int SPLASH = 8, PLASTIC = 9, CRASH = 10, ALARM = 11, POP = 12, RING = 13, DOOR = 14;
+    static final int CLANG = 15, SAND = 16, RUBBER = 17;
     // luggage: a leather slap, brass latches snapping, a mattress groaning, ticking torn open
-    static final int LEATHER = DTMF + 16, LATCH = DTMF + 17, MATTRESS = DTMF + 18, TEAR = DTMF + 19;
+    static final int LEATHER = 18, LATCH = 19, MATTRESS = 20, TEAR = 21;
     // a heavy ball rolling away down the asphalt
-    static final int ROLL = DTMF + 20;
+    static final int ROLL = 22;
     // more thunder, each made differently: near and sharp, rolling, far and low, a double crack, a long roll
     static final int THUNDERS = 6;
-    private static final int THUNDER_MORE = DTMF + 21;
-    // the bridge: the transformers' hum, laid end to end, and a picture tube switched off
-    static final int HUM = THUNDER_MORE + THUNDERS - 1, TV_OFF = HUM + 1;
-    // the opening: wind high over the town, a chime for the name
-    static final int WIND = TV_OFF + 1, CHIME = TV_OFF + 2;
+    private static final int THUNDER_MORE = 23;
+    // the bridge: a picture tube switched off
+    static final int TV_OFF = THUNDER_MORE + THUNDERS - 1;
     // car alarms are not all the same: a lock's chirp, a horn honking, a wailing siren
-    static final int CHIRP = CHIME + 1, HORN = CHIME + 2, WAIL = CHIME + 3;
-    static final float HUM_EVERY = 0.5f;
+    static final int CHIRP = TV_OFF + 1, HORN = TV_OFF + 2, WAIL = TV_OFF + 3;
 
     /** One of the thunders: 0 the plain one, then the others. */
     static int thunder(int k) {
@@ -57,25 +52,18 @@ final class Synth {
                 new float[]{8f, 10f, 15f, 19f, 24f}, 1.1f, 0.6f);
         bank[ALARM] = alarm();
         bank[POP] = pop(r);
-        bank[ROAR] = roar(r);
-        bank[BEAT] = beat();
         bank[RING] = ring(r);
         bank[DOOR] = door(r);
-        // the keypad's tones, in the order of its keys: 1 2 3, 4 5 6, 7 8 9, C 0 CALL
-        float[] lo = {697f, 770f, 852f, 941f}, hi = {1209f, 1336f, 1477f};
-        for (int k = 0; k < 12; k++) bank[DTMF + k] = tone(lo[k / 3], hi[k % 3]);
         // an empty steel drum: a few far-apart modes that ring on
         bank[CLANG] = knock(r, 0.7f, new float[]{214f, 538f, 911f, 1447f, 2210f}, new float[]{0.8f, 0.75f, 0.5f, 0.32f, 0.2f},
                 new float[]{6f, 8f, 11f, 15f, 21f}, 0.5f, 0.5f);
         bank[SAND] = sand(r);
         bank[RUBBER] = rubber(r);
-        bank[BUSY] = busy();
         bank[LEATHER] = leather(r);
         bank[LATCH] = latch(r);
         bank[MATTRESS] = mattress(r);
         bank[TEAR] = tear(r);
         bank[ROLL] = roll(r);
-        bank[HUM] = hum(r);
         bank[TV_OFF] = tvOff(r);
         // near: a split crack, a short hard rumble
         bank[THUNDER_MORE] = thunder(r, 2.0f, 1.1f, 0f, 0.05f, 1.6f, 1100);
@@ -87,58 +75,11 @@ final class Synth {
         bank[THUNDER_MORE + 3] = thunder(r, 2.6f, 0.8f, 0.16f, 0.04f, 1.1f, 1500);
         // a long roll, banging about between the houses
         bank[THUNDER_MORE + 4] = thunder(r, 4.2f, 0.35f, 0f, 0.03f, 0.45f, 2000);
-        bank[WIND] = wind(r);
-        bank[CHIME] = chime(r);
         bank[CHIRP] = chirp();
         bank[HORN] = horn();
         bank[WAIL] = wail();
         bank[GLASS] = knock(r, 0.4f, new float[]{1870f, 2950f, 4410f}, new float[]{0.6f, 0.4f, 0.3f},
                 new float[]{9f, 12f, 16f}, 0.4f, 0.8f);
-    }
-
-    /** Wind high up: dark noise in slow gusts, swelling in and dying away. */
-    private static float[] wind(Random r) {
-        float dur = 3.2f;
-        int n = (int) (dur * RATE);
-        float[] s = new float[n];
-        float lp = 0, lp2 = 0, gust = 0.6f, target = 0.6f, whistle = 0f;
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            if (i % 2600 == 0) target = 0.35f + r.nextFloat() * 0.8f;
-            gust += (target - gust) * 0.0006f;
-            float nz = r.nextFloat() * 2f - 1f;
-            float cut = 0.02f + 0.03f * gust;
-            lp += (nz - lp) * cut;
-            lp2 += (lp - lp2) * cut;
-            // a thin whistle riding the gusts
-            whistle += (float) (2 * Math.PI * (520f + 160f * gust) / RATE);
-            float w = (float) Math.sin(whistle) * 0.04f * gust * gust;
-            float env = Math.min(1f, t / 0.6f) * Math.min(1f, (dur - t) / 0.9f);
-            s[i] = (lp2 * 7f * gust + w) * env;
-        }
-        return s;
-    }
-
-    /** A golden chime: a bell's out-of-tune partials, struck soft, ringing long, with a shimmer. */
-    private static float[] chime(Random r) {
-        float dur = 2.4f;
-        int n = (int) (dur * RATE);
-        float[] s = new float[n];
-        float[] hz = {660f, 1320f, 1822f, 2970f, 3564f};
-        float[] amp = {1f, 0.55f, 0.42f, 0.25f, 0.15f};
-        float[] dec = {1.4f, 2.2f, 2.8f, 4.5f, 6f};
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            float v = 0f;
-            for (int k = 0; k < hz.length; k++) {
-                // each partial beats a little against its twin
-                float a = (float) Math.sin(2 * Math.PI * hz[k] * t) + 0.5f * (float) Math.sin(2 * Math.PI * hz[k] * 1.003f * t);
-                v += a * amp[k] * (float) Math.exp(-dec[k] * t);
-            }
-            float strike = Math.min(1f, t * 400f);
-            s[i] = v * 0.22f * strike;
-        }
-        return s;
     }
 
     /** A burst of water: a wet slap, a sheet of spray, then a few gulping bubbles. */
@@ -170,25 +111,6 @@ final class Synth {
         return s;
     }
 
-    /** A roar of stone: low rasping tones, grinding grit, a throb in it. */
-    private static float[] roar(Random r) {
-        int n = (int) (1.5f * RATE);
-        float[] s = new float[n];
-        float p1 = 0f, p2 = 0f, lp = 0f;
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            float f = 62f + 18f * (float) Math.sin(t * 3.1f) - 10f * t;
-            p1 += f / RATE;
-            p2 += f * 1.51f / RATE;
-            float saw = (p1 % 1f) * 2f - 1f, saw2 = (p2 % 1f) * 2f - 1f;
-            lp += ((r.nextFloat() * 2f - 1f) - lp) * 0.15f;
-            float throb = 0.65f + 0.35f * (float) Math.sin(t * 2f * Math.PI * 17f);
-            float env = Math.min(1f, t * 6f) * Math.min(1f, (1.5f - t) * 2.5f);
-            s[i] = (saw * 0.45f + saw2 * 0.25f + lp * 0.9f) * throb * env * 0.6f;
-        }
-        return s;
-    }
-
     /** A call to the dispatcher: the click of the button, then the ringing tone down a line. */
     private static float[] ring(Random r) {
         int n = (int) (1.1f * RATE);
@@ -206,18 +128,6 @@ final class Synth {
                 v += (tone * 0.5f + lp * 0.08f) * env;
             }
             s[i] = v * 0.55f;
-        }
-        return s;
-    }
-
-    /** A key of the telephone: two tones together, briefly. */
-    private static float[] tone(float a, float b) {
-        int n = (int) (0.13f * RATE);
-        float[] s = new float[n];
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            float env = Math.min(1f, t * 300f) * Math.min(1f, (0.13f - t) * 300f);
-            s[i] = ((float) Math.sin(2 * Math.PI * a * t) + (float) Math.sin(2 * Math.PI * b * t)) * 0.25f * env;
         }
         return s;
     }
@@ -363,25 +273,6 @@ final class Synth {
         return s;
     }
 
-    /**
-     * Mains hum: a whole number of cycles at 50 Hz and its overtones, so pieces laid one
-     * after another every HUM_EVERY seconds keep in step; the ends fade, the pieces overlap.
-     */
-    private static float[] hum(Random r) {
-        int n = (int) ((HUM_EVERY + 0.1f) * RATE);
-        float[] s = new float[n];
-        float lp = 0f;
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            float env = Math.min(1f, t / 0.1f) * Math.min(1f, (HUM_EVERY + 0.1f - t) / 0.1f);
-            lp += ((r.nextFloat() * 2f - 1f) - lp) * 0.02f;
-            float v = 0.5f * (float) Math.sin(2 * Math.PI * 50f * t) + 0.32f * (float) Math.sin(2 * Math.PI * 100f * t + 0.6f)
-                    + 0.14f * (float) Math.sin(2 * Math.PI * 150f * t + 1.3f) + 0.06f * (float) Math.sin(2 * Math.PI * 250f * t);
-            s[i] = (v * (1f + lp * 0.8f)) * 0.22f * env;
-        }
-        return s;
-    }
-
     /** A picture tube switched off: a falling whine, a soft thump of the coil, a tick. */
     private static float[] tvOff(Random r) {
         int n = (int) (0.5f * RATE);
@@ -394,21 +285,6 @@ final class Synth {
             float thump = (float) Math.sin(2 * Math.PI * 70f * t) * (float) Math.exp(-14f * t) * 0.5f;
             float tick = t < 0.004f ? (r.nextFloat() * 2f - 1f) * 0.6f : 0f;
             s[i] = whine + thump + tick;
-        }
-        return s;
-    }
-
-    /** The line's answer to a number that is not there: three short rising beeps. */
-    private static float[] busy() {
-        int n = (int) (0.9f * RATE);
-        float[] s = new float[n];
-        float[] f = {950f, 1400f, 1800f};
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            int k = (int) (t / 0.3f);
-            float u = t - k * 0.3f;
-            float env = u < 0.24f ? Math.min(1f, u * 400f) * Math.min(1f, (0.24f - u) * 400f) : 0f;
-            s[i] = (float) Math.sin(2 * Math.PI * f[Math.min(2, k)] * t) * 0.3f * env;
         }
         return s;
     }
@@ -426,20 +302,6 @@ final class Synth {
             float rattle = lp * (0.5f + 0.5f * (float) Math.sin(t * 2 * Math.PI * 23f)) * 0.15f * Math.min(1f, t * 8f);
             float knock = t > 0.55f ? (float) Math.sin(2 * Math.PI * 110f * (t - 0.55f)) * (float) Math.exp(-30f * (t - 0.55f)) * 0.6f : 0f;
             s[i] = creak + rattle + knock;
-        }
-        return s;
-    }
-
-    /** A heartbeat: two soft low thumps. */
-    private static float[] beat() {
-        int n = (int) (0.45f * RATE);
-        float[] s = new float[n];
-        for (int i = 0; i < n; i++) {
-            float t = i / (float) RATE;
-            float a = (float) Math.sin(2 * Math.PI * 55f * t) * (float) Math.exp(-22f * t);
-            float t2 = t - 0.2f;
-            float b = t2 > 0f ? (float) Math.sin(2 * Math.PI * 48f * t2) * (float) Math.exp(-24f * t2) * 0.7f : 0f;
-            s[i] = (a + b) * Math.min(1f, t * 600f);
         }
         return s;
     }

@@ -4,7 +4,6 @@
 screen 1096 2560
 keep level 62
 restart
-skip
 wait 2.6
 down 20 420
 wait 0.5

@@ -6,7 +6,6 @@ screen 1096 2560
 keep level 12
 keep gifts 1
 restart
-skip
 wait 2.6
 shot t12
 tear
@@ -14,7 +13,6 @@ wait 0.4
 shot t12_torn
 keep level 15
 restart
-skip
 wait 2.6
 shot t15
 tear
@@ -26,7 +24,6 @@ wait 5
 shot t15_down
 keep level 16
 restart
-skip
 wait 2.6
 shot t16
 down 300 300
@@ -36,7 +33,6 @@ wait 0.6
 shot t16_hit
 keep level 18
 restart
-skip
 wait 2.6
 shot t18
 down 300 300
