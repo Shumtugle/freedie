@@ -1,10 +1,9 @@
-# Her model, as the sheet draws her, on the road before the plinth: from the front, three
-# quarters, the side, the back, the other three quarters.
+# Her model on the skeleton, standing, from the front, three quarters, the side, the back.
 screen 1096 2560
 keep level 4
 restart
 wait 1.0
-frida 0
+frida 0 0 idle
 wait 0.2
 shot f0_front
 frida 35
@@ -16,6 +15,3 @@ shot f2_side
 frida 180
 wait 0.1
 shot f3_back
-frida -40
-wait 0.1
-shot f4_other

@@ -1,0 +1,17 @@
+Motions (assets/moves.bin)
+==========================
+
+The skeleton and the motions Freedie moves by are sampled from the "Universal Animation
+Library" and "Universal Animation Library 2" (Standard), by Quaternius, released under
+Creative Commons Zero (CC0 1.0 Universal, public domain dedication).
+
+  Source:  https://quaternius.com/packs/universalanimationlibrary.html
+           https://quaternius.com/packs/universalanimationlibrary2.html
+  License: https://creativecommons.org/publicdomain/zero/1.0/
+
+Changes made: the finger bones were left out; 25 of the motions were chosen and renamed,
+sampled at 30 frames a second as each bone's turn and place in the figure's own space, and
+the figure turned to face the other way. No mesh of theirs is used: the figure is built of
+the game's own blocks. CC0 asks for no credit; it is given here all the same.
+
+Everything else in this project stays under the terms in LICENSE.

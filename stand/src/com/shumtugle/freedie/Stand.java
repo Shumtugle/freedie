@@ -18,7 +18,7 @@ import javax.imageio.ImageIO;
  * drag X0 Y0 X1 Y1 SECONDS · shot NAME · sounds (every sound of the synthesizer in turn, each
  * after the last has died away) · keep KEY VALUE (as kept by an earlier game) · back (the
  * phone's back key) · restart (the game started again, with what it kept) · tear · birds ·
- * plane SECONDS · deck VERDICT · frida YAW [SPIN] · intro (the opening, which scenes skip).
+ * plane SECONDS · deck VERDICT · frida YAW [SPIN [MOTION]] · intro (the opening, which scenes skip).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -193,8 +193,9 @@ public final class Stand implements World.Host {
             // the opening, from its start, as the game plays it when it starts
             world.standIntro(true);
         } else if (c.equals("frida")) {
-            // frida YAW [SPIN]: her model on the road before the plinth, turned so many degrees, turning so many a second
-            world.standFrida(f(p[1]), p.length > 2 ? f(p[2]) : 0f);
+            // frida YAW [SPIN [MOTION]]: her model on the road before the plinth, turned so many degrees, turning so
+            // many a second, in one of the skeleton's motions from its start
+            world.standFrida(f(p[1]), p.length > 2 ? f(p[2]) : 0f, p.length > 3 ? p[3] : null);
             step();
         } else if (c.equals("tear")) {
             // every mattress torn, every suitcase burst open

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.59
+- Freedie on a skeleton: her blocks ride on the bones of a humanoid skeleton and move with
+  it. Twenty-five motions: standing, walking, jogging, sprinting, a roll, two kinds of jump,
+  an overhand throw, jab, cross and hook, being hit and knocked back, falling, crouching,
+  sliding, climbing up, arms folded, a dance. Shown on the desktop stand; in the game she
+  stands in the opening, breathing.
+- Her build fitted to the skeleton: brick legs and body in courses, stone shoulders over the
+  arms, planks along the upper arms, big brick forearms with iron cuffs, stone fists; the
+  dress on the hips, the bib and the bow on the chest, the head small under its cap.
+- The skeleton and motions come from a public-domain library (see CREDITS).
+
 ## 0.58
 - An opening again, at every start, about four and a half seconds: Freedie on the road
   before the empty plinth; the eye rises from her feet back to where the player stands, her

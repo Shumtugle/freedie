@@ -34,4 +34,4 @@ ANDROID_JAR=... KEYSTORE=... KEY_ALIAS=... KS_PASS=... ./build.sh
 
 ## License
 
-Zero-Clause BSD, see `LICENSE`.
+Zero-Clause BSD, see `LICENSE`, except `assets/moves.bin`: public domain (CC0), see `CREDITS`.

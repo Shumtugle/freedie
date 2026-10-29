@@ -12,8 +12,8 @@ final class Intro {
     static final String TITLE = "FREEDIE";
     // the timeline, seconds: rising, the eyes, the name, into her eyes, the light, the game
     static final float RISE = 2.4f, EYES0 = 0.9f, EYES1 = 1.6f, NAME = 1.5f, INTO = 3.4f, LIGHT = 4.1f, END = 4.45f;
-    // where she stands, and how big: meters to her unit
-    static final float FX = -0.6f, FZ = 8.6f, SIZE = 0.55f;
+    // where she stands, and how big: so many times her skeleton
+    static final float FX = -0.6f, FZ = 8.6f, SIZE = 1.45f;
     // the name: a gold block for every dot of it, over her and a little behind
     private static final float NAME_Z = FZ + 4f, NAME_Y = 4.4f, DOT = 0.13f;
     private static final float NAME_X = FX + (NAME_Z - FZ) * 0.2f;
@@ -77,7 +77,7 @@ final class Intro {
      */
     private void camera() {
         // her eyes, in the world
-        float ex = FX, ey = 4.27f * SIZE, ez = FZ - 0.785f * SIZE;
+        float ex = FX, ey = 1.68f * SIZE, ez = FZ - 0.115f * SIZE;
         float[] e0 = {FX - 0.3f, 0.45f, FZ - 3.4f}, l0 = {FX, 2.2f, FZ};
         float[] e1 = {World.CAM_X, World.CAM_Y, World.CAM_Z}, l1 = {FX + 0.25f, 2.45f, FZ + 1.5f};
         float[] e2 = {ex, ey, ez - 0.25f}, l2 = {ex, ey, FZ};
@@ -104,7 +104,7 @@ final class Intro {
     /** Herself, her eyes as far as they are lit, and the name. */
     void draw(DrawList d) {
         Frida.eyes = ease((t - EYES0) / (EYES1 - EYES0));
-        Frida.draw(d, FX, 0f, FZ, 0f, SIZE);
+        Frida.draw(d, FX, 0f, FZ, 0f, SIZE, "idle", t);
         Frida.eyes = 1f;
         for (int i = 0; i < dots; i++) {
             float age = t - dotAt[i];

@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.58";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.59";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -73,11 +73,14 @@ final class World {
     private Intro intro;
     static final float FLASH_OUT = 0.35f;
     private float flashOut;
-    // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast
-    private float showYaw = Float.NaN, showSpin;
+    // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast, in a motion
+    private float showYaw = Float.NaN, showSpin, showAt;
+    private String showMotion = "idle";
 
     World(Host host) {
         this.host = host;
+        // her skeleton and the motions it knows, for the opening and the stand
+        Frida.use(Moves.read(host.asset("moves.bin")));
         intro = new Intro(host);
         game = new Game(host, host.loadInt("level"));
         game.traffic = traffic;
@@ -187,9 +190,13 @@ final class World {
     }
 
     /** For the desktop stand: her model on the road before the plinth, turned so many degrees, turning so many a second. */
-    void standFrida(float yaw, float spin) {
+    void standFrida(float yaw, float spin, String motion) {
         showYaw = yaw * (float) Math.PI / 180f;
         showSpin = spin * (float) Math.PI / 180f;
+        if (motion != null) {
+            showMotion = motion;
+            showAt = time;
+        }
     }
 
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
@@ -271,7 +278,7 @@ final class World {
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
             if (intro != null) intro.draw(d);
-            if (!Float.isNaN(showYaw)) Frida.draw(d, -0.6f, 0f, 8.6f, showYaw + showSpin * time, 0.55f);
+            if (!Float.isNaN(showYaw)) Frida.draw(d, -0.6f, 0f, 8.6f, showYaw + showSpin * time, 1.45f, showMotion, time - showAt);
             callAt3[0] = Street.CALL_X;
             callAt3[1] = Street.CALL_Y + 0.06f;
             callAt3[2] = Street.CALL_Z;

@@ -1,0 +1,20 @@
+# Her model in motion, three quarters on: sprinting, rolling, jumping, the overhand throw, the hook.
+screen 1096 2560
+keep level 4
+restart
+wait 1.0
+frida 30 0 sprint
+wait 0.2
+shot m0_sprint
+frida 70 0 roll
+wait 0.5
+shot m1_roll
+frida 30 0 leap_start
+wait 0.7
+shot m2_leap
+frida 40 0 throw
+wait 0.6
+shot m3_throw
+frida 20 0 hook
+wait 0.25
+shot m4_hook
