@@ -63,10 +63,6 @@ final class DrawList {
     float goldGlow = 1f;                       // gold keeps this much of its own light in the dark
     float flash;                               // the frame drawn in to its middle and gone white, 0 to 1
     float tube = -1f;                          // the picture coming on like a set, 0 to 1; below 0 it is on
-    // the fight's world: how far it is seen red and black (what burns, in golden fire), and
-    // how far gold as it ends
-    float red, gold;
-    float blur;                                // the frame out of focus by so many of its pixels, waking
     float overcast;                            // out at sea: the low grey winter sky, 0 to 1
     float night;                               // on the street: lamps and windows lit, stars out, 0 to 1
     final float[] grade = {1f, 1f, 0f};        // the hour's grade: contrast, saturation, warmth
@@ -77,6 +73,22 @@ final class DrawList {
     final float[] halo = new float[3];
     float rippleAge, ripple;                   // a ring over the mirror: seconds since, how strong
     float bolt;                                // lightning just now, 0 to 1
+    // the aim, drawn smooth at the screen's own size over everything: the ring's middle (frame
+    // pixels), the wind-up 0 to 1, shown (1) or not; and the dots of a flight, each x, y (frame
+    // pixels) and kind: 0 the flight the aim would take, 1 the trail of a throw in the air
+    final float[] ring = new float[4];
+    static final int TRAIL_MAX = 32;
+    final float[] trail = new float[TRAIL_MAX * 3];
+    int trailN;
+
+    /** A dot of a flight, in frame pixels. */
+    void dot(float x, float y, int kind) {
+        if (trailN >= TRAIL_MAX) return;
+        trail[trailN * 3] = x;
+        trail[trailN * 3 + 1] = y;
+        trail[trailN * 3 + 2] = kind;
+        trailN++;
+    }
 
     float[] boxes = new float[STRIDE * 256];
     int count;
@@ -111,6 +123,8 @@ final class DrawList {
         mirror[3] = 0f;
         halo[0] = halo[1] = halo[2] = 0f;
         ripple = rippleAge = bolt = 0f;
+        ring[3] = 0f;
+        trailN = 0;
     }
 
     /**
@@ -291,12 +305,14 @@ final class DrawList {
         s.append(",\"fogStart\":").append(fogStart).append(",\"fogScale\":").append(fogScale).append(",\"time\":").append(time);
         s.append(",\"overcast\":").append(overcast).append(",\"night\":").append(night);
         arr(s, "grade", grade);
-        s.append(",\"red\":").append(red).append(",\"gold\":").append(gold).append(",\"blur\":").append(blur);
         s.append(",\"dark\":").append(dark).append(",\"spotRadius\":").append(spotRadius).append(",\"flash\":").append(flash).append(",\"goldGlow\":").append(goldGlow).append(",\"tube\":").append(tube);
         arr(s, "spot", spot);
         arr(s, "mirror", mirror);
         arr(s, "halo", halo);
         s.append(",\"rippleAge\":").append(rippleAge).append(",\"ripple\":").append(ripple).append(",\"bolt\":").append(bolt);
+        arr(s, "ring", ring);
+        s.append(",\"trailN\":").append(trailN);
+        arr(s, "trail", trail);
         s.append(",\"flyN\":").append(flyN).append(",\"fly\":[");
         for (int i = 0; i < flyN * 8; i++) {
             if (i > 0) s.append(',');

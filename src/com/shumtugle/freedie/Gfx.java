@@ -291,16 +291,30 @@ final class Gfx {
         GLES30.glUniform1i(u(blitP, "uFlat"), 1);
         GLES30.glUniform1f(u(blitP, "uFlash"), d.flash);
         GLES30.glUniform1f(u(blitP, "uTube"), d.tube);
-        GLES30.glUniform1f(u(blitP, "uRed"), d.red);
-        GLES30.glUniform1f(u(blitP, "uGold"), d.gold);
         GLES30.glUniform1f(u(blitP, "uTime"), d.time);
-        GLES30.glUniform1f(u(blitP, "uBlur"), d.blur);
         GLES30.glUniform3fv(u(blitP, "uGrade"), 1, d.grade, 0);
         GLES30.glUniform1f(u(blitP, "uBolt"), d.bolt);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE2);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, hudTex);
         GLES30.glUniform1i(u(blitP, "uHud"), 2);
         GLES30.glUniform1f(u(blitP, "uHudRows"), hudTex != 0 ? d.hudRows : 0f);
+        // the aim, drawn smooth at the screen's own size
+        GLES30.glUniform2f(u(blitP, "uScreen"), screenW, screenH);
+        GLES30.glUniform1f(u(blitP, "uScale"), screenW / (float) d.w);
+        GLES30.glUniform4fv(u(blitP, "uRing"), 1, d.ring, 0);
+        GLES30.glUniform1i(u(blitP, "uTrailN"), d.trailN);
+        if (d.trailN > 0) {
+            GLES30.glUniform3fv(u(blitP, "uTrail"), d.trailN, d.trail, 0);
+            float x0 = Float.MAX_VALUE, y0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, y1 = -Float.MAX_VALUE;
+            for (int i = 0; i < d.trailN; i++) {
+                float x = d.trail[i * 3], y = d.trail[i * 3 + 1];
+                x0 = Math.min(x0, x);
+                y0 = Math.min(y0, y);
+                x1 = Math.max(x1, x);
+                y1 = Math.max(y1, y);
+            }
+            GLES30.glUniform4f(u(blitP, "uTrailBox"), x0, y0, x1, y1);
+        }
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);

@@ -1,0 +1,21 @@
+# The aim, drawn smooth: a finger down, the ring on the building and the dotted flight, the
+# wind-up filling round the ring and flickering full; let go, the trail of the hammer as it
+# really flies, and its last dots going a moment after the hammer is back.
+screen 1096 2560
+keep level 4
+restart
+wait 2.8
+down 137 420
+wait 0.3
+shot a0_half
+wait 0.8
+shot a1_full
+move 150 400
+wait 0.1
+up 150 400
+wait 0.12
+shot a2_flight
+wait 0.15
+shot a3_flight
+wait 0.6
+shot a4_back

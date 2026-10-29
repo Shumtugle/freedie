@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.55
+- The aim is drawn smooth, at the screen's own size, over the frame: a thin ring with a dot
+  in its middle, the wind-up a band round it filling from the top and flickering when full,
+  the flight the throw would take in fine dots.
+- A thrown hammer leaves a trail: amber dots along the way it really flew, there while it
+  is in the air and going from its oldest end a moment after it is back.
+- The world's red, gold and blurred tints, kept for the fight, are gone from the last pass.
+
 ## 0.54
 - The game is the throw alone: the alley, the yard with its table, the fight, the stones on
   the water and the game on the bridge's screen are gone, and the giant with them; no

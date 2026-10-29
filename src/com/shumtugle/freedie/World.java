@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.54";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.55";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -248,6 +248,8 @@ final class World {
         // the flat layer: snow at sea, the aim, the version in the corner, and the cost of a frame while the engine is young
         if (game.atSea) Ocean.snow(f, time);
         game.flat(f);
+        // the aim, drawn smooth over everything by the renderer
+        game.aim(d);
         // the room between rounds, at the world's own grain, over all of the frame
         if (roomInk.used) Console.over(f, roomInk);
         if (hudInk.used) {
@@ -300,9 +302,6 @@ final class World {
         d.flash = 0f;
         d.goldGlow = 1f;
         d.tube = -1f;
-        d.red = 0f;
-        d.gold = 0f;
-        d.blur = 0f;
     }
 
     // ---- the call box and the bridge ----

@@ -841,6 +841,7 @@ final class Game implements Physics.Listener {
         windUp(dt);
         creep(dt);
         zoomStep(dt);
+        trailStep(dt);
         solids();
         hammerMoves(dt);
         thunderStep(dt);
@@ -1957,6 +1958,48 @@ final class Game implements Physics.Listener {
         if (state == PORTAL) drawPortal(f);
         // the crest, while the street is in sight
         if (k * fh < fh / 8f) hud(f);
+    }
+
+    // the flight of a throw, kept as it goes: where the hammer was, every so often
+    private static final int TRAIL = 30;
+    private static final float TRAIL_EVERY = 0.016f, TRAIL_FADE = 0.35f;
+    private final float[] trailX = new float[TRAIL], trailY = new float[TRAIL], trailZ = new float[TRAIL];
+    private int trailN, trailAt;
+    private float trailNext, trailLeft = -1f;
+
+    /** The flight kept as the hammer goes, and let go a moment after it is back. */
+    private void trailStep(float dt) {
+        if (hs == FLY) {
+            if (hsTime < dt * 1.5f) {
+                trailN = 0;
+                trailAt = 0;
+                trailNext = 0f;
+            }
+            trailLeft = TRAIL_FADE;
+            if ((trailNext -= dt) <= 0f) {
+                trailNext += TRAIL_EVERY;
+                trailX[trailAt] = hammer.px;
+                trailY[trailAt] = hammer.py;
+                trailZ[trailAt] = hammer.pz;
+                trailAt = (trailAt + 1) % TRAIL;
+                trailN = Math.min(TRAIL, trailN + 1);
+            }
+        } else if (trailLeft >= 0f && (trailLeft -= dt) < 0f) trailN = 0;
+    }
+
+    /**
+     * The aim, for the renderer to draw smooth over everything: the ring on the building with
+     * its wind-up and the dots of the flight the throw would take; or the trail of a throw in
+     * the air, the way it really went, going a moment after the hammer is back.
+     */
+    void aim(DrawList d) {
+        if (tilt() > 0f) return;
+        // the trail, oldest first, dropping off from its oldest end as it goes
+        int shown = hs == FLY ? trailN : (int) (trailN * Math.max(0f, trailLeft) / TRAIL_FADE);
+        for (int k = trailN - shown; k < trailN; k++) {
+            int i = (trailAt - trailN + k + TRAIL * 2) % TRAIL;
+            if (project(trailX[i], trailY[i], trailZ[i], scr)) d.dot(scr[0], scr[1], 1);
+        }
         if (!aiming) return;
         float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);
         target(aimX + tremX, aimY + tremY, tmp);
@@ -1966,40 +2009,14 @@ final class Game implements Physics.Listener {
         float dx = tx - sx, dy = ty - sy, dz = tz - sz;
         float t = flight((float) Math.sqrt(dx * dx + dy * dy + dz * dz), speed);
         float vx = dx / t, vy = dy / t - 0.5f * Physics.G * t, vz = dz / t;
-        for (int i = 3; i < 22; i++) {
+        for (int i = 4; i < 20; i++) {
             float q = t * i / 22f;
-            if (!project(sx + vx * q, sy + vy * q + 0.5f * Physics.G * q * q, sz + vz * q, scr)) continue;
-            int c = (i & 1) == 0 ? 0xFFFFF6D8 : 0xFFF2C14E;
-            int x = Math.round(scr[0]), y = Math.round(scr[1]);
-            f.set(x - 1, y - 1, c);
-            f.set(x, y - 1, c);
-            f.set(x - 1, y, c);
-            f.set(x, y, c);
+            if (project(sx + vx * q, sy + vy * q + 0.5f * Physics.G * q * q, sz + vz * q, scr)) d.dot(scr[0], scr[1], 0);
         }
-        ringAt(f);
-    }
-
-    /** The ring, and round it the wind-up: a band filling clockwise from the top, flickering when full. */
-    private void ringAt(Px f) {
-        int cx = Math.round(aimX + tremX), cy = Math.round(aimY + tremY);
-        ring(f, cx, cy, 6, 0xFFFFF6D8);
-        ring(f, cx, cy, 5, 0xFFF2B33A);
-        // the wind-up: a band round the ring fills clockwise from the top, and flickers when full
-        boolean full = power >= 1f;
-        int band = full ? (((int) (clock * 8f) & 1) == 0 ? 0xFFFFFFFF : 0xFFFFE27A) : 0xFFFFC93A;
-        int n = Math.round(power * 64f);
-        for (int a = 0; a < n; a++) {
-            double ang = -Math.PI / 2 + a * Math.PI * 2 / 64;
-            for (int r = 8; r <= 9; r++)
-                f.set(cx + (int) Math.round(Math.cos(ang) * r), cy + (int) Math.round(Math.sin(ang) * r), band);
-        }
-    }
-
-    private static void ring(Px f, int cx, int cy, int r, int c) {
-        for (int a = 0; a < 48; a++) {
-            double t = a * Math.PI * 2 / 48;
-            f.set(cx + (int) Math.round(Math.cos(t) * r), cy + (int) Math.round(Math.sin(t) * r), c);
-        }
+        d.ring[0] = aimX + tremX;
+        d.ring[1] = aimY + tremY;
+        d.ring[2] = power;
+        d.ring[3] = 1f;
     }
 
     // ---- the corner ----

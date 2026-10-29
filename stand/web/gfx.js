@@ -308,16 +308,29 @@ async function render(canvas, frame, flatImage, scale, shaderDir, hudImage) {
   gl.uniform1i(u(blitP, 'uFlat'), 1);
   gl.uniform1f(u(blitP, 'uFlash'), frame.flash || 0);
   gl.uniform1f(u(blitP, 'uTube'), frame.tube === undefined ? -1 : frame.tube);
-  gl.uniform1f(u(blitP, 'uRed'), frame.red || 0);
-  gl.uniform1f(u(blitP, 'uGold'), frame.gold || 0);
   gl.uniform1f(u(blitP, 'uTime'), frame.time || 0);
-  gl.uniform1f(u(blitP, 'uBlur'), frame.blur || 0);
   gl.uniform3fv(u(blitP, 'uGrade'), frame.grade || [1, 1, 0]);
   gl.uniform1f(u(blitP, 'uBolt'), frame.bolt || 0);
   gl.activeTexture(gl.TEXTURE2);
   gl.bindTexture(gl.TEXTURE_2D, hudTex);
   gl.uniform1i(u(blitP, 'uHud'), 2);
   gl.uniform1f(u(blitP, 'uHudRows'), hudImage ? (frame.hudRows || 0) : 0);
+  // the aim, drawn smooth at the screen's own size
+  gl.uniform2f(u(blitP, 'uScreen'), canvas.width, canvas.height);
+  gl.uniform1f(u(blitP, 'uScale'), canvas.width / W);
+  gl.uniform4fv(u(blitP, 'uRing'), frame.ring || [0, 0, 0, 0]);
+  const tn = frame.trailN || 0;
+  gl.uniform1i(u(blitP, 'uTrailN'), tn);
+  if (tn > 0) {
+    const t = frame.trail.slice(0, tn * 3);
+    gl.uniform3fv(u(blitP, 'uTrail'), new Float32Array(t));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let i = 0; i < tn; i++) {
+      x0 = Math.min(x0, t[i * 3]); y0 = Math.min(y0, t[i * 3 + 1]);
+      x1 = Math.max(x1, t[i * 3]); y1 = Math.max(y1, t[i * 3 + 1]);
+    }
+    gl.uniform4f(u(blitP, 'uTrailBox'), x0, y0, x1, y1);
+  }
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   gl.finish();
