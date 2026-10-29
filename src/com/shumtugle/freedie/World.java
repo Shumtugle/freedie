@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.52";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.53";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3, RETURN = 4;
 
     /** What the world may ask of the phone. */
@@ -91,7 +91,7 @@ final class World {
     private Frida waiting;
     private Flow waitFlow;
     // she waits at the head of the alley, on its line down the street, as big as in the fight
-    static final float WAIT_X = Alley.wx(0f, Alley.fridaV(0)), WAIT_Z = Alley.wz(0f, Alley.fridaV(0)), WAIT_SIZE = Giant.G;
+    static final float WAIT_X = Alley.wx(0f, Alley.HER_V), WAIT_Z = Alley.wz(0f, Alley.HER_V), WAIT_SIZE = Giant.G;
     // turned round to her, she throws herself into the game; once a game is over, only when the
     // player has turned away and back again, or touches her
     private boolean alleyArmed = true;
@@ -99,7 +99,6 @@ final class World {
     private final People shore = new People(14, 0x5A0DL, 1.2f);
     // the alley, while it is played; and whether she has been driven into the sea at this crossroads
     private Alley alley;
-    private boolean fridaGone;
     private final float[] fridaAt = {-99f, -99f, 0f};
     private final float[] f0 = new float[3];
     private float flashOut;                   // the flash fading off the game, seconds left
@@ -317,7 +316,7 @@ final class World {
         time += dt;
         frameDt = dt;
         // she waits behind at a crossroads, breathing, a hand up now and then
-        if (game.atCross() && !fridaGone) {
+        if (game.atCross()) {
             if (waiting == null) {
                 waiting = new Frida();
                 waiting.size = WAIT_SIZE;
@@ -327,6 +326,7 @@ final class World {
                 waitFlow.fx = -Alley.FX;
                 waitFlow.fz = -Alley.FZ;
                 waitFlow.alive = 0.7f;
+                waitFlow.y = Alley.STAGE_Y;
             }
             if (game.facing() == 0) alleyArmed = true;
             if (alley == null && alleyArmed && game.facing() == 2 && game.turnReady()) startAlley();
@@ -334,17 +334,16 @@ final class World {
                 alley.update(dt);
                 if (alley.done()) {
                     alleyArmed = false;
-                    fridaGone = alley.gone;
-                    if (fridaGone) waiting = null;
                     alley = null;
                     game.handBusy = false;
+                    // the game over, the eye turns back to the street
+                    if (game.facing() == 2 && game.turnReady()) game.turnAround(1);
                 }
             } else waitFlow.update(dt, 0f, 0f);
         } else {
             waiting = null;
             alley = null;
             game.handBusy = false;
-            if (!game.atCross()) fridaGone = false;
         }
         // the street on the set is a still: while the room is all closed in, nothing on it moves
         boolean still = game.tilt() >= 1f;
@@ -462,7 +461,7 @@ final class World {
     }
 
     void standAlleyCube() {
-        if (alley != null) alley.cubeRound = alley.round;
+        if (alley != null) alley.cubeSure = true;
     }
 
     void standAlleyNeed(float share) {
@@ -470,7 +469,7 @@ final class World {
     }
 
     String standAlleyState() {
-        if (alley == null) return "the alley is over" + (fridaGone ? ": she is gone into the sea" : ": she waits again");
+        if (alley == null) return "the alley is over";
         return "the alley: round " + (alley.round + 1) + ", ball " + (alley.ball + 1) + ", felled " + alley.won;
     }
 
@@ -599,6 +598,7 @@ final class World {
             if (game.atCross() || game.turned()) {
                 d.append(back);
                 shore.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
+                if (alley == null) Alley.stage(d, time, 0f);
             }
             Street.gate(d, game.gateOpen(), game.yardOpen());
             gateSeen(d);
@@ -606,7 +606,8 @@ final class World {
             fridaAt[0] = fridaAt[1] = -99f;
             if (alley != null) {
                 alley.draw(d);
-                d.flash = Math.max(d.flash, alley.flash);
+                // the strobes: the light of a lightning flash, without the flash's streaks
+                d.bolt = Math.max(d.bolt, alley.flash);
             } else if (waiting != null) {
                 waitFlow.pose();
                 waiting.pose();

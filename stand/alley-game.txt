@@ -1,5 +1,5 @@
 # A whole game in the alley, played by the stand's own hand rolling at the middle: five
-# figures felled, and she is driven down the street, over the shore road and into the sea.
+# figures, a golden hammer from the stage for any left standing, fireworks, and back to the street.
 screen 1096 2560
 keep level 20
 keep best 21
@@ -10,6 +10,6 @@ skip
 wait 4.6
 drag 200 400 40 410 0.2
 wait 1.3
-alleyneed 0.3
-alleybot 120 1 2
+
+alleybot 120 1 1.5
 shot g_end

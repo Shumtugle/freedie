@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.53
+- The alley is a show. She does not come near: she stands on a stage at the far end of the
+  street, at a console like a disc jockey's, between speaker stacks under a truss of lamps,
+  its edge and pads lit and chasing. Turned round to her, the game begins at once.
+- Her hammer comes down on the console and the figure falls out of the sky onto the street,
+  block after block, as the buildings are thrown down; another blow and a ball is shot off
+  the stage in a high arc, comes down at the player's feet and rolls into his hand.
+- Lasers sweep out over the street at her blows, smoke puffs off the stage, strobes go when
+  a figure is felled; the rubble goes up in smoke and the next figure falls, farther off.
+- A figure left standing after the third ball: she throws the golden hammer at it from the
+  stage, it bursts in gold, and the game goes on. Five figures, near to far; then fireworks
+  over the sea, and the eye turns back to the street.
+- A golden cube now and then, for a whole game played very well (all five felled by the
+  player's own balls, and few of them) and with luck: shot off the stage to the player's
+  feet, given in the room.
+- The view closes in on far figures only so much, so the stage stays far off.
+
 ## 0.52
 - The alley as it was: the lane runs from the player's feet down the street, turned a little
   toward the middle of the road, and the eye looks straight down it. The next ball is held
