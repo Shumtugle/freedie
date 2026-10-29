@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.57
+- Freedie's model, new, after the author's sheet: brick feet, legs, body and forearms laid
+  in courses; stone shoulders and fists, a brick on each shoulder; iron bands at the ankles,
+  under the shoulders and at the wrists; planks splayed round the upper arms, a yoke of
+  planks across chest and back; a small head pushed forward, a brick jaw, a stone face, eyes
+  like coals, a cap of plank, two stakes behind. A black skirt in three tiers over white
+  ruffles, an apron with a pocket and lace, a bib with buttons, a bow at the collar; at the
+  back the straps cross and the sash ties in a big bow. Not in the game yet: on the desktop
+  stand only, for now.
+
 ## 0.56
 - No trail behind a thrown hammer.
 - The aim smaller, thinner and see-through: the building shows under the ring, its

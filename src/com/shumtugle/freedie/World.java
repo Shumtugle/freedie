@@ -14,7 +14,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.56";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.57";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -68,6 +68,8 @@ final class World {
     private float callAt = -9f;
     private float tvOn = -1f;
     private boolean swallow;                  // the touch that pressed the red button, until it lifts
+    // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast
+    private float showYaw = Float.NaN, showSpin;
 
     World(Host host) {
         this.host = host;
@@ -156,6 +158,12 @@ final class World {
         game.standDeck(verdict);
     }
 
+    /** For the desktop stand: her model on the road before the plinth, turned so many degrees, turning so many a second. */
+    void standFrida(float yaw, float spin) {
+        showYaw = yaw * (float) Math.PI / 180f;
+        showSpin = spin * (float) Math.PI / 180f;
+    }
+
     /** For the desktop stand: every mattress torn, every suitcase burst open. */
     void standTear() {
         game.standTear();
@@ -232,6 +240,7 @@ final class World {
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
+            if (!Float.isNaN(showYaw)) Frida.draw(d, -0.6f, 0f, 8.6f, showYaw + showSpin * time, 0.55f);
             callAt3[0] = Street.CALL_X;
             callAt3[1] = Street.CALL_Y + 0.06f;
             callAt3[2] = Street.CALL_Z;
