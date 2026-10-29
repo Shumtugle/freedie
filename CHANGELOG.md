@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.56
+- No trail behind a thrown hammer.
+- The aim smaller, thinner and see-through: the building shows under the ring, its
+  wind-up band and the dots of the flight.
+
 ## 0.55
 - The aim is drawn smooth, at the screen's own size, over the frame: a thin ring with a dot
   in its middle, the wind-up a band round it filling from the top and flickering when full,

@@ -302,18 +302,18 @@ final class Gfx {
         GLES30.glUniform2f(u(blitP, "uScreen"), screenW, screenH);
         GLES30.glUniform1f(u(blitP, "uScale"), screenW / (float) d.w);
         GLES30.glUniform4fv(u(blitP, "uRing"), 1, d.ring, 0);
-        GLES30.glUniform1i(u(blitP, "uTrailN"), d.trailN);
-        if (d.trailN > 0) {
-            GLES30.glUniform3fv(u(blitP, "uTrail"), d.trailN, d.trail, 0);
+        GLES30.glUniform1i(u(blitP, "uDotN"), d.dotN);
+        if (d.dotN > 0) {
+            GLES30.glUniform2fv(u(blitP, "uDots"), d.dotN, d.dots, 0);
             float x0 = Float.MAX_VALUE, y0 = Float.MAX_VALUE, x1 = -Float.MAX_VALUE, y1 = -Float.MAX_VALUE;
-            for (int i = 0; i < d.trailN; i++) {
-                float x = d.trail[i * 3], y = d.trail[i * 3 + 1];
+            for (int i = 0; i < d.dotN; i++) {
+                float x = d.dots[i * 2], y = d.dots[i * 2 + 1];
                 x0 = Math.min(x0, x);
                 y0 = Math.min(y0, y);
                 x1 = Math.max(x1, x);
                 y1 = Math.max(y1, y);
             }
-            GLES30.glUniform4f(u(blitP, "uTrailBox"), x0, y0, x1, y1);
+            GLES30.glUniform4f(u(blitP, "uDotBox"), x0, y0, x1, y1);
         }
         GLES30.glBindVertexArray(empty);
         GLES30.glDrawArrays(GLES30.GL_TRIANGLES, 0, 3);

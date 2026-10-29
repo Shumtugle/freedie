@@ -841,7 +841,6 @@ final class Game implements Physics.Listener {
         windUp(dt);
         creep(dt);
         zoomStep(dt);
-        trailStep(dt);
         solids();
         hammerMoves(dt);
         thunderStep(dt);
@@ -1960,47 +1959,9 @@ final class Game implements Physics.Listener {
         if (k * fh < fh / 8f) hud(f);
     }
 
-    // the flight of a throw, kept as it goes: where the hammer was, every so often
-    private static final int TRAIL = 30;
-    private static final float TRAIL_EVERY = 0.016f, TRAIL_FADE = 0.35f;
-    private final float[] trailX = new float[TRAIL], trailY = new float[TRAIL], trailZ = new float[TRAIL];
-    private int trailN, trailAt;
-    private float trailNext, trailLeft = -1f;
-
-    /** The flight kept as the hammer goes, and let go a moment after it is back. */
-    private void trailStep(float dt) {
-        if (hs == FLY) {
-            if (hsTime < dt * 1.5f) {
-                trailN = 0;
-                trailAt = 0;
-                trailNext = 0f;
-            }
-            trailLeft = TRAIL_FADE;
-            if ((trailNext -= dt) <= 0f) {
-                trailNext += TRAIL_EVERY;
-                trailX[trailAt] = hammer.px;
-                trailY[trailAt] = hammer.py;
-                trailZ[trailAt] = hammer.pz;
-                trailAt = (trailAt + 1) % TRAIL;
-                trailN = Math.min(TRAIL, trailN + 1);
-            }
-        } else if (trailLeft >= 0f && (trailLeft -= dt) < 0f) trailN = 0;
-    }
-
-    /**
-     * The aim, for the renderer to draw smooth over everything: the ring on the building with
-     * its wind-up and the dots of the flight the throw would take; or the trail of a throw in
-     * the air, the way it really went, going a moment after the hammer is back.
-     */
+    /** The aim, for the renderer to draw smooth over everything: the ring on the building with its wind-up, and the dots of the flight the throw would take. */
     void aim(DrawList d) {
-        if (tilt() > 0f) return;
-        // the trail, oldest first, dropping off from its oldest end as it goes
-        int shown = hs == FLY ? trailN : (int) (trailN * Math.max(0f, trailLeft) / TRAIL_FADE);
-        for (int k = trailN - shown; k < trailN; k++) {
-            int i = (trailAt - trailN + k + TRAIL * 2) % TRAIL;
-            if (project(trailX[i], trailY[i], trailZ[i], scr)) d.dot(scr[0], scr[1], 1);
-        }
-        if (!aiming) return;
+        if (tilt() > 0f || !aiming) return;
         float speed = throwSpeed() * (state == PORTAL ? 2.2f : 1f);
         target(aimX + tremX, aimY + tremY, tmp);
         float tx = tmp[0], ty = tmp[1], tz = tmp[2];
@@ -2011,7 +1972,7 @@ final class Game implements Physics.Listener {
         float vx = dx / t, vy = dy / t - 0.5f * Physics.G * t, vz = dz / t;
         for (int i = 4; i < 20; i++) {
             float q = t * i / 22f;
-            if (project(sx + vx * q, sy + vy * q + 0.5f * Physics.G * q * q, sz + vz * q, scr)) d.dot(scr[0], scr[1], 0);
+            if (project(sx + vx * q, sy + vy * q + 0.5f * Physics.G * q * q, sz + vz * q, scr)) d.dot(scr[0], scr[1]);
         }
         d.ring[0] = aimX + tremX;
         d.ring[1] = aimY + tremY;

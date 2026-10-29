@@ -319,17 +319,17 @@ async function render(canvas, frame, flatImage, scale, shaderDir, hudImage) {
   gl.uniform2f(u(blitP, 'uScreen'), canvas.width, canvas.height);
   gl.uniform1f(u(blitP, 'uScale'), canvas.width / W);
   gl.uniform4fv(u(blitP, 'uRing'), frame.ring || [0, 0, 0, 0]);
-  const tn = frame.trailN || 0;
-  gl.uniform1i(u(blitP, 'uTrailN'), tn);
-  if (tn > 0) {
-    const t = frame.trail.slice(0, tn * 3);
-    gl.uniform3fv(u(blitP, 'uTrail'), new Float32Array(t));
+  const dn = frame.dotN || 0;
+  gl.uniform1i(u(blitP, 'uDotN'), dn);
+  if (dn > 0) {
+    const t = frame.dots.slice(0, dn * 2);
+    gl.uniform2fv(u(blitP, 'uDots'), new Float32Array(t));
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = 0; i < tn; i++) {
-      x0 = Math.min(x0, t[i * 3]); y0 = Math.min(y0, t[i * 3 + 1]);
-      x1 = Math.max(x1, t[i * 3]); y1 = Math.max(y1, t[i * 3 + 1]);
+    for (let i = 0; i < dn; i++) {
+      x0 = Math.min(x0, t[i * 2]); y0 = Math.min(y0, t[i * 2 + 1]);
+      x1 = Math.max(x1, t[i * 2]); y1 = Math.max(y1, t[i * 2 + 1]);
     }
-    gl.uniform4f(u(blitP, 'uTrailBox'), x0, y0, x1, y1);
+    gl.uniform4f(u(blitP, 'uDotBox'), x0, y0, x1, y1);
   }
   gl.bindVertexArray(empty);
   gl.drawArrays(gl.TRIANGLES, 0, 3);

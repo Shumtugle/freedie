@@ -74,20 +74,19 @@ final class DrawList {
     float rippleAge, ripple;                   // a ring over the mirror: seconds since, how strong
     float bolt;                                // lightning just now, 0 to 1
     // the aim, drawn smooth at the screen's own size over everything: the ring's middle (frame
-    // pixels), the wind-up 0 to 1, shown (1) or not; and the dots of a flight, each x, y (frame
-    // pixels) and kind: 0 the flight the aim would take, 1 the trail of a throw in the air
+    // pixels), the wind-up 0 to 1, shown (1) or not; and the dots of the flight the throw would
+    // take, each x, y in frame pixels
     final float[] ring = new float[4];
-    static final int TRAIL_MAX = 32;
-    final float[] trail = new float[TRAIL_MAX * 3];
-    int trailN;
+    static final int DOTS_MAX = 16;
+    final float[] dots = new float[DOTS_MAX * 2];
+    int dotN;
 
-    /** A dot of a flight, in frame pixels. */
-    void dot(float x, float y, int kind) {
-        if (trailN >= TRAIL_MAX) return;
-        trail[trailN * 3] = x;
-        trail[trailN * 3 + 1] = y;
-        trail[trailN * 3 + 2] = kind;
-        trailN++;
+    /** A dot of the flight, in frame pixels. */
+    void dot(float x, float y) {
+        if (dotN >= DOTS_MAX) return;
+        dots[dotN * 2] = x;
+        dots[dotN * 2 + 1] = y;
+        dotN++;
     }
 
     float[] boxes = new float[STRIDE * 256];
@@ -124,7 +123,7 @@ final class DrawList {
         halo[0] = halo[1] = halo[2] = 0f;
         ripple = rippleAge = bolt = 0f;
         ring[3] = 0f;
-        trailN = 0;
+        dotN = 0;
     }
 
     /**
@@ -311,8 +310,8 @@ final class DrawList {
         arr(s, "halo", halo);
         s.append(",\"rippleAge\":").append(rippleAge).append(",\"ripple\":").append(ripple).append(",\"bolt\":").append(bolt);
         arr(s, "ring", ring);
-        s.append(",\"trailN\":").append(trailN);
-        arr(s, "trail", trail);
+        s.append(",\"dotN\":").append(dotN);
+        arr(s, "dots", dots);
         s.append(",\"flyN\":").append(flyN).append(",\"fly\":[");
         for (int i = 0; i < flyN * 8; i++) {
             if (i > 0) s.append(',');

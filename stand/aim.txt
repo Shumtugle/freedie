@@ -1,6 +1,5 @@
-# The aim, drawn smooth: a finger down, the ring on the building and the dotted flight, the
-# wind-up filling round the ring and flickering full; let go, the trail of the hammer as it
-# really flies, and its last dots going a moment after the hammer is back.
+# The aim, drawn smooth and see-through: a finger down, the ring on the building and the
+# dotted flight, the wind-up filling round the ring and flickering full; let go, the throw.
 screen 1096 2560
 keep level 4
 restart
