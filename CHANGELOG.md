@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.64
+- The shield does not come every time. The 10th always has it, where it is first met; after
+  that about one level in three, never two running, which ones not to be guessed; a level
+  played again keeps what it drew. Thirty-one of the town's levels have one.
+
 ## 0.63
 - A wooden shield from the 10th level on: a tall board of five upright planks held by two
   battens with iron nail heads and an iron band along the top, standing on the road before

@@ -3,7 +3,8 @@ package com.shumtugle.freedie;
 import java.util.ArrayList;
 
 /**
- * A tall wooden shield standing on the road before the plinth, from the 10th level on: five
+ * A tall wooden shield standing on the road before the plinth: on the 10th level, and after
+ * it on about one level in three, never two running, which ones not to be guessed. Five
  * upright planks held by two battens, nailed with iron, leaning back a little onto the
  * plinth's face. It covers the face and the lowest meter of the building, to one side or the
  * other, so a throw must go over it or round it, or through it: it is fixed where it stands,
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 final class Shield {
     static final int FROM = 9;                  // level, counted from 0
     static final int BLOWS = 3;                 // plain blows it takes
+    static final float CHANCE = 0.55f;          // how often a level after one without draws one
     // half sizes of the whole board: across, up, through
     static final float HX = 0.475f, HY = 1.05f, HZ = 0.045f;
     static final float LEAN = 0.09f;            // back onto the plinth, radians
@@ -49,11 +51,25 @@ final class Shield {
         int bags = 0;
         for (Body b : made) if (b.material == Body.SANDBAG) bags++;
         if (bags * 2 > made.size()) return null;
+        if (!rolled(level)) return null;
         java.util.Random r = new java.util.Random(seed ^ 0x5A1E1DL);
+        r.nextFloat();
         float off = 0.3f + 0.4f * r.nextFloat();
         float side = level == Game.CHIP_LEVEL || r.nextBoolean() ? 1f : -1f;
         float z = Builder.CZ - Builder.PHZ - 0.18f - HY * (float) Math.sin(LEAN);
         return new Shield(Builder.CX + side * off, z);
+    }
+
+    /**
+     * Whether a level draws a shield: the 10th always, where it is first met; after that now
+     * and then, unlooked for, but never two levels running, and the same each time a level
+     * is played again.
+     */
+    static boolean rolled(int level) {
+        if (level < FROM) return false;
+        if (level == FROM) return true;
+        if (rolled(level - 1)) return false;
+        return new java.util.Random(Game.seedOf(level) ^ 0x5A1E1DL).nextFloat() < CHANCE;
     }
 
     /** All its bodies, for the physics: the board while it stands, the planks once loose. */
