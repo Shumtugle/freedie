@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.63
+- A wooden shield from the 10th level on: a tall board of five upright planks held by two
+  battens with iron nail heads and an iron band along the top, standing on the road before
+  the plinth and leaning back onto its face, to one side or the other. It covers the face
+  and the lowest meter of the building; what it covers, the ring finds the shield.
+- It is fixed where it stands, and the hammer bounces off it. The first two blows each
+  split a plank across, the raw pale wood showing in the break, the board shuddering and
+  splinters flying; the third lets it go, and its planks and battens fall as bodies of
+  their own. The heavy hammer and the golden one break it at once.
+- A building more than half of sandbags never has a shield: it is stubborn enough as it is.
+  Not at sea.
+
 ## 0.62
 - The opening is the first one again, with Freedie as she is now. The eye flies in an arc
   high over the seaside town and comes down onto the square, cars going round it, people

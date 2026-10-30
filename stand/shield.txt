@@ -1,0 +1,31 @@
+# The wooden shield before the plinth, from the 10th: the ring starts on the building and
+# is drawn down onto the shield; two blows split its planks, the third lets them go.
+screen 1096 2560
+keep level 9
+restart
+wait 2.8
+shot s0_standing
+down 137 420
+move 132 470
+move 126 505
+wait 0.3
+shot s1_aim
+up 126 505
+wait 0.45
+shot s2_first
+wait 2.2
+down 137 420
+wait 0.3
+up 137 420
+wait 0.45
+shot s3_second
+wait 2.2
+down 137 420
+wait 0.3
+up 137 420
+wait 0.3
+shot s4_gives
+wait 0.5
+shot s5_planks
+wait 1.5
+shot s6_after

@@ -101,6 +101,9 @@ final class Game implements Physics.Listener {
     private float chipT = -1f;
     private Body chunk;
     private final ArrayList<Body> rubble = new ArrayList<Body>();
+    // the wooden shield before the plinth, from the 10th; the planks it has just let go, for the physics
+    Shield shield;
+    private ArrayList<Body> shieldLoose;
     // the console between rounds, and the hammer that knocks it
     private final Console console = new Console();
     private int throwsMade;
@@ -230,6 +233,9 @@ final class Game implements Physics.Listener {
             pieces.add(b);
             totalMass += b.mass;
         }
+        shield = Shield.forLevel(lv, made, seedOf(lv));
+        if (shield != null) shield.addTo(phys);
+        shieldLoose = null;
         chunk = null;
         rubble.clear();
         chipT = -1f;
@@ -447,7 +453,7 @@ final class Game implements Physics.Listener {
         if (b.look == 3) return "snow";
         if (b.icy) return "ice";
         String[] m = {"wood", "stone", "the hammer", "the plinth", "glass", "a water bottle", "a ball", "a car", "a balloon", "gold",
-                "a drum", "a cone", "a tyre", "a sandbag", "a suitcase", "a mattress"};
+                "a drum", "a cone", "a tyre", "a sandbag", "a suitcase", "a mattress", "the shield"};
         return b.material < m.length ? m[b.material] : "a piece";
     }
 
@@ -763,6 +769,11 @@ final class Game implements Physics.Listener {
             float t = rayBox(b, eye[0], eye[1], eye[2], dx, dy, dz);
             if (t > 0f && t < best) best = t;
         }
+        // the shield standing before it: what it covers, the ring finds the shield
+        if (shield != null && !shield.broken) {
+            float t = rayBox(shield.board, eye[0], eye[1], eye[2], dx, dy, dz);
+            if (t > 0f && t < best) best = t;
+        }
         if (best > 1e8f) {
             float t = rayBox(plinth, eye[0], eye[1], eye[2], dx, dy, dz);
             if (t > 0f) best = t;
@@ -821,6 +832,14 @@ final class Game implements Physics.Listener {
     void update(float dt) {
         clock += dt;
         stateTime += dt;
+        if (shield != null) {
+            shield.update(dt);
+            // the planks let go during a step join the physics after it
+            if (shieldLoose != null) {
+                for (Body b : shieldLoose) phys.add(b);
+                shieldLoose = null;
+            }
+        }
         acc += dt;
         int steps = 0;
         while (acc >= 1f / 60f && steps < 2) {
@@ -1231,6 +1250,18 @@ final class Game implements Physics.Listener {
             hitLogged = true;
             journal.line(clock, String.format(java.util.Locale.ROOT, "the hammer hits %s at (%.2f, %.2f, %.2f) m, %.1f m/s",
                     what(other), x, y, z, speed));
+        }
+        // a blow on the shield: it shudders and splits, or gives
+        if (hammerHit && shield != null && other == shield.board) {
+            ArrayList<Body> loose = shield.struck(host, fx, speed, heavyThrow, goldThrow, hammer.vx, hammer.vy, hammer.vz);
+            if (loose != null) {
+                shieldLoose = loose;
+                journal.line(clock, "the shield gives");
+            }
+            crest.hit(speed * 0.5f);
+            // splinters off the face, pale and dark
+            for (int i = 0; i < 10; i++) spawn(x, y, z, i % 4 == 0, i % 2 == 0 ? Shield.RAW : Shield.WOOD, 1.1f);
+            return;
         }
         // a blow on the building jolts the medallion at the top
         if (hammerHit && other != null && pieces.contains(other)) crest.hit(speed);
@@ -1788,6 +1819,7 @@ final class Game implements Physics.Listener {
             turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
             d.box(b.px, b.py, b.pz, b.hx, b.hy, b.hz, turn, b.tint, DrawList.STONE);
         }
+        if (shield != null) shield.draw(d);
         drawLights(d);
         hammer(d);
     }
