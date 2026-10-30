@@ -213,6 +213,19 @@ final class Frida {
 
     private static final float[] rot = new float[9];
 
+    /** Where one of her bones is in the world, in a motion at a time, standing and turned as draw() puts her. */
+    static void place(String boneName, float x, float y, float z, float yaw, float size, String motion, float t, float[] out) {
+        if (moves == null) return;
+        int c = moves.motion(motion), b = moves.bone(boneName);
+        if (c < 0 || b < 0) return;
+        moves.pose(c, t, pq, pp);
+        float cy = (float) Math.cos(yaw), sy = (float) Math.sin(yaw);
+        float px = pp[b * 3] * size, py = pp[b * 3 + 1] * size, pz = pp[b * 3 + 2] * size;
+        out[0] = x + cy * px + sy * pz;
+        out[1] = y + py;
+        out[2] = z - sy * px + cy * pz;
+    }
+
     /** Draws her standing as at rest, the first motion she knows still (the opening). */
     static void draw(DrawList d, float x, float y, float z, float yaw, float size) {
         draw(d, x, y, z, yaw, size, "idle", 0f);

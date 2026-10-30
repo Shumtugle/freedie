@@ -1,0 +1,5 @@
+# The game on the bridge's screen: she pitches, the stand's hand bats, hitting most; a frame
+# every half second, then how it stands.
+screen 1096 2560
+baseball
+batbot 14 0.8 0.5

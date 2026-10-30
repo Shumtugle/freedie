@@ -16,6 +16,9 @@ import java.util.Random;
  * street at that level. The key at the left of the desk, the number of the level the player
  * came from on it, goes back there, to the street as it was. Everything a finger touches is big.
  *
+ * Past the last episode the knob finds one more channel: a game, the ball and the hammer.
+ * Its green key goes into it; it has no levels to step through.
+ *
  * And the room is alive while one sits there: the lamp sways a little and its light with it,
  * a fan's shadow crawls round on the wall, the tube flickers, the eye breathes.
  *
@@ -24,7 +27,9 @@ import java.util.Random;
  */
 final class Bridge {
     static final float OPEN_T = 0.3f, TV_ON_T = 0.3f;
-    private static final int HOME = -2;
+    private static final int HOME = -2, GAME_KEY = -3;
+    // the channel of the game, after the episodes
+    static final int GAME = Episode.COUNT;
 
     // where things are in the room's picture (274 x 640), its own pixels
     private static final int PH = 640;
@@ -47,10 +52,10 @@ final class Bridge {
     private final Random rnd = new Random(0xB21D6EL);
     float t;                                  // seconds since it opened
     // the channels there are, in order: the episodes reached
-    private final int[] chan = new int[Episode.COUNT];
+    private final int[] chan = new int[Episode.COUNT + 1];
     private int chans, at;
     // the level shown on each channel, counted from one
-    private final int[] pick = new int[Episode.COUNT];
+    private final int[] pick = new int[Episode.COUNT + 1];
     private float knob, knobV;                // the knob's turn, in channels, and how fast it moves
     private float switchT = 9f, stopT = 9f, edgeT = 9f, flashT = 9f, countT = 9f;
     private int pressed = -1;                 // a button just pressed, for its going in
@@ -80,6 +85,7 @@ final class Bridge {
             chan[chans++] = 0;
             pick[0] = 1;
         }
+        chan[chans++] = GAME;
         int cur = Episode.of(now);
         if (cur < Episode.COUNT && reached(cur)) pick[cur] = now;
         for (int k = 0; k < chans; k++) if (chan[k] == cur) at = k;
@@ -95,6 +101,7 @@ final class Bridge {
 
     /** The last level of an episode the player has reached, counted from one. */
     private int lastOf(int c) {
+        if (c == GAME) return 0;
         return Math.min(Episode.LAST[c], Math.min(w.best(), Game.LAST + 1));
     }
 
@@ -180,6 +187,7 @@ final class Bridge {
             int k = leaving;
             leaving = -1;
             if (k == HOME) w.bridgeHome();
+            else if (k == GAME_KEY) w.bridgeGame();
             else w.bridgeEnter(k);
         }
     }
@@ -232,7 +240,7 @@ final class Bridge {
             host.sound(Synth.TV_OFF, 0.8f, 1f);
             host.buzz(30);
             flashT = 0f;
-            leaving = pick[channel()];
+            leaving = channel() == GAME ? GAME_KEY : pick[channel()];
             leaveT = 0f;
             return;
         }
@@ -266,7 +274,7 @@ final class Bridge {
     /** The counter, a level back or on, within the levels of this episode reached; against its end, a dead click. */
     private void step(int by) {
         int c = channel(), to = pick[c] + by;
-        if (to < Episode.FIRST[c] || to > lastOf(c)) {
+        if (c == GAME || to < Episode.FIRST[c] || to > lastOf(c)) {
             edgeT = 0f;
             held = 0;
             host.sound(Synth.TOCK, 0.9f, 0.45f);
@@ -336,7 +344,7 @@ final class Bridge {
     private void tube(Px f, int oy) {
         int c = channel();
         boolean snow = switchT < 0.16f;
-        int[] img = stills == null ? null : stills[Math.min(stills.length - 1, c)];
+        int[] img = stills == null || c == GAME ? null : stills[Math.min(stills.length - 1, c)];
         float flick = 1f + 0.04f * (float) Math.sin(t * 53f) * (float) Math.sin(t * 7.3f);
         int y0 = Math.max(0, SY0 + oy), y1 = Math.min(f.h, SY0 + SH + oy);
         for (int y = y0; y < y1; y++) {
@@ -346,10 +354,11 @@ final class Bridge {
                 int tx = x - SX0;
                 float u = (tx - SW * 0.5f) / (SW * 0.5f);
                 int col;
-                if (snow || img == null) {
+                if (snow || img == null && c != GAME) {
                     int g = 40 + rnd.nextInt(170);
                     col = (g << 16) | (g << 8) | g;
-                } else col = img[Math.min(stillH - 1, ty * stillH / SH) * stillW + Math.min(stillW - 1, tx * stillW / SW)];
+                } else if (c == GAME) col = gamePicture(tx, ty);
+                else col = img[Math.min(stillH - 1, ty * stillH / SH) * stillW + Math.min(stillW - 1, tx * stillW / SW)];
                 float k = flick * (1f - 0.3f * (float) Math.pow(u * u * 0.7f + v * v, 1.4));
                 if ((y & 1) == 1) k *= 0.84f;
                 col = Street.scale(col, k);
@@ -379,6 +388,27 @@ final class Bridge {
                 if (k != 1f) f.a[i] = Px.scale(c, k);
             }
         }
+    }
+
+    /**
+     * The game's channel: a ball coming out of a deep blue, its red stitching, and the hammer's
+     * head beside it; drawn here, a point of the tube at a time.
+     */
+    private int gamePicture(int tx, int ty) {
+        float u = tx - SW * 0.42f, v = ty - SH * 0.5f, r = SH * 0.3f;
+        float d = (float) Math.sqrt(u * u + v * v);
+        if (d < r) {
+            // the stitching: two arcs on the ball
+            float a = (float) Math.abs(Math.hypot(u + r * 1.25f, v) - r * 0.95f), b = (float) Math.abs(Math.hypot(u - r * 1.25f, v) - r * 0.95f);
+            if (Math.min(a, b) < 2.2f && ((ty / 4) & 1) == 0) return 0xD8322A;
+            float k = 1f - 0.35f * d / r;
+            return Street.scale(0xF4F1EA, k);
+        }
+        // the hammer's head, a block of wood with dark bands, to the right
+        float hx = tx - SW * 0.78f, hy = ty - SH * 0.42f;
+        if (Math.abs(hx) < 26f && Math.abs(hy) < 38f) return Math.abs(hy) > 28f ? 0x55524F : 0xDFA868;
+        if (Math.abs(hx) < 6f && hy > 38f && hy < 100f) return 0x9A6638;
+        return Street.mix(0x0E2A5A, 0x2F5FA8, ty / (float) SH);
     }
 
     /** A filled triangle, hard-edged. */
@@ -423,7 +453,7 @@ final class Bridge {
         int c = channel();
         for (int k = 0; k < 2; k++) {
             int x = k == 0 ? BX[1] : BX[1] + BW - STEP_W;
-            boolean can = k == 0 ? pick[c] > Episode.FIRST[c] : pick[c] < lastOf(c);
+            boolean can = c != GAME && (k == 0 ? pick[c] > Episode.FIRST[c] : pick[c] < lastOf(c));
             boolean in = (pressed == 2 + k && pressT < 0.15f) || held == (k == 0 ? -1 : 1);
             int face = Px.scale(0xFF000000 | AMBER, can ? 0.85f : 0.3f);
             keyFace(f, x, y, STEP_W, face, in);
@@ -436,10 +466,11 @@ final class Bridge {
     /** The level on the counter, the channel's own; on the back key the level the player came from. */
     private void counter(Px f, int oy) {
         int n = pick[channel()];
+        boolean game = channel() == GAME;
         // against the end of the episode, the counter blinks once
         int on = edgeT < 0.3f && ((int) (edgeT * 10f) & 1) == 0 ? 0xFFD06A : AMBER;
         for (int i = 0; i < 3; i++) {
-            int d = (n / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
+            int d = game ? -1 : (n / (i == 0 ? 100 : i == 1 ? 10 : 1)) % 10;
             Console.digit(f, 104 + i * 27, DY + 15 + oy, 21, 38, 4, d, on, AMBER_OFF);
         }
         int back = w.level + 1;        // the level being played, counted from one

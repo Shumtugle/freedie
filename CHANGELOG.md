@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.60
+- A game on the bridge: past the last episode the knob finds one more channel, a ball and a
+  hammer on blue; its green key goes in. Freedie stands a dozen meters off and pitches
+  overhand, the ball a little faster or slower, higher or lower, this side or that; a touch
+  swings the hammer through the place touched. Met in time and near enough, the ball flies
+  back: early pulled to one side, late pushed to the other, lifted or beaten down. A ball
+  sent back at her knocks her back. The balls hit are counted at the top. The back key
+  leaves. For now with nothing round it but plain ground and the sky: a test.
+
 ## 0.59
 - Freedie on a skeleton: her blocks ride on the bones of a humanoid skeleton and move with
   it. Twenty-five motions: standing, walking, jogging, sprinting, a roll, two kinds of jump,

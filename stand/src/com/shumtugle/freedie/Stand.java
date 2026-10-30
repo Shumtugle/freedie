@@ -189,6 +189,39 @@ public final class Stand implements World.Host {
         } else if (c.equals("back")) {
             world.touch(World.BACK, 0f, 0f);
             step();
+        } else if (c.equals("baseball")) {
+            // the game on the bridge's screen at once
+            world.standBaseball();
+            step();
+        } else if (c.equals("batbot")) {
+            // batbot SECONDS [SKILL] [SHOTEVERY [PREFIX]]: the stand's hand at the bat, swinging at the ball as it comes
+            // near, aimed true so often; with a third number a shot every so many seconds, named b000, b001...
+            int n = Math.round(f(p[1]) / DT);
+            float skill = p.length > 2 ? f(p[2]) : 1f;
+            float every = p.length > 3 ? f(p[3]) : 0f, next = every;
+            String prefix = p.length > 4 ? p[4] : "b";
+            int shots = 0;
+            java.util.Random r = new java.util.Random(3);
+            boolean swung = false;
+            for (int i = 0; i < n; i++) {
+                step();
+                if (every > 0f && (next -= DT) <= 0f) {
+                    next += every;
+                    shot(String.format("%s%03d", prefix, shots++));
+                }
+                float[] b = world.standBall();
+                if (b == null) {
+                    swung = false;
+                    continue;
+                }
+                if (swung) continue;
+                swung = true;
+                float off = r.nextFloat() < skill ? 0f : 40f;
+                world.touch(World.DOWN, b[0] + off, b[1] + 6f);
+                step();
+                world.touch(World.UP, b[0] + off, b[1] + 6f);
+            }
+            System.out.println(String.format("%7.2fs  %s", time, world.standBaseballState()));
         } else if (c.equals("intro")) {
             // the opening, from its start, as the game plays it when it starts
             world.standIntro(true);

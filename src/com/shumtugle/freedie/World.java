@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.59";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.60";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -71,6 +71,8 @@ final class World {
     private boolean swallow;                  // the touch that pressed the red button or skipped the opening, until it lifts
     // the opening, while it plays; then the light off it fading into the game
     private Intro intro;
+    // the game on the bridge's last channel, while it is played
+    Baseball baseball;
     static final float FLASH_OUT = 0.35f;
     private float flashOut;
     // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast, in a motion
@@ -110,6 +112,11 @@ final class World {
                 swallow = true;
             }
             if (type == UP) swallow = false;
+            return;
+        }
+        if (baseball != null) {
+            if (type == BACK) leaveBaseball();
+            else baseball.touch(type, x, y);
             return;
         }
         if (bridge != null) {
@@ -159,6 +166,10 @@ final class World {
             return;
         }
         flashOut = Math.max(0f, flashOut - dt);
+        if (baseball != null) {
+            baseball.update(dt);
+            return;
+        }
         if (bridge != null) bridge.update(dt);
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
@@ -170,7 +181,27 @@ final class World {
 
     /** Whether the back key means something here, rather than leaving the game. */
     boolean wantsBack() {
-        return bridge != null;
+        return bridge != null || baseball != null;
+    }
+
+    /** Out of the game on the screen: back on the street, the round as it was, coming on like a set. */
+    void leaveBaseball() {
+        baseball = null;
+        tvOn = 0f;
+        host.sound(Synth.TV_OFF, 0.9f, 1f);
+    }
+
+    /** For the desktop stand: the game on the screen at once; where its ball is now, to swing at. */
+    void standBaseball() {
+        baseball = new Baseball(host);
+    }
+
+    float[] standBall() {
+        return baseball == null ? null : baseball.standBall();
+    }
+
+    String standBaseballState() {
+        return baseball == null ? "no game" : "hit " + baseball.hits + ", back at her " + baseball.struck;
     }
 
     /** For the desktop stand: a flock over the street now (1), or a plane that has flown so many seconds. */
@@ -230,6 +261,16 @@ final class World {
         if (roomInk == null || roomInk.w != W * Console.Q || roomInk.h != h * Console.Q) roomInk = new Ink(W * Console.Q, h * Console.Q);
         roomInk.used = false;
         game.roomInk = roomInk;
+        if (baseball != null) {
+            // the game on the screen: the ground, her, the ball, the hammer; nothing of the street
+            Daylight.light(d, 4f);
+            baseball.frame(d, W);
+            if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
+            baseball.draw(d);
+            baseball.flat(f);
+            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
+            return;
+        }
         float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
         // as the room closes in, the eye drops a little to the plinth, so it sits on the set
         float pitch = -0.2f * game.tilt();
@@ -382,6 +423,13 @@ final class World {
     /** The key back, answered, once the room has gone out: the game comes on like a set, as it was. */
     void bridgeHome() {
         bridge = null;
+        tvOn = 0f;
+    }
+
+    /** The green button on the game's channel: the game, coming on like a set. */
+    void bridgeGame() {
+        bridge = null;
+        baseball = new Baseball(host);
         tvOn = 0f;
     }
 
