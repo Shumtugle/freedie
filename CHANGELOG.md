@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.65
+- The wooden shield is gone again: the throw is as it was in 0.62, the building alone on
+  the plinth.
+
 ## 0.64
 - The shield does not come every time. The 10th always has it, where it is first met; after
   that about one level in three, never two running, which ones not to be guessed; a level

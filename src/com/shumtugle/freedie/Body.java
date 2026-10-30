@@ -11,17 +11,15 @@ final class Body {
     static final int BARREL = 10, CONE = 11, TYRE = 12, SANDBAG = 13;
     // an old suitcase full of clothes, a spring mattress
     static final int SUITCASE = 14, MATTRESS = 15;
-    // a tall wooden shield before the plinth, fixed where it stands until it gives
-    static final int SHIELD = 16;
     static final float[] DENSITY = {600f, 1200f, 8400f, 0f, 900f, 760f, 1500f, 0f, 160f, 4000f, 380f, 220f, 320f, 1600f,
-            300f, 140f, 0f};
+            300f, 140f};
     static final float[] FRICTION = {0.65f, 0.75f, 0.5f, 0.7f, 0.35f, 0.55f, 0.45f, 0.6f, 0.95f, 0.8f, 0.45f, 0.6f, 0.95f, 0.95f,
-            0.9f, 0.9f, 0.65f};
+            0.9f, 0.9f};
     // how far a contact gives under load, as XPBD compliance in m/N: only the mattress is soft
-    static final float[] GIVE = {0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1e-5f, 0f};
+    static final float[] GIVE = {0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 1e-5f};
     // what soaks up a blow instead of bouncing it back
     static final boolean[] DEAD = {false, false, false, false, false, false, false, false, false, false, false, false, false,
-            false, true, true, false};
+            false, true, true};
 
     static final float INERTIA = 3f;
 
