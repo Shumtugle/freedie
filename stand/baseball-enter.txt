@@ -22,3 +22,6 @@ down 60 438
 up 60 438
 wait 0.8
 shot e1_game
+# a second later: the set has come on, the picture fills the screen
+wait 1.0
+shot e2_game_on

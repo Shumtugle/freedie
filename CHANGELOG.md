@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.61
+- The game on the bridge came on as a thin line across the middle and stayed so: the set
+  coming on was never counted down while the game was on the screen. It now opens out in a
+  third of a second, as the street does.
+
 ## 0.60
 - A game on the bridge: past the last episode the knob finds one more channel, a ball and a
   hammer on blue; its green key goes in. Freedie stands a dozen meters off and pitches

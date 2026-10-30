@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.60";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.61";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -166,12 +166,13 @@ final class World {
             return;
         }
         flashOut = Math.max(0f, flashOut - dt);
+        // the set coming on: counted before anything else, the game on the screen included
+        if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (baseball != null) {
             baseball.update(dt);
             return;
         }
         if (bridge != null) bridge.update(dt);
-        if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
         if (bridge == null) {
             game.update(dt);
             level = game.level;
