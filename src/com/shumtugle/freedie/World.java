@@ -6,8 +6,8 @@ package com.shumtugle.freedie;
  * calls, always from one thread: touch() for each queued touch, update(dt), then draw().
  * Coordinates of touches are frame pixels, W across.
  *
- * Every game opens with Freedie on the street (see Intro); the eye goes into hers, and the
- * game is seen from there. The street under a low evening sun: houses, palms, the sea beyond the promenade, cars
+ * Every game opens with Freedie on a square of the town, who strikes at the eye with her
+ * golden hammer and breaks (see Intro). The street under a low evening sun: houses, palms, the sea beyond the promenade, cars
  * parked and cars coming, and on the plinth in the middle of the road a building, with the
  * hammer in hand to knock it down (see Game). The red button on the lamp post rings the
  * dispatcher, and three presses open the bridge, where any level played so far can be
@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.61";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.62";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -245,9 +245,9 @@ final class World {
         d.begin(W, h);
         d.time = sceneTime;
         light(d);
-        if (game.atSea) Ocean.light(d);
+        if (game.atSea && intro == null) Ocean.light(d);
         // on the street, the hour of the evening the level is played at
-        else Daylight.light(d, plate());
+        else if (intro == null) Daylight.light(d, plate());
         java.util.Arrays.fill(d.flat, 0);
         Px f = flat(d);
         // the fine layer over the top, for the crest: kept from frame to frame (the crest redraws
@@ -262,6 +262,13 @@ final class World {
         if (roomInk == null || roomInk.w != W * Console.Q || roomInk.h != h * Console.Q) roomInk = new Ink(W * Console.Q, h * Console.Q);
         roomInk.used = false;
         game.roomInk = roomInk;
+        if (intro != null) {
+            // the opening: the square and herself, nothing of the street
+            intro.frame(d, W);
+            intro.draw(d);
+            intro.flat(f, d);
+            return;
+        }
         if (baseball != null) {
             // the game on the screen: the ground, her, the ball, the hammer; nothing of the street
             Daylight.light(d, 4f);
@@ -286,8 +293,6 @@ final class World {
         // as the room closes in over the street, the street draws back a little into the set
         float wide = 1f - 0.15f * game.tilt();
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
-        // the opening has an eye of its own
-        if (intro != null) intro.frame(d, W);
         // closed in, the haze thins as if the building had come nearer: it stays readable far off
         d.fogStart *= view[2];
         d.fogScale *= view[2];
@@ -319,13 +324,12 @@ final class World {
             if (d.night > 0f) lamps(d);
             traffic.draw(d);
             people.draw(d, sceneTime, CAM_X, CAM_Y, CAM_Z);
-            if (intro != null) intro.draw(d);
             if (!Float.isNaN(showYaw)) Frida.draw(d, -0.6f, 0f, 8.6f, showYaw + showSpin * time, 1.45f, showMotion, time - showAt);
             callAt3[0] = Street.CALL_X;
             callAt3[1] = Street.CALL_Y + 0.06f;
             callAt3[2] = Street.CALL_Z;
         }
-        game.hideHand = intro != null;
+        game.hideHand = false;
         game.draw(d);
         // the red button on the call box: a slow glow, bright for a moment when pressed
         float since = time - pressedAt;

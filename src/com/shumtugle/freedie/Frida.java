@@ -29,8 +29,12 @@ final class Frida {
     // the parts: bone, place and turn on it (worked out from the rest pose), half sizes, color, material
     private static final int MAX = 200;
     private static int n;
-    private static final int[] BONE = new int[MAX], COL = new int[MAX], MAT = new int[MAX];
-    private static final float[] LP = new float[MAX * 3], LQ = new float[MAX * 4], HALF = new float[MAX * 3];
+    private static final int[] BONE = new int[MAX];
+    static final int[] COL = new int[MAX], MAT = new int[MAX];
+    private static final float[] LP = new float[MAX * 3], LQ = new float[MAX * 4];
+    static final float[] HALF = new float[MAX * 3];
+    // where each part is now in the world, and its turn row by row, as the last pose() left them
+    static final float[] AT = new float[MAX * 3], TURN = new float[MAX * 9];
     // the pose now: each bone's turn and place
     private static float[] pq, pp;
 
@@ -231,8 +235,21 @@ final class Frida {
         draw(d, x, y, z, yaw, size, "idle", 0f);
     }
 
-    /** Draws her at (x, y, z), turned about the upright by yaw (0: facing -z), size times the skeleton, in a motion at a time. */
-    static void draw(DrawList d, float x, float y, float z, float yaw, float size, String motion, float t) {
+    /** How many parts she is made of. */
+    static int parts() {
+        return n;
+    }
+
+    /** Whether a part is only the mortar between courses, hidden inside its bricks. */
+    static boolean mortar(int i) {
+        return COL[i] == MORTAR;
+    }
+
+    /**
+     * Works out where every part of her is at (x, y, z), turned about the upright by yaw (0:
+     * facing -z), size times the skeleton, in a motion at a time: into AT and TURN.
+     */
+    static void pose(float x, float y, float z, float yaw, float size, String motion, float t) {
         if (moves == null) return;
         int c = moves.motion(motion);
         if (c < 0) c = 0;
@@ -252,12 +269,29 @@ final class Frida {
             float r00 = 1 - 2 * (qy * qy + qz * qz), r01 = 2 * (qx * qy - qz * qw), r02 = 2 * (qx * qz + qy * qw);
             float r10 = 2 * (qx * qy + qz * qw), r11 = 1 - 2 * (qx * qx + qz * qz), r12 = 2 * (qy * qz - qx * qw);
             float r20 = 2 * (qx * qz - qy * qw), r21 = 2 * (qy * qz + qx * qw), r22 = 1 - 2 * (qx * qx + qy * qy);
-            rot[0] = cy * r00 + sy * r20; rot[1] = cy * r01 + sy * r21; rot[2] = cy * r02 + sy * r22;
-            rot[3] = r10; rot[4] = r11; rot[5] = r12;
-            rot[6] = -sy * r00 + cy * r20; rot[7] = -sy * r01 + cy * r21; rot[8] = -sy * r02 + cy * r22;
-            float wx = x + cy * px + sy * pz, wz = z - sy * px + cy * pz;
-            int col = COL[i] == EYES ? Street.mix(0x2A1C14, EYES, eyes) : COL[i];
-            d.box(wx, y + py, wz, HALF[i * 3] * size, HALF[i * 3 + 1] * size, HALF[i * 3 + 2] * size, rot, col, MAT[i]);
+            int o = i * 9;
+            TURN[o] = cy * r00 + sy * r20; TURN[o + 1] = cy * r01 + sy * r21; TURN[o + 2] = cy * r02 + sy * r22;
+            TURN[o + 3] = r10; TURN[o + 4] = r11; TURN[o + 5] = r12;
+            TURN[o + 6] = -sy * r00 + cy * r20; TURN[o + 7] = -sy * r01 + cy * r21; TURN[o + 8] = -sy * r02 + cy * r22;
+            AT[i * 3] = x + cy * px + sy * pz;
+            AT[i * 3 + 1] = y + py;
+            AT[i * 3 + 2] = z - sy * px + cy * pz;
         }
+    }
+
+    /** Draws her at (x, y, z), turned about the upright by yaw (0: facing -z), size times the skeleton, in a motion at a time. */
+    static void draw(DrawList d, float x, float y, float z, float yaw, float size, String motion, float t) {
+        if (moves == null) return;
+        pose(x, y, z, yaw, size, motion, t);
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(TURN, i * 9, rot, 0, 9);
+            int col = COL[i] == EYES ? Street.mix(0x2A1C14, EYES, eyes) : COL[i];
+            d.box(AT[i * 3], AT[i * 3 + 1], AT[i * 3 + 2], HALF[i * 3] * size, HALF[i * 3 + 1] * size, HALF[i * 3 + 2] * size, rot, col, MAT[i]);
+        }
+    }
+
+    /** The colour a part is drawn in, her eyes as far as they are lit. */
+    static int colour(int i) {
+        return COL[i] == EYES ? Street.mix(0x2A1C14, EYES, eyes) : COL[i];
     }
 }

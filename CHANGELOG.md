@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.62
+- The opening is the first one again, with Freedie as she is now. The eye flies in an arc
+  high over the seaside town and comes down onto the square, cars going round it, people
+  walking; she stands there, a giant twice the player's height, the golden hammer hanging
+  from her fist, and her eyes kindle. The town goes dark, light left on her alone. She
+  swings the hammer up over her head and down straight at the eye, which comes in to meet
+  it; the glass cracks. She breaks where she stands: every block of her falls as a body of
+  the game's own physics, the hammer drops at her feet, and the eye draws back to watch the
+  heap settle in the pool of light. On the black the name burns in gold; a flash, and the
+  game. A touch at any moment goes straight to the flash.
+- She moves as her skeleton does: at rest, then the overhand throw, its wind-up slowed and
+  its blow caught at the instant her hand comes forward.
+
 ## 0.61
 - The game on the bridge came on as a thin line across the middle and stayed so: the set
   coming on was never counted down while the game was on the screen. It now opens out in a

@@ -1,24 +1,37 @@
-# The opening: up from her feet to where the player stands, her eyes kindling, the name in
-# gold over her, into her eyes, the light, and the game from there.
+# The opening: the flight over the town, Freedie at rest and her eyes kindling, the dark,
+# the swing up and down at the eye, the blow and the cracked glass, her fall, the name, the
+# flash into the game.
 screen 1096 2560
-keep level 4
-restart
 intro
+wait 0.05
+shot i0_high
+wait 1.1
+shot i1_over
+wait 1.25
+shot i2_land
+wait 0.5
+shot i3_look
+wait 0.4
+shot i4_dark
 wait 0.3
-shot i0_feet
-wait 0.9
-shot i1_rising
-wait 0.7
-shot i2_eyes
-wait 0.6
-shot i3_name
-wait 0.8
-shot i4_held
+shot i5_raise
+wait 0.3
+shot i6_raised
+wait 0.15
+shot i7_swing
+wait 0.12
+shot i8_near
+wait 0.14
+shot i9_blow
+wait 0.3
+shot j0_down
 wait 0.5
-shot i5_into
-wait 0.45
-shot i6_light
+shot j1_name
+wait 0.4
+shot j2_name
+wait 0.55
+shot j3_flash
+wait 0.3
+shot j4_game
 wait 0.5
-shot i7_game
-wait 1.5
-shot i8_street
+shot j5_game
