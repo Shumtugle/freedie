@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.69
+- The medallion with the level's number opens the bridge at one tap, and quietly.
+- The glass no longer stalls the opening at the blow. What stays in the pane is laid out a
+  moment before the blow, where the head is coming, and drawn away from the game's thread;
+  it is handed to the screen once, and again only for each step of its fade. What flies is
+  drawn afresh every frame at the frame's own grain, its edges catching the light on a few
+  sides only. On the desktop a frame of it went from about sixteen milliseconds, with the
+  whole fine layer handed on every frame and the blow itself well over sixty, to about three.
+
 ## 0.68
 - The medallion with the level's number at the top rings the dispatcher as the red button
   does: each tap, the hammer in hand, rings and jolts it; three in a row open the bridge.

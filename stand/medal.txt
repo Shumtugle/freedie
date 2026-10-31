@@ -1,17 +1,8 @@
-# Three taps on the medallion with the level's number: each rings and jolts it; the third
-# opens the bridge.
+# One tap on the medallion with the level's number opens the bridge, quietly.
 screen 1096 2560
 keep level 4
 restart
 wait 2.8
-down 137 22
-up 137 22
-wait 0.05
-shot m0_tap
-wait 0.4
-down 137 22
-up 137 22
-wait 0.4
 down 137 22
 up 137 22
 wait 0.15

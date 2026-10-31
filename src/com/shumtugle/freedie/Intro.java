@@ -341,30 +341,28 @@ final class Intro {
         }
     }
 
-    /** The flat layer: nothing of its own; the glass is on the fine layer (see glass). */
+    /** The flat layer: what flies out of the broken glass, from the blow until the name. */
     void flat(Px f, DrawList d) {
+        if (glass != null && t >= HIT && t <= NAME) glass.live(f, t - HIT);
     }
 
     /**
      * The fine layer over the whole frame, from the blow until the name: the screen's glass,
-     * broken where the head of the hammer came at it (see Glass).
+     * broken where the head of the hammer came at it (see Glass). The pane is laid out a
+     * moment before the blow, where the head is about to come, and drawn away from the game's
+     * thread, so the blow itself does not stall.
      */
     void glass(DrawList d) {
-        if (t < HIT || t > NAME) return;
-        if (glass == null) {
+        if (glass == null && t >= HIT - 0.2f) {
             float cx = d.w * 0.5f, cy = d.h * 0.42f;
             if (d.project(strikeHead[0], strikeHead[1], strikeHead[2], scr)) {
                 cx = Math.max(30f, Math.min(d.w - 30f, scr[0]));
                 cy = Math.max(60f, Math.min(d.h - 60f, scr[1]));
             }
             glass = new Glass(d.w, d.h, GLASS_FINE, cx, cy);
+            glass.start();
         }
-        glass.draw(t - HIT);
-        d.hud = glass.ink.a;
-        d.hudW = glass.ink.w;
-        d.hudH = glass.ink.h;
-        d.hudRows = d.h;
-        d.hudFresh = true;
+        if (glass != null && t >= HIT && t <= NAME) glass.hud(d, t - HIT);
     }
 
     // ---- helpers ----

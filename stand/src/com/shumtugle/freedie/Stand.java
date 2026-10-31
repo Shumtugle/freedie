@@ -39,6 +39,7 @@ public final class Stand implements World.Host {
     }
 
     public static void main(String[] args) throws IOException {
+        Glass.sync = true;
         File scene = new File(args.length > 0 ? args[0] : "stand/scene.txt");
         File out = new File(args.length > 1 ? args[1] : "out/stand");
         out.mkdirs();

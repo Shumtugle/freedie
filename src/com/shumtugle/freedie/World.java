@@ -11,11 +11,11 @@ package com.shumtugle.freedie;
  * parked and cars coming, and on the plinth in the middle of the road a building, with the
  * hammer in hand to knock it down (see Game). The red button on the lamp post rings the
  * dispatcher, and three presses open the bridge, where any level played so far can be
- * played again (see Bridge); so do three taps on the medallion with the level's number.
+ * played again (see Bridge); so does one tap on the medallion with the level's number.
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.68";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.69";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -136,12 +136,13 @@ final class World {
             swallow = true;
             return;
         }
-        // the medallion with the level's number does the same: each tap rings, three open the bridge
+        // the medallion with the level's number: one tap, quietly, and the bridge is open
         if (type == DOWN && game.handFree() && game.tilt() == 0f
                 && Math.hypot(x - Crest.CX, y - Crest.CY) < Crest.R + 6f) {
-            host.sound(Synth.TOCK, 0.8f, 1.2f);
             game.crest.hit(3f);
-            call();
+            calls = 0;
+            game.cancel();
+            bridge = new Bridge(this, host);
             swallow = true;
             return;
         }

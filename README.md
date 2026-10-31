@@ -4,7 +4,7 @@ A game for Android about knocking down buildings with a hammer, on a summer stre
 seaside town, and then out on the winter ocean.
 
 Early days: a hundred and one levels on the street, a few out at sea so far; the
-dispatcher's bridge, three presses on the red button or three taps on the level's number,
+dispatcher's bridge, three presses on the red button or one tap on the level's number,
 plays any level reached again.
 
 ## How it is made
