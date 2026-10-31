@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.68
+- The medallion with the level's number at the top rings the dispatcher as the red button
+  does: each tap, the hammer in hand, rings and jolts it; three in a row open the bridge.
+  A tap there is never taken for an aim.
+
 ## 0.67
 - The glass of the screen breaks as glass does. Where the hammer's head comes at the eye it
   is gone at once, ground to glitter that flies outward; round the hole the shards come
