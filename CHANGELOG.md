@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.67
+- The glass of the screen breaks as glass does. Where the hammer's head comes at the eye it
+  is gone at once, ground to glitter that flies outward; round the hole the shards come
+  away and fly at the eye, growing, turning, blurring, their edges lit; the broken rim of
+  the hole is thick and bright. Out from it long jagged cracks run to the edges of the
+  frame, crossed by rings of cracks near the hole and only here and there further out, with
+  short cracks branching off and glints where cracks meet; each shard left in the pane
+  catches the light a little differently. Then the pane fades. It is drawn on a fine layer
+  over the whole frame, twice as fine as the frame's own pixels, so the cracks are clean.
+- The golden cube is gone again, and the chase with it, and the game on the bridge's last
+  channel: the game is the throw at the buildings.
+- The plinth stays whole: the 39th no longer breaks its corner off, before or after.
+
 ## 0.66
 - The golden cube is back in the broken plinth. On the 39th, the first time, the first blow
   to reach the building cracks the near corner off, and out of the hole a golden cube rolls

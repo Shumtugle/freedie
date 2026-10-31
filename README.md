@@ -4,9 +4,7 @@ A game for Android about knocking down buildings with a hammer, on a summer stre
 seaside town, and then out on the winter ocean.
 
 Early days: a hundred and one levels on the street, a few out at sea so far; the
-dispatcher's bridge, three presses on the red button, plays any level reached again. On the
-39th a golden cube rolls out of the broken plinth and opens a chase: through a town grown
-from a seed as it is come to, on foot after Freedie's double on fire.
+dispatcher's bridge, three presses on the red button, plays any level reached again.
 
 ## How it is made
 

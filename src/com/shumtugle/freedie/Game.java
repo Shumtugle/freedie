@@ -40,7 +40,7 @@ import java.util.Random;
  */
 final class Game implements Physics.Listener {
     static final float CLEAR = 0.75f;          // share of the weight to knock off the plinth
-    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, PORTAL = 9, PRIZE = 10;
+    static final int BUILD = 0, PLAY = 1, CLEARED = 2, VANISH = 3, SKY_UP = 4, SKY_HOLD = 5, LOST = 6, PORTAL = 9;
     static final int STARS = 5;
     /** The last level there is yet: the 109th, out at sea. */
     static final int LAST = 108;
@@ -92,25 +92,6 @@ final class Game implements Physics.Listener {
     Ink hudInk;
     /** The fine layer over the whole frame the room between rounds is drawn on, set by the world every frame. */
     Ink roomInk;
-    // the 39th: the first blow that reaches the building shakes the ground, and the plinth's
-    // near left corner breaks off at its foot; it stays broken from then on, all through the town
-    static final int CHIP_LEVEL = 38;
-    static final float CHIP_X = 0.9f, CHIP_Y = 0.6f, CHIP_Z = 0.8f;
-    static final float CRACK = 0.38f, OUT = 0.3f, CUBE_OUT0 = 0.75f, CUBE_OUT1 = 1.1f;
-    // out of where the corner was a golden cube rolls onto the asphalt and lies there burning;
-    // after the round the street goes dark round it, large before the eye, the prize; it opens
-    // the chase (see Pursuit), played from the room, and shown there after as won
-    static final float PRIZE_T = 2.4f;
-    private Body gift;
-    private boolean giftFree, prizeDue;
-    /** The golden cube is the player's, and the chase it opens: not played yet (1), played (2). */
-    int chase;
-    /** The room is to hand over to the chase once its keys are knocked; the chase was just played. */
-    boolean chaseDue, chaseBack;
-    private boolean chipped;
-    private float chipT = -1f;
-    private Body chunk;
-    private final ArrayList<Body> rubble = new ArrayList<Body>();
     // the console between rounds, and the hammer that knocks it
     private final Console console = new Console();
     private int throwsMade;
@@ -181,8 +162,6 @@ final class Game implements Physics.Listener {
         heavyShown = heavyLeft;
         fails = Math.max(0, host.loadInt("fails"));
         goldSeen = host.loadInt("goldSeen") == 1;
-        chipped = host.loadInt("chip") == 1;
-        chase = host.loadInt("chase");
         crest.settle(fails);
         if (!Builder.hasWinter()) Builder.readWinter(host.asset("sea.bin"));
         readPortal(host.asset("portal.bin"));
@@ -241,11 +220,6 @@ final class Game implements Physics.Listener {
             pieces.add(b);
             totalMass += b.mass;
         }
-        chunk = null;
-        gift = null;
-        prizeDue = false;
-        rubble.clear();
-        chipT = -1f;
         hammer.ghost = true;
         hammer.asleep = false;
         phys.add(hammer);
@@ -336,17 +310,6 @@ final class Game implements Physics.Listener {
         float x = traffic == null ? Traffic.PARK_X[i] : traffic.atX[i], z = traffic == null ? Traffic.PARK_Z[i] : traffic.atZ[i];
         float yaw = traffic == null ? 0f : traffic.atYaw[i];
         c.setPose(x, 0.65f, z, (float) Math.cos(yaw / 2), 0f, (float) Math.sin(yaw / 2), 0f);
-    }
-
-    /** The street's jolt this frame, frame pixels across and up. */
-    void jolt(float[] out) {
-        out[0] = out[1] = 0f;
-        // the ground shaking on the 39th
-        if (chipT >= 0f && chipT < 0.7f) {
-            float k = 3.2f * (1f - chipT / 0.7f);
-            out[0] += k * (float) Math.sin(chipT * 71f);
-            out[1] += k * (float) Math.sin(chipT * 53f + 1f);
-        }
     }
 
     private void setState(int s) {
@@ -850,10 +813,6 @@ final class Game implements Physics.Listener {
         lights(dt);
         drops(dt);
         rolling();
-        if (chipT >= 0f) {
-            chip(dt);
-            cubeOut();
-        }
         windUp(dt);
         creep(dt);
         zoomStep(dt);
@@ -904,12 +863,6 @@ final class Game implements Physics.Listener {
             case PORTAL:
                 portalStep(dt);
                 break;
-            case PRIZE:
-                if (stateTime >= PRIZE_T) {
-                    host.sound(Synth.WHOOSH, 0.45f, 0.5f);
-                    setState(SKY_UP);
-                }
-                break;
             case SKY_UP:
                 if (stateTime >= TILT) setState(SKY_HOLD);
                 break;
@@ -922,12 +875,6 @@ final class Game implements Physics.Listener {
                         backT = 0f;
                         break;
                     }
-                    // the cube's chase not played yet: the room hands over to it, and comes back after
-                    if (chase == 1 && !chaseBack) {
-                        if (!chaseDue) chaseDue = true;
-                        break;
-                    }
-                    chaseBack = false;
                     // the watchers have thrown the blocks: the next building falls into place as the eye comes down
                     start(Math.min(LAST, nextLevel), true);
                     fromSky = true;
@@ -1026,45 +973,8 @@ final class Game implements Physics.Listener {
         knocks(gift, Math.min(LAST, nextLevel));
         holdFor = console.length();
         aiming = false;
-        if (prizeDue) {
-            // the cube won: first the street goes dark round it, the prize before the eye
-            prizeDue = false;
-            host.sound(Synth.CLANG, 0.9f, 1.4f);
-            host.sound(Synth.thunder(2), 0.5f, 1.2f);
-            setState(PRIZE);
-            return;
-        }
         host.sound(Synth.WHOOSH, 0.45f, 0.5f);
         setState(SKY_UP);
-    }
-
-    /** The chase handed over to: the world plays it now. */
-    void chaseTaken() {
-        chaseDue = false;
-    }
-
-    /** Back from the chase: it is played, and the room shows it won, then the game goes on. */
-    void chaseOver() {
-        chase = 2;
-        host.saveInt("chase", 2);
-        chaseBack = true;
-        knocks(-1, Math.min(LAST, nextLevel));
-        holdFor = console.length() + 0.8f;
-        fromSky = false;
-        setState(SKY_UP);
-    }
-
-    /** What the set in the room shows: the street (0), the chase to come (1), the chase won (2). */
-    int onSet() {
-        if (state != SKY_UP && state != SKY_HOLD) return 0;
-        if (chaseBack) return 2;
-        return chase == 1 ? 1 : 0;
-    }
-
-    /** The prize after the round: how far the street has gone dark round the cube, 0 to 1; -1 when it is not shown. */
-    float prize() {
-        if (state != PRIZE) return -1f;
-        return Math.min(1f, stateTime / 0.5f) * Math.min(1f, (PRIZE_T - stateTime) / 0.35f);
     }
 
     /** What the hammer knocks on the console this time, in order: the hammer given, if one is; then the button that goes on. */
@@ -1093,140 +1003,6 @@ final class Game implements Physics.Listener {
             thunderIn[i] -= dt;
             if (thunderIn[i] < 0f) host.sound(thunderId[i], thunderGain[i], thunderRate[i]);
         }
-    }
-
-    /**
-     * The 39th, after the first blow: the ground shakes and rumbles, dust lifts round the
-     * plinth's foot; the near left corner cracks off at the bottom, tips out onto the road and
-     * comes apart there.
-     */
-    private void chip(float dt) {
-        float was = chipT;
-        chipT += dt;
-        float x0 = Builder.CX - Builder.PHX, z0 = Builder.CZ - Builder.PHZ;
-        if (was <= 0f) {
-            host.sound(Synth.GROUND, 1f, 0.42f);
-            host.sound(Synth.thunder(3), 0.55f, 0.75f);
-            host.buzz(160);
-            for (int i = 0; i < 26; i++) {
-                float u = fx.nextFloat() * 2f - 1f;
-                boolean side = fx.nextBoolean();
-                float x = side ? Builder.CX + u * Builder.PHX : Builder.CX + (fx.nextBoolean() ? Builder.PHX : -Builder.PHX);
-                float z = side ? Builder.CZ + (fx.nextBoolean() ? Builder.PHZ : -Builder.PHZ) : Builder.CZ + u * Builder.PHZ;
-                spawn(x, 0.06f, z, true, 0xD9CDB8, 1.1f);
-            }
-        }
-        if (was < CRACK && chipT >= CRACK) {
-            // the corner goes, for good
-            chipped = true;
-            host.saveInt("chip", 1);
-            // the cube in it is the player's
-            gift = new Body(0.19f, 0.19f, 0.19f, Body.GOLD, 0xFFC81E);
-            gift.ghost = true;
-            giftFree = false;
-            prizeDue = true;
-            phys.add(gift);
-            chase = 1;
-            host.saveInt("chase", 1);
-            host.sound(Synth.STONE, 1f, 0.55f);
-            host.sound(Synth.CRASH, 0.5f, 0.7f);
-            host.buzz(60);
-            // the corner is only drawn while it leans out; it touches nothing
-            chunk = new Body(CHIP_X * 0.5f, CHIP_Y * 0.5f, CHIP_Z * 0.5f, Body.STONE, 0xE6D8BC);
-            for (int i = 0; i < 12; i++)
-                spawn(x0 + fx.nextFloat() * CHIP_X, 0.1f + fx.nextFloat() * CHIP_Y, z0 + fx.nextFloat() * 0.1f, i % 3 == 0, 0xCFC2A8, 1.2f);
-        }
-        // the corner leans out about its outer foot, slowly and then faster, and crumbles
-        if (chunk != null) {
-            float u = Math.min(1f, (chipT - CRACK) / OUT);
-            float a = 0.5f * u * u;
-            // about the bottom edge of its front face: a lean out toward the road
-            float ca = (float) Math.cos(a), sa = (float) Math.sin(a);
-            float ly = CHIP_Y * 0.5f, lz = CHIP_Z * 0.5f;
-            float cy = ly * ca + lz * sa, cz = z0 + lz * ca - ly * sa;
-            chunk.setPose(x0 + CHIP_X * 0.5f, cy, cz, (float) Math.cos(-a * 0.5f), (float) Math.sin(-a * 0.5f), 0f, 0f);
-            if (u >= 1f) {
-                // it comes apart: a heap of stone on the road before the hole, chips and dust
-                chunk = null;
-                host.sound(Synth.STONE, 0.9f, 0.7f);
-                host.sound(Synth.SAND, 0.8f, 0.8f);
-                host.buzz(40);
-                for (int i = 0; i < 7; i++) {
-                    float r = 0.06f + fx.nextFloat() * 0.07f;
-                    Body b = new Body(r, r * (0.6f + fx.nextFloat() * 0.5f), r * (0.8f + fx.nextFloat() * 0.4f), Body.STONE,
-                            fx.nextBoolean() ? 0xE6D8BC : 0xC4B494);
-                    float ang = fx.nextFloat() * 3f;
-                    b.setPose(x0 + 0.1f + fx.nextFloat() * (CHIP_X - 0.2f), 0.15f + fx.nextFloat() * 0.35f, z0 - 0.2f - fx.nextFloat() * 0.3f,
-                            (float) Math.cos(ang), 0.3f, (float) Math.sin(ang), 0.2f);
-                    b.vx = (fx.nextFloat() - 0.5f) * 1.2f;
-                    b.vz = -0.4f - fx.nextFloat() * 1.2f;
-                    b.vy = fx.nextFloat() * 0.6f;
-                    b.wx = (fx.nextFloat() - 0.5f) * 8f;
-                    b.wz = (fx.nextFloat() - 0.5f) * 8f;
-                    b.asleep = false;
-                    phys.add(b);
-                    rubble.add(b);
-                }
-                for (int i = 0; i < 40; i++)
-                    spawn(x0 + fx.nextFloat() * CHIP_X, 0.05f + fx.nextFloat() * CHIP_Y, z0 - 0.1f - fx.nextFloat() * 0.3f, i % 2 == 0,
-                            i % 2 == 0 ? 0xD9CDB8 : 0xC4B494, 1.4f);
-            }
-        }
-    }
-
-    /** The cube comes out of the hole after the corner, rolls a little, and lies there. */
-    private void cubeOut() {
-        if (gift == null || giftFree) return;
-        float x0 = Builder.CX - Builder.PHX, z0 = Builder.CZ - Builder.PHZ;
-        float u = Math.max(0f, Math.min(1f, (chipT - CUBE_OUT0) / (CUBE_OUT1 - CUBE_OUT0)));
-        float cx = x0 + 0.4f, cz = z0 + 0.4f - 0.72f * u, cy = 0.2f + 0.05f * (float) Math.sin(u * Math.PI);
-        gift.setPose(cx, cy, cz, 1f, 0f, 0f, 0f);
-        if (u >= 1f) {
-            giftFree = true;
-            gift.ghost = false;
-            gift.asleep = false;
-            gift.vx = -0.25f;
-            gift.vy = 0.9f;
-            gift.vz = -1.5f;
-            gift.wx = -6f;
-            gift.wy = 1f;
-            host.sound(Synth.CLANG, 0.7f, 1.6f);
-        }
-    }
-
-    /** The plinth in town: whole, or with its near left corner broken off at the foot. */
-    private void plinth(DrawList d) {
-        int stone = 0xE6D8BC;
-        if (!chipped) {
-            d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, stone, DrawList.STONE);
-            return;
-        }
-        float x0 = plinth.px - plinth.hx, x1 = plinth.px + plinth.hx, z0 = plinth.pz - plinth.hz, z1 = plinth.pz + plinth.hz;
-        float top = plinth.py + plinth.hy;
-        // above the break, whole; below it, all but the corner
-        d.box(plinth.px, (CHIP_Y + top) * 0.5f, plinth.pz, plinth.hx, (top - CHIP_Y) * 0.5f, plinth.hz, null, stone, DrawList.STONE);
-        d.box((x0 + CHIP_X + x1) * 0.5f, CHIP_Y * 0.5f, plinth.pz, (x1 - x0 - CHIP_X) * 0.5f, CHIP_Y * 0.5f, plinth.hz, null, stone, DrawList.STONE);
-        d.box(x0 + CHIP_X * 0.5f, CHIP_Y * 0.5f, (z0 + CHIP_Z + z1) * 0.5f, CHIP_X * 0.5f, CHIP_Y * 0.5f, (z1 - z0 - CHIP_Z) * 0.5f, null, stone, DrawList.STONE);
-        // the break: the raw stone inside, darker than the weathered face and in shade under
-        // its roof; rough lips round the hole, two rusty rods out of its roof
-        int raw = 0xC4B494, dark = 0x8E8270;
-        d.box(x0 + CHIP_X * 0.5f, CHIP_Y * 0.5f, z0 + CHIP_Z - 0.006f, CHIP_X * 0.5f, CHIP_Y * 0.5f, 0.006f, null, 0x8A7B62, DrawList.STONE);
-        d.box(x0 + CHIP_X - 0.006f, CHIP_Y * 0.5f, z0 + CHIP_Z * 0.5f, 0.006f, CHIP_Y * 0.5f, CHIP_Z * 0.5f, null, 0x97886C, DrawList.STONE);
-        d.box(x0 + CHIP_X * 0.5f, CHIP_Y - 0.006f, z0 + CHIP_Z * 0.5f, CHIP_X * 0.5f, 0.006f, CHIP_Z * 0.5f, null, 0x5E5444, DrawList.STONE);
-        d.box(x0 + CHIP_X - 0.06f, CHIP_Y - 0.05f, z0 + 0.12f, 0.07f, 0.06f, 0.12f, null, raw, DrawList.STONE);
-        d.box(x0 + 0.2f, CHIP_Y - 0.04f, z0 + CHIP_Z - 0.07f, 0.2f, 0.05f, 0.07f, null, raw, DrawList.STONE);
-        d.box(x0 + CHIP_X - 0.05f, 0.14f, z0 + CHIP_Z - 0.1f, 0.06f, 0.14f, 0.1f, null, raw, DrawList.STONE);
-        d.box(x0 + 0.12f, 0.03f, z0 + CHIP_Z - 0.05f, 0.12f, 0.03f, 0.05f, null, raw, DrawList.STONE);
-        d.box(x0 + 0.22f, CHIP_Y - 0.13f, z0 + 0.2f, 0.012f, 0.12f, 0.012f, null, 0x7B4A2C, DrawList.PLAIN);
-        d.box(x0 + 0.44f, CHIP_Y - 0.1f, z0 + 0.33f, 0.012f, 0.09f, 0.012f, null, 0x7B4A2C, DrawList.PLAIN);
-        // a crack up the front from the break toward the top, and one along the side
-        float fz = z0 - 0.004f;
-        d.box(x0 + CHIP_X + 0.03f, CHIP_Y + 0.08f, fz, 0.012f, 0.08f, 0.003f, null, dark, DrawList.PLAIN);
-        d.box(x0 + CHIP_X + 0.08f, CHIP_Y + 0.21f, fz, 0.04f, 0.012f, 0.003f, null, dark, DrawList.PLAIN);
-        d.box(x0 + CHIP_X + 0.12f, CHIP_Y + 0.31f, fz, 0.012f, 0.1f, 0.003f, null, dark, DrawList.PLAIN);
-        float sx = x0 - 0.004f;
-        d.box(sx, CHIP_Y + 0.06f, z0 + CHIP_Z + 0.05f, 0.003f, 0.06f, 0.012f, null, dark, DrawList.PLAIN);
-        d.box(sx, CHIP_Y + 0.13f, z0 + CHIP_Z + 0.16f, 0.003f, 0.012f, 0.11f, null, dark, DrawList.PLAIN);
     }
 
     /** For the desktop stand: the console at once, as after a round with that verdict, and held there. */
@@ -1327,9 +1103,6 @@ final class Game implements Physics.Listener {
         }
         // a blow on the building jolts the medallion at the top
         if (hammerHit && other != null && pieces.contains(other)) crest.hit(speed);
-        // the 39th, the first blow to reach the building: the ground shakes
-        if (hammerHit && level == CHIP_LEVEL && !chipped && chipT < 0f && other != null && pieces.contains(other))
-            chipT = 0f;
         if (a.material == Body.CAR || (b != null && b.material == Body.CAR)) {
             carKnock(a.material == Body.CAR ? a : b, speed, x, y, z);
             return;
@@ -1826,7 +1599,7 @@ final class Game implements Physics.Listener {
 
     void draw(DrawList d) {
         if (atSea) d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, Ocean.ICE, DrawList.ICE);
-        else plinth(d);
+        else d.box(plinth.px, plinth.py, plinth.pz, plinth.hx, plinth.hy, plinth.hz, null, 0xE6D8BC, DrawList.STONE);
         float st = stagger();
         for (int i = 0; i < pieces.size(); i++) {
             Body b = pieces.get(i);
@@ -1867,45 +1640,7 @@ final class Game implements Physics.Listener {
             if (pDust[i] && pAge[i] > pLife[i] * 0.6f) s *= 1f - (pAge[i] / pLife[i] - 0.6f) / 0.4f;
             d.box(pX[i], pY[i], pZ[i], s, s, s, null, pCol[i], pWet[i] ? DrawList.GLASS : DrawList.PLAIN);
         }
-        // what broke off the plinth on the 39th
-        if (chunk != null) {
-            turn[0] = chunk.r00; turn[1] = chunk.r01; turn[2] = chunk.r02;
-            turn[3] = chunk.r10; turn[4] = chunk.r11; turn[5] = chunk.r12;
-            turn[6] = chunk.r20; turn[7] = chunk.r21; turn[8] = chunk.r22;
-            d.box(chunk.px, chunk.py, chunk.pz, chunk.hx, chunk.hy, chunk.hz, turn, 0xE6D8BC, DrawList.STONE);
-        }
-        for (int i = 0; i < rubble.size(); i++) {
-            Body b = rubble.get(i);
-            turn[0] = b.r00; turn[1] = b.r01; turn[2] = b.r02;
-            turn[3] = b.r10; turn[4] = b.r11; turn[5] = b.r12;
-            turn[6] = b.r20; turn[7] = b.r21; turn[8] = b.r22;
-            d.box(b.px, b.py, b.pz, b.hx, b.hy, b.hz, turn, b.tint, DrawList.STONE);
-        }
-        if (gift != null && prize() < 0f) {
-            turn[0] = gift.r00; turn[1] = gift.r01; turn[2] = gift.r02;
-            turn[3] = gift.r10; turn[4] = gift.r11; turn[5] = gift.r12;
-            turn[6] = gift.r20; turn[7] = gift.r21; turn[8] = gift.r22;
-            d.box(gift.px, gift.py, gift.pz, gift.hx, gift.hy, gift.hz, turn, 0xFFB428, DrawList.FIRE_GOLD);
-        }
-        float pk = prize();
-        if (pk >= 0f) {
-            // the prize: the street dark round it, the cube large before the eye, turning
-            d.dark = Math.max(d.dark, pk);
-            d.goldGlow = 1f;
-            float k = 2.2f + 0.6f * (1f - pk);
-            float cx = eye[0] + ahead[0] * k + up[0] * 0.12f, cy = eye[1] + ahead[1] * k + up[1] * 0.12f, cz = eye[2] + ahead[2] * k + up[2] * 0.12f;
-            d.spot[0] = cx;
-            d.spot[1] = cy;
-            d.spot[2] = cz;
-            d.spotRadius = 0.6f;
-            Pursuit.cube(d, cx, cy, cz, 0.16f * pk, clock);
-        }
         drawLights(d);
-        hammer(d);
-    }
-
-    /** Only the hammer in the hand, for the room when the set shows something other than the street. */
-    void drawHand(DrawList d) {
         hammer(d);
     }
 
@@ -2080,7 +1815,7 @@ final class Game implements Physics.Listener {
         float k = tilt();
         if (state == PORTAL) drawPortal(f);
         // the crest, while the street is in sight
-        if (k * fh < fh / 8f && state != PRIZE) hud(f);
+        if (k * fh < fh / 8f) hud(f);
     }
 
     /** The aim, for the renderer to draw smooth over everything: the ring on the building with its wind-up, and the dots of the flight the throw would take. */

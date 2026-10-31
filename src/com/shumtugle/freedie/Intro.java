@@ -7,8 +7,9 @@ import java.util.Random;
  * flies in an arc over the seaside town down onto a square, cars going by, people walking,
  * and stops before Freedie, a giant there, who stands at rest and whose eyes kindle; the
  * town goes dark, light left on her alone; she swings her golden hammer up over her head and
- * down straight at the eye, the glass cracks, and she herself breaks: every block of her a
- * body of the game's own physics, falling into the black. On the black the name burns in
+ * down straight at the eye, the glass of the screen shatters (see Glass), and she herself
+ * breaks: every block of her a body of the game's own physics, falling into the black. On the
+ * black the name burns in
  * gold; a flash, and the game. Played at every start; a touch at any moment goes straight
  * to the flash.
  *
@@ -38,9 +39,9 @@ final class Intro {
     float t;
     private boolean peaked;                   // the flash is at its whitest: the game takes over
 
-    // the cracks in the glass where the hammer struck, as runs of frame points
-    private final int[] crack = new int[2 * 600];
-    private int crackN;
+    // the glass of the screen, broken where the hammer struck it
+    private Glass glass;
+    static final int GLASS_FINE = 2;
     private final float[] scr = new float[2];
     private float lastKnock = -1f;
 
@@ -340,66 +341,30 @@ final class Intro {
         }
     }
 
-    /** The flat layer: the cracked glass, from the blow until the name. */
+    /** The flat layer: nothing of its own; the glass is on the fine layer (see glass). */
     void flat(Px f, DrawList d) {
+    }
+
+    /**
+     * The fine layer over the whole frame, from the blow until the name: the screen's glass,
+     * broken where the head of the hammer came at it (see Glass).
+     */
+    void glass(DrawList d) {
         if (t < HIT || t > NAME) return;
-        if (crackN == 0) cracks(d);
-        float a = t < HIT + 0.3f ? 1f : Math.max(0f, 1f - (t - HIT - 0.3f) / (NAME - HIT - 0.3f));
-        int c = ((int) (a * 0xD0) << 24) | 0xFFFFFF;
-        for (int i = 0; i + 1 < crackN; i++) {
-            int x0 = crack[2 * i], y0 = crack[2 * i + 1], x1 = crack[2 * i + 2], y1 = crack[2 * i + 3];
-            if (x1 == Integer.MIN_VALUE || x0 == Integer.MIN_VALUE) continue;
-            line(f, x0, y0, x1, y1, c);
-        }
-    }
-
-    /** Cracks running out from where the hammer met the glass, splitting as they go. */
-    private void cracks(DrawList d) {
-        float cx = d.w * 0.5f, cy = d.h * 0.42f;
-        if (d.project(strikeHead[0], strikeHead[1], strikeHead[2], scr)) {
-            cx = Math.max(30f, Math.min(d.w - 30f, scr[0]));
-            cy = Math.max(60f, Math.min(d.h - 60f, scr[1]));
-        }
-        Random r = new Random(5);
-        int arms = 8;
-        for (int a = 0; a < arms; a++) {
-            float ang = (float) (a * Math.PI * 2 / arms + r.nextFloat() * 0.5f);
-            run(r, cx, cy, ang, 7 + r.nextInt(6), 2);
-        }
-    }
-
-    private void run(Random r, float x, float y, float ang, int steps, int depth) {
-        if (crackN + steps + 2 > crack.length / 2) return;
-        add((int) x, (int) y);
-        for (int s = 0; s < steps; s++) {
-            ang += (r.nextFloat() - 0.5f) * 0.7f;
-            float len = 5f + r.nextFloat() * 11f;
-            x += (float) Math.cos(ang) * len;
-            y += (float) Math.sin(ang) * len;
-            add((int) x, (int) y);
-            if (depth > 0 && r.nextInt(4) == 0) {
-                add(Integer.MIN_VALUE, Integer.MIN_VALUE);
-                run(r, x, y, ang + (r.nextBoolean() ? 0.8f : -0.8f), steps / 2, depth - 1);
-                add(Integer.MIN_VALUE, Integer.MIN_VALUE);
-                add((int) x, (int) y);
+        if (glass == null) {
+            float cx = d.w * 0.5f, cy = d.h * 0.42f;
+            if (d.project(strikeHead[0], strikeHead[1], strikeHead[2], scr)) {
+                cx = Math.max(30f, Math.min(d.w - 30f, scr[0]));
+                cy = Math.max(60f, Math.min(d.h - 60f, scr[1]));
             }
+            glass = new Glass(d.w, d.h, GLASS_FINE, cx, cy);
         }
-        add(Integer.MIN_VALUE, Integer.MIN_VALUE);
-    }
-
-    private void add(int x, int y) {
-        if (crackN >= crack.length / 2) return;
-        crack[2 * crackN] = x;
-        crack[2 * crackN + 1] = y;
-        crackN++;
-    }
-
-    private static void line(Px f, int x0, int y0, int x1, int y1, int c) {
-        int n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
-        for (int i = 0; i <= n; i++) {
-            int x = x0 + (n == 0 ? 0 : (x1 - x0) * i / n), y = y0 + (n == 0 ? 0 : (y1 - y0) * i / n);
-            f.set(x, y, c);
-        }
+        glass.draw(t - HIT);
+        d.hud = glass.ink.a;
+        d.hudW = glass.ink.w;
+        d.hudH = glass.ink.h;
+        d.hudRows = d.h;
+        d.hudFresh = true;
     }
 
     // ---- helpers ----

@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.66";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.67";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -56,7 +56,7 @@ final class World {
     private final Solid solid = new Solid();
     private float pressedAt = -9f;            // when the red button was last pressed
     private final float[] button = {-99f, -99f};      // where it is in the frame, as last drawn
-    private final float[] jolt = new float[2], view = new float[3], callAt3 = new float[3];
+    private final float[] view = new float[3], callAt3 = new float[3];
     private float lightPlate = -1f, frameDt;
 
     // the game's progress: the level being played (from 0), and whether it is out at sea
@@ -71,12 +71,6 @@ final class World {
     private boolean swallow;                  // the touch that pressed the red button or skipped the opening, until it lifts
     // the opening, while it plays; then the light off it fading into the game
     private Intro intro;
-    // the game on the bridge's last channel, while it is played
-    Baseball baseball;
-    // the chase the golden cube opens, while it is played; the one played, for the room after it;
-    // and one kept still, for the picture of it on the set before
-    Pursuit pursuit;
-    private Pursuit pursuitDone, pursuitShown;
     static final float FLASH_OUT = 0.35f;
     private float flashOut;
     // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast, in a motion
@@ -116,16 +110,6 @@ final class World {
                 swallow = true;
             }
             if (type == UP) swallow = false;
-            return;
-        }
-        if (baseball != null) {
-            if (type == BACK) leaveBaseball();
-            else baseball.touch(type, x, y);
-            return;
-        }
-        if (pursuit != null) {
-            if (type == BACK) leaveChase();
-            else pursuit.touch(type, x, y);
             return;
         }
         if (bridge != null) {
@@ -177,65 +161,17 @@ final class World {
         flashOut = Math.max(0f, flashOut - dt);
         // the set coming on: counted before anything else, the game on the screen included
         if (tvOn >= 0f && (tvOn += dt) > Bridge.TV_ON_T) tvOn = -1f;
-        if (baseball != null) {
-            baseball.update(dt);
-            return;
-        }
-        if (pursuit != null) {
-            pursuit.update(dt);
-            if (pursuit.over()) leaveChase();
-            return;
-        }
         if (bridge != null) bridge.update(dt);
         if (bridge == null) {
             game.update(dt);
             level = game.level;
             atSea = game.atSea;
-            // the room has knocked its keys: it hands over to the chase, which comes on like a set
-            if (game.chaseDue) {
-                game.chaseTaken();
-                pursuit = new Pursuit(host);
-                tvOn = 0f;
-            }
         }
-    }
-
-    /** The chase over, or left: back to the room, which shows it won and then goes on. */
-    private void leaveChase() {
-        pursuitDone = pursuit;
-        pursuit = null;
-        game.chaseOver();
-    }
-
-    /** For the desktop stand: the chase begun at once. */
-    void standChase() {
-        intro = null;
-        pursuit = new Pursuit(host);
     }
 
     /** Whether the back key means something here, rather than leaving the game. */
     boolean wantsBack() {
-        return bridge != null || baseball != null || pursuit != null;
-    }
-
-    /** Out of the game on the screen: back on the street, the round as it was, coming on like a set. */
-    void leaveBaseball() {
-        baseball = null;
-        tvOn = 0f;
-        host.sound(Synth.TV_OFF, 0.9f, 1f);
-    }
-
-    /** For the desktop stand: the game on the screen at once; where its ball is now, to swing at. */
-    void standBaseball() {
-        baseball = new Baseball(host);
-    }
-
-    float[] standBall() {
-        return baseball == null ? null : baseball.standBall();
-    }
-
-    String standBaseballState() {
-        return baseball == null ? "no game" : "hit " + baseball.hits + ", back at her " + baseball.struck;
+        return bridge != null;
     }
 
     /** For the desktop stand: a flock over the street now (1), or a plane that has flown so many seconds. */
@@ -300,40 +236,7 @@ final class World {
             intro.frame(d, W);
             intro.draw(d);
             intro.flat(f, d);
-            return;
-        }
-        if (baseball != null) {
-            // the game on the screen: the ground, her, the ball, the hammer; nothing of the street
-            Daylight.light(d, 4f);
-            baseball.frame(d, W);
-            if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
-            baseball.draw(d);
-            baseball.flat(f);
-            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
-            return;
-        }
-        if (pursuit != null) {
-            // the chase: the town, the runner, her double on fire; nothing of the street
-            pursuit.draw(d, W);
-            if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
-            pursuit.flat(d, f, W, h);
-            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
-            return;
-        }
-        int set = game.onSet();
-        if (set != 0 && game.tilt() > 0f && (set == 1 || pursuitDone != null)) {
-            // the room, its set showing the chase: to come, its double running off; or won, the
-            // place where she fell and the golden cube
-            if (set == 1) {
-                if (pursuitShown == null) pursuitShown = new Pursuit(null);
-                pursuitShown.preview(d, W, time);
-            } else pursuitDone.bonus(d, W, time);
-            game.frame(d);
-            d.flash = Math.max(d.flash, flashOut / FLASH_OUT);
-            game.drawHand(d);
-            game.flat(f);
-            if (roomInk.used) Console.over(f, roomInk);
-            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
+            intro.glass(d);
             return;
         }
         float yaw = (float) Math.atan2(-CAM_X, PLINTH_Z);
@@ -343,10 +246,6 @@ final class World {
         game.view(yaw, pitch, view);
         yaw = view[0];
         pitch = view[1];
-        // the ground shaking on the 39th
-        game.jolt(jolt);
-        yaw += jolt[0] / (W * 1.9f);
-        pitch += jolt[1] / (W * 1.9f);
         // as the room closes in over the street, the street draws back a little into the set
         float wide = 1f - 0.15f * game.tilt();
         d.camera(CAM_X, CAM_Y, CAM_Z, yaw, pitch, W * 1.9f * view[2] * wide, 0.1f, 500f);
@@ -485,13 +384,6 @@ final class World {
     /** The key back, answered, once the room has gone out: the game comes on like a set, as it was. */
     void bridgeHome() {
         bridge = null;
-        tvOn = 0f;
-    }
-
-    /** The green button on the game's channel: the game, coming on like a set. */
-    void bridgeGame() {
-        bridge = null;
-        baseball = new Baseball(host);
         tvOn = 0f;
     }
 

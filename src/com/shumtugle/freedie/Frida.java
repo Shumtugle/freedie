@@ -22,9 +22,6 @@ final class Frida {
             STAKE = 0x7A4A2A, IRON = 0x5F514C, DRESS = 0x1E1C21, WHITE = 0xEFE9E6, LACE = 0xE8E2DE,
             POCKET = 0xE0D8D4, EYES = 0xFFF0A0, MORTAR = 0x6E5A50, SLAB = 0xC9C1B8;
 
-    // the plate on a golem's brow, and the sign cut in it: hers has none, so these are drawn on fire only
-    static final int SHEM = 0x5FE0C4, SIGN = 0x1E3A40;
-
     /** How far her eyes are lit, 0 (dark coals) to 1. */
     static float eyes = 1f;
 
@@ -199,9 +196,6 @@ final class Frida {
         for (int s = -1; s <= 1; s += 2) part(s * 0.037f, 1.68f, -0.111f, 0.019f, 0.009f, 0.003f, EYES, glow);
         part(0f, 1.725f, -0.035f, 0.1f, 0.02f, 0.095f, CAP, wood);
         part(0f, 1.75f, -0.035f, 0.085f, 0.008f, 0.08f, SLAB, stone);
-        // a golem's plate, on the brow of the cap
-        part(0f, 1.735f, -0.136f, 0.075f, 0.045f, 0.008f, SHEM, glow);
-        part(0f, 1.735f, -0.145f, 0.015f, 0.03f, 0.003f, SIGN, plain);
     }
 
     // ---- turns as quaternions (x y z w) ----
@@ -251,65 +245,6 @@ final class Frida {
         return COL[i] == MORTAR;
     }
 
-    /** Whether a part is the plate on a golem's brow or its sign: only the one on fire wears them. */
-    static boolean plate(int i) {
-        return COL[i] == SHEM || COL[i] == SIGN;
-    }
-
-    static int blocks() {
-        return n;
-    }
-
-    /** Where the plate on a golem's brow was at the last capture, and its turn. */
-    static final float[] shemAt = new float[3], shemTurn = new float[9];
-
-    /**
-     * Each of her blocks as draw() would put it, kept: its middle into pos (3 a block), its turn
-     * into turn (9), its half sizes into half (3), its own color into color. The count kept.
-     */
-    static int capture(float x, float y, float z, float yaw, float size, String motion, float t,
-                       float[] pos, float[] turn, float[] half, int[] color) {
-        if (moves == null) return 0;
-        pose(x, y, z, yaw, size, motion, t);
-        int k = 0;
-        for (int i = 0; i < n; i++) {
-            if (plate(i)) {
-                if (COL[i] == SHEM) {
-                    System.arraycopy(AT, i * 3, shemAt, 0, 3);
-                    System.arraycopy(TURN, i * 9, shemTurn, 0, 9);
-                }
-                continue;
-            }
-            System.arraycopy(AT, i * 3, pos, k * 3, 3);
-            System.arraycopy(TURN, i * 9, turn, k * 9, 9);
-            half[k * 3] = HALF[i * 3] * size;
-            half[k * 3 + 1] = HALF[i * 3 + 1] * size;
-            half[k * 3 + 2] = HALF[i * 3 + 2] * size;
-            color[k++] = COL[i];
-        }
-        return k;
-    }
-
-    /** How hot one of her blocks burns, by its own color: the dark ones low, the light ones high. */
-    static float hot(int own) {
-        float lum = (0.3f * ((own >> 16) & 0xFF) + 0.59f * ((own >> 8) & 0xFF) + 0.11f * (own & 0xFF)) / 255f;
-        return lum < 0.25f ? 0.4f + lum * 0.4f : 0.56f + (lum - 0.25f) * 0.5f;
-    }
-
-    /** The colour a block burns in, so hot: dark red low, orange, gold, white at the hottest. */
-    static int burning(float hot) {
-        hot = Math.max(0f, Math.min(1f, hot));
-        if (hot < 0.5f) return Street.mix(0x5A0E06, 0xE0461A, hot / 0.5f);
-        if (hot < 0.8f) return Street.mix(0xE0461A, 0xFFB428, (hot - 0.5f) / 0.3f);
-        return Street.mix(0xFFB428, 0xFFF1C8, (hot - 0.8f) / 0.2f);
-    }
-
-    /** One of her blocks gone cold: a stone grey as dark as the block was. */
-    static int cold(int own) {
-        float lum = (0.3f * ((own >> 16) & 0xFF) + 0.59f * ((own >> 8) & 0xFF) + 0.11f * (own & 0xFF)) / 255f;
-        return Street.mix(0x34302D, 0x8E877F, Math.min(1f, lum * 1.15f));
-    }
-
     /**
      * Works out where every part of her is at (x, y, z), turned about the upright by yaw (0:
      * facing -z), size times the skeleton, in a motion at a time: into AT and TURN.
@@ -346,33 +281,12 @@ final class Frida {
 
     /** Draws her at (x, y, z), turned about the upright by yaw (0: facing -z), size times the skeleton, in a motion at a time. */
     static void draw(DrawList d, float x, float y, float z, float yaw, float size, String motion, float t) {
-        draw(d, x, y, z, yaw, size, motion, t, false);
-    }
-
-    /**
-     * The same; on fire, every block burns through as it is: the dark ones low, red, the light
-     * ones hot, gold to white, each flickering on its own; the eyes white hot; the plate on her
-     * brow worn.
-     */
-    static void draw(DrawList d, float x, float y, float z, float yaw, float size, String motion, float t, boolean fire) {
         if (moves == null) return;
         pose(x, y, z, yaw, size, motion, t);
         for (int i = 0; i < n; i++) {
-            if (plate(i) && !fire) continue;
             System.arraycopy(TURN, i * 9, rot, 0, 9);
             int col = COL[i] == EYES ? Street.mix(0x2A1C14, EYES, eyes) : COL[i];
-            int mat = MAT[i];
-            if (fire) {
-                if (plate(i)) mat = COL[i] == SHEM ? DrawList.GLOW : DrawList.PLAIN;
-                else if (COL[i] == EYES) {
-                    col = 0xFFFBE8;
-                    mat = DrawList.GLOW;
-                } else {
-                    col = burning(hot(COL[i]) + 0.06f * (float) Math.sin(t * 13f + i * 2.3f));
-                    mat = DrawList.GLOW;
-                }
-            }
-            d.box(AT[i * 3], AT[i * 3 + 1], AT[i * 3 + 2], HALF[i * 3] * size, HALF[i * 3 + 1] * size, HALF[i * 3 + 2] * size, rot, col, mat);
+            d.box(AT[i * 3], AT[i * 3 + 1], AT[i * 3 + 2], HALF[i * 3] * size, HALF[i * 3 + 1] * size, HALF[i * 3 + 2] * size, rot, col, MAT[i]);
         }
     }
 
