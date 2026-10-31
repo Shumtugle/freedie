@@ -18,7 +18,8 @@ import javax.imageio.ImageIO;
  * drag X0 Y0 X1 Y1 SECONDS · shot NAME · sounds (every sound of the synthesizer in turn, each
  * after the last has died away) · keep KEY VALUE (as kept by an earlier game) · back (the
  * phone's back key) · restart (the game started again, with what it kept) · tear · birds ·
- * plane SECONDS · deck VERDICT · frida YAW [SPIN [MOTION]] · intro (the opening, which scenes skip).
+ * plane SECONDS · deck VERDICT · frida YAW [SPIN [MOTION]] · intro (the opening, which scenes skip) ·
+ * chase (the chase begun at once) · chasebot SECONDS [SHOTEVERY PREFIX [once]] (a finger that runs it down).
  * Coordinates are frame pixels. # starts a comment. Every sound the world asks for is
  * mixed, as the phone would mix it, into sound.wav.
  */
@@ -222,6 +223,161 @@ public final class Stand implements World.Host {
                 world.touch(World.UP, b[0] + off, b[1] + 6f);
             }
             System.out.println(String.format("%7.2fs  %s", time, world.standBaseballState()));
+        } else if (c.equals("chasebot")) {
+            // the chase must be on: see World.standChase
+            Pursuit P = world.pursuit;
+            if (P == null) {
+                System.out.println("no chase on");
+                return;
+            }
+            // chasebot SECONDS [SHOTEVERY PREFIX [once]]: a finger that runs after the nearest golem as a player
+            // would, turning toward her by sideways moves of its own, never more than a hand's
+            // width a frame
+            float secs = f(p[1]), every = p.length > 2 ? f(p[2]) : 0f;
+            String prefix = p.length > 3 ? p[3] : "b";
+            float fx = World.W * 0.5f, fy = 600f, next = every;
+            world.touch(World.DOWN, fx, fy);
+            int n = Math.round(secs / DT), k = 0;
+            // the way she went, dropped behind her as she runs; the finger follows it, crumb by crumb
+            java.util.ArrayDeque<float[]> crumbs = new java.util.ArrayDeque<float[]>();
+            float dropAt = 0f;
+            Chase after = null;
+            int caughtWas = P.mission.caught();
+            int wi = 0, wj = 0;
+            boolean routing = false;
+            float stuck = 0f, dodge = 0f, firstAt = -1f, lastAt = -1f, dodgeSide = 1f;
+            int dodges = 0;
+            int nextAfter = 0, nextThrow = 0;
+            float thrownAt = -1f;
+            int thrownSeen = P.toss.thrown;
+            // chasebot ... once: the finger lifted as soon as one is caught
+            boolean once = p.length > 4 && p[4].equals("once");
+            boolean endShot = false;
+            for (int i = 0; i < n; i++) {
+                if (world.pursuit != P) break;
+                Runner r = P.runner;
+                Chase ch = P.chase;
+                if (ch != after) {
+                    // another one to go after: its trail, not the last one's
+                    crumbs.clear();
+                    after = ch;
+                    routing = false;
+                }
+                if (i * DT >= dropAt) {
+                    crumbs.add(new float[]{ch.x, ch.z});
+                    dropAt += 0.25f;
+                }
+                while (crumbs.size() > 1) {
+                    float[] c0 = crumbs.peek();
+                    float ddx = c0[0] - r.x, ddz = c0[1] - r.z;
+                    if (ddx * ddx + ddz * ddz < 16f) crumbs.poll();
+                    else break;
+                }
+                float[] goal;
+                // one waiting is gone to along the streets until it is down the same street as her
+                boolean sameStreet = Math.abs(r.x - ch.x) < 8f || Math.abs(r.z - ch.z) < 8f;
+                if (!ch.done() && (ch.apart > 60f || (ch.state == Chase.WAITING && !sameStreet))) {
+                    // far off: along the streets, crossing to crossing, the longer way first
+                    if (!routing) {
+                        wi = Math.round(r.x / City.CELL);
+                        wj = Math.round(r.z / City.CELL);
+                        routing = true;
+                    }
+                    float gx = wi * City.CELL, gz = wj * City.CELL;
+                    if ((gx - r.x) * (gx - r.x) + (gz - r.z) * (gz - r.z) < 36f) {
+                        int ti = Math.round(ch.x / City.CELL), tj = Math.round(ch.z / City.CELL);
+                        if (Math.abs(ti - wi) >= Math.abs(tj - wj)) wi += Integer.signum(ti - wi);
+                        else wj += Integer.signum(tj - wj);
+                    }
+                    // down its own side of the street, as the traffic goes, clear of the parked cars
+                    gx = wi * City.CELL;
+                    gz = wj * City.CELL;
+                    if (Math.abs(gx - r.x) > Math.abs(gz - r.z)) {
+                        float sx = Math.signum(gx - r.x);
+                        goal = new float[]{r.x + Math.max(-10f, Math.min(10f, gx - r.x)), gz - sx * 1.6f};
+                    } else {
+                        float sz = Math.signum(gz - r.z);
+                        goal = new float[]{gx + sz * 1.6f, r.z + Math.max(-10f, Math.min(10f, gz - r.z))};
+                    }
+                    crumbs.clear();
+                } else {
+                    routing = false;
+                    goal = ch.apart < 12f || crumbs.isEmpty() ? new float[]{ch.x, ch.z} : crumbs.peek();
+                }
+                // held up (a car, a lamp post): a step aside to the right for a moment
+                stuck = r.speed < 1f ? stuck + DT : 0f;
+                if (stuck > 0.6f) {
+                    // a step aside, to the right and the left by turns, longer each time it fails
+                    dodge = 1.2f + 0.4f * (dodges % 4);
+                    dodgeSide = (dodges++ % 2 == 0) ? 1f : -1f;
+                    stuck = 0f;
+                }
+                if (dodge > 0f) {
+                    dodge -= DT;
+                    goal = new float[]{r.x + dodgeSide * (float) Math.cos(r.heading) * 4f + (float) Math.sin(r.heading),
+                            r.z - dodgeSide * (float) Math.sin(r.heading) * 4f + (float) Math.cos(r.heading)};
+                } else if (r.speed > 5f) dodges = 0;
+                float want = (float) Math.atan2(goal[0] - r.x, goal[1] - r.z);
+                float dd = want - r.heading;
+                while (dd > Math.PI) dd -= 2f * (float) Math.PI;
+                while (dd < -Math.PI) dd += 2f * (float) Math.PI;
+                float px = Math.max(-6f, Math.min(6f, dd / (float) (Math.PI / 2) * Runner.QUARTER));
+                fx += px;
+                if (fx < 20f || fx > World.W - 20f) {
+                    // the edge of the glass: lift and put the finger back in the middle
+                    world.touch(World.UP, fx, fy);
+                    fx = World.W * 0.5f;
+                    world.touch(World.DOWN, fx, fy);
+                }
+                world.touch(World.MOVE, fx, fy);
+                int was = P.chase.struck;
+                step();
+                int got = P.mission.caught();
+                if (P.chase.struck != was)
+                    System.out.println(String.format("%7.2fs  struck by a car, %.0f m off", time, P.chase.apart));
+                if (P.toss.thrown != thrownSeen) {
+                    thrownSeen = P.toss.thrown;
+                    System.out.println(String.format("%7.2fs  hammer flies, %.1f m", time, P.chase.apart));
+                }
+                if (thrownAt < 0f && P.chase.seized()) {
+                    // shots from the moment one is held: the stop, the swing, the mallet out
+                    thrownAt = time + 0.33f;
+                    System.out.println(String.format("%7.2fs  hammer thrown, %.1f m off", time, P.chase.apart));
+                }
+                float[] afterThrow = {-0.3f, -0.12f, 0.06f};
+                if (thrownAt >= 0f && nextThrow < afterThrow.length && time - thrownAt >= afterThrow[nextThrow])
+                    shot(prefix + "t" + nextThrow++);
+                if (once && got > 0 && nextThrow >= afterThrow.length) {
+                    caughtWas = got;
+                    break;
+                }
+                if (got != caughtWas) {
+                    System.out.println(String.format("%7.2fs  caught %d of %d (clock %.1f)", time, got, P.mission.count, P.mission.clock));
+                    if (got == 1) firstAt = time;
+                    if (got == P.mission.count) lastAt = time;
+                }
+                // the first one caught looked at as it falls apart, and the end of the hunt
+                float[] after1 = {0.1f, 0.4f, 1.0f, 2.2f, 5f};
+                if (firstAt >= 0f && nextAfter < after1.length && time - firstAt >= after1[nextAfter])
+                    shot(prefix + "c" + nextAfter++);
+                if (lastAt >= 0f && !endShot && time - lastAt >= 1.5f) {
+                    shot(prefix + "end");
+                    endShot = true;
+                }
+                caughtWas = got;
+                if (System.getenv("HUNTLOG") != null && i % 300 == 0)
+                    System.out.println(String.format("%7.2fs  target %.0f m, state %d, speed %.1f, runner %.1f %s at %.1f %.1f wp %d %d h %.2f",
+                            time, P.chase.apart, P.chase.state, P.chase.speed, P.runner.speed, routing ? "routing" : "trail", P.runner.x, P.runner.z, wi, wj, P.runner.heading));
+                if (every > 0f && i * DT >= next) {
+                    shot(prefix + (k++));
+                    next += every;
+                }
+            }
+            world.touch(World.UP, fx, fy);
+        } else if (c.equals("chase")) {
+            // the chase, begun at once, as the room hands over to it
+            world.standChase();
+            step();
         } else if (c.equals("intro")) {
             // the opening, from its start, as the game plays it when it starts
             world.standIntro(true);

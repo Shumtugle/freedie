@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.66
+- The golden cube is back in the broken plinth. On the 39th, the first time, the first blow
+  to reach the building cracks the near corner off, and out of the hole a golden cube rolls
+  onto the asphalt and lies there burning.
+- The round over, the street goes dark round it: the cube large before the eye, turning and
+  burning on the black, the prize. Then the room.
+- The room's set shows what the cube opened: down a street of another town, Freedie's double
+  on fire running off. The hammer knocks the key, and the set comes on into it: the chase.
+- The chase: a seaside town grown from a seed as it is come to, cars going about it, people
+  out on the pavements. A finger on the glass runs; moved sideways, it turns; flicked up, a
+  jump; flicked down, a slide. Somewhere down the streets the double waits; come near and she
+  runs, keeping to the right of the road, turning at crossings as it falls out, letting the
+  chase come up when it lags, struck by the cars and getting up again. Run down to within
+  reach, Freedie stops and throws her mallet: it knocks the plate off the burning brow, the
+  double goes out and falls apart, her blocks cooling to stone. At the top, how many meters
+  off she still is; while she is out of sight, a burning mark at the edge the way she is. The
+  back key leaves it.
+- Then the room again, its set showing the place where she fell and the golden cube before
+  it: the chase won. The hammer knocks the key, and the game goes on with the 40th.
+
 ## 0.65
 - The wooden shield is gone again: the throw is as it was in 0.62, the building alone on
   the plinth.

@@ -1,0 +1,9 @@
+# The chase, begun at once: the town, the double on fire waiting down the streets; a finger
+# runs her down as a player would; she is caught, falls apart, and the room comes back.
+screen 1096 2560
+chase
+wait 0.4
+shot c0_start
+chasebot 90 15 c
+wait 2.0
+shot c9_room

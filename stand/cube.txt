@@ -1,0 +1,111 @@
+# The 39th, the first time: the first blow cracks the plinth's corner off, a golden cube rolls
+# out; the round over, the street goes dark round the cube, large before the eye; the room, its
+# set showing the chase to come; the chase, run down by a finger; the room again, the chase won
+# with the cube on the set; and the 40th.
+screen 1096 2560
+keep level 38
+keep chip 0
+keep chase 0
+restart
+wait 2.8
+down 137 420
+wait 1.0
+up 137 420
+wait 1.6
+shot k0_cube
+wait 2.0
+down 137 420
+wait 1.0
+up 137 420
+wait 3.0
+down 137 420
+wait 1.0
+up 137 420
+wait 3.0
+wait 0.4
+shot q00
+wait 0.4
+shot q01
+wait 0.4
+shot q02
+wait 0.4
+shot q03
+wait 0.4
+shot q04
+wait 0.4
+shot q05
+wait 0.4
+shot q06
+wait 0.4
+shot q07
+wait 0.4
+shot q08
+wait 0.4
+shot q09
+wait 0.4
+shot q10
+wait 0.4
+shot q11
+wait 0.4
+shot q12
+wait 0.4
+shot q13
+wait 0.4
+shot q14
+wait 0.4
+shot q15
+wait 0.4
+shot q16
+wait 0.4
+shot q17
+wait 0.4
+shot q18
+wait 0.4
+shot q19
+wait 0.4
+shot q20
+wait 0.4
+shot q21
+wait 0.4
+shot q22
+wait 0.4
+shot q23
+wait 0.4
+shot q24
+wait 0.4
+shot q25
+wait 0.4
+shot q26
+wait 0.4
+shot q27
+wait 0.4
+shot q28
+wait 0.4
+shot q29
+wait 0.4
+shot q30
+wait 0.4
+shot q31
+wait 0.4
+shot q32
+wait 0.4
+shot q33
+wait 0.4
+shot q34
+wait 0.4
+shot q35
+wait 0.4
+shot q36
+wait 0.4
+shot q37
+wait 0.4
+shot q38
+wait 0.4
+shot q39
+chasebot 150 0 k
+wait 1.0
+shot k7_back
+wait 1.0
+shot k8_room
+wait 2.5
+shot k9_next

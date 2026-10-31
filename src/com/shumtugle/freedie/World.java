@@ -15,7 +15,7 @@ package com.shumtugle.freedie;
  */
 final class World {
     static final int W = 274;                // frame pixels across; the height follows the screen
-    static final String VERSION = "0.65";    // shown on screen; keep in step with versionName
+    static final String VERSION = "0.66";    // shown on screen; keep in step with versionName
     static final int DOWN = 0, MOVE = 1, UP = 2, BACK = 3;
 
     /** What the world may ask of the phone. */
@@ -73,6 +73,10 @@ final class World {
     private Intro intro;
     // the game on the bridge's last channel, while it is played
     Baseball baseball;
+    // the chase the golden cube opens, while it is played; the one played, for the room after it;
+    // and one kept still, for the picture of it on the set before
+    Pursuit pursuit;
+    private Pursuit pursuitDone, pursuitShown;
     static final float FLASH_OUT = 0.35f;
     private float flashOut;
     // for the desktop stand: her model shown on the road before the plinth, turned so, turning so fast, in a motion
@@ -117,6 +121,11 @@ final class World {
         if (baseball != null) {
             if (type == BACK) leaveBaseball();
             else baseball.touch(type, x, y);
+            return;
+        }
+        if (pursuit != null) {
+            if (type == BACK) leaveChase();
+            else pursuit.touch(type, x, y);
             return;
         }
         if (bridge != null) {
@@ -172,17 +181,41 @@ final class World {
             baseball.update(dt);
             return;
         }
+        if (pursuit != null) {
+            pursuit.update(dt);
+            if (pursuit.over()) leaveChase();
+            return;
+        }
         if (bridge != null) bridge.update(dt);
         if (bridge == null) {
             game.update(dt);
             level = game.level;
             atSea = game.atSea;
+            // the room has knocked its keys: it hands over to the chase, which comes on like a set
+            if (game.chaseDue) {
+                game.chaseTaken();
+                pursuit = new Pursuit(host);
+                tvOn = 0f;
+            }
         }
+    }
+
+    /** The chase over, or left: back to the room, which shows it won and then goes on. */
+    private void leaveChase() {
+        pursuitDone = pursuit;
+        pursuit = null;
+        game.chaseOver();
+    }
+
+    /** For the desktop stand: the chase begun at once. */
+    void standChase() {
+        intro = null;
+        pursuit = new Pursuit(host);
     }
 
     /** Whether the back key means something here, rather than leaving the game. */
     boolean wantsBack() {
-        return bridge != null || baseball != null;
+        return bridge != null || baseball != null || pursuit != null;
     }
 
     /** Out of the game on the screen: back on the street, the round as it was, coming on like a set. */
@@ -276,6 +309,30 @@ final class World {
             if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
             baseball.draw(d);
             baseball.flat(f);
+            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
+            return;
+        }
+        if (pursuit != null) {
+            // the chase: the town, the runner, her double on fire; nothing of the street
+            pursuit.draw(d, W);
+            if (tvOn >= 0f) d.tube = tvOn / Bridge.TV_ON_T;
+            pursuit.flat(d, f, W, h);
+            PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
+            return;
+        }
+        int set = game.onSet();
+        if (set != 0 && game.tilt() > 0f && (set == 1 || pursuitDone != null)) {
+            // the room, its set showing the chase: to come, its double running off; or won, the
+            // place where she fell and the golden cube
+            if (set == 1) {
+                if (pursuitShown == null) pursuitShown = new Pursuit(null);
+                pursuitShown.preview(d, W, time);
+            } else pursuitDone.bonus(d, W, time);
+            game.frame(d);
+            d.flash = Math.max(d.flash, flashOut / FLASH_OUT);
+            game.drawHand(d);
+            game.flat(f);
+            if (roomInk.used) Console.over(f, roomInk);
             PixelFont.draw(f, VERSION, W - PixelFont.width(VERSION, 1) - 3, h - 10, 1, 0x88FFFFFF);
             return;
         }
